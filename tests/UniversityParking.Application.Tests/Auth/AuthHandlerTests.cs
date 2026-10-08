@@ -20,7 +20,7 @@ public sealed class AuthHandlerTests
 
     public AuthHandlerTests()
     {
-        user = new User(new IdentificationNumber("001A"), "Usuario de prueba", "ETITC", null,
+        user = new User(new IdentificationNumber("001A"), "Usuario de prueba", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,
             MemberType.STAFF, new CardCode("Card1"), clock.UtcNow.AddDays(-1));
         users.Values.Add(user.Id, user);
         credentials.Value = new UserCredential(user.Id, hasher.Hash(Password), clock.UtcNow.AddDays(-1));

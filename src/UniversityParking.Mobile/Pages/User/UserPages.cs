@@ -197,7 +197,7 @@ public sealed class ProfilePage : UserPage<ProfileViewModel>
 {
     public ProfilePage(ProfileViewModel vm) : base(vm, "Mi perfil", () => vm.LoadCommand.ExecuteAsync(null)) =>
         Form(UserViews.Text("Nombre", true), UserViews.Bound("Profile.FullName"), UserViews.Text("Identificación", true), UserViews.Bound("Profile.IdentificationNumber"),
-            UserViews.Text("Universidad", true), UserViews.Bound("Profile.University"), UserViews.Text("Carrera", true), UserViews.Bound("Profile.Career"), UserViews.Bound("MemberType"), UserViews.Bound("Roles", true),
+            UserViews.Text("Universidad", true), UserViews.Bound("Profile.UniversityName"), UserViews.Text("Carrera", true), UserViews.Bound("Profile.Career"), UserViews.Bound("MemberType"), UserViews.Bound("Roles", true),
             UserViews.Text("Código de carné", true), UserViews.Bound("Profile.CardCode"), UserViews.Button("EDITAR PERFIL", "EditCommand"), UserViews.Button("CAMBIAR CONTRASEÑA", "PasswordCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
 }
 public sealed class EditProfilePage : UserPage<EditProfileViewModel>

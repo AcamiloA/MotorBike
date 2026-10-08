@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using UniversityParking.Mobile.Core;
 using UniversityParking.Contracts.Users;
+using UniversityParking.Contracts.Universities;
 using UniversityParking.Contracts.Vehicles;
 using UniversityParking.Contracts.AcademicPeriods;
 using UniversityParking.Contracts.ParkingLots;
@@ -34,7 +35,18 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
     [ObservableProperty] private TypeChoice member=AdminPresentation.Members[0];
     [ObservableProperty] private string identification="";
     [ObservableProperty] private string fullName="";
-    [ObservableProperty] private string university="";
+    public ObservableCollection<UniversityResponse> Universities {get;}=[];
+    [ObservableProperty,NotifyPropertyChangedFor(nameof(UniversityId),nameof(UniversityName),nameof(CanSave),nameof(CurrentUniversityNotice))]
+    private UniversityResponse? selectedUniversity;
+    [ObservableProperty,NotifyPropertyChangedFor(nameof(CanSave),nameof(CanSelectUniversity))] private bool universitiesLoaded;
+    private bool detailsLoaded;
+    private Guid? currentInactiveId;
+    public Guid UniversityId=>SelectedUniversity?.Id??Guid.Empty;
+    public string UniversityName=>SelectedUniversity?.Name??"";
+    public string CurrentUniversityNotice=>SelectedUniversity?.Id==currentInactiveId&&currentInactiveId.HasValue
+        ?"La universidad actual no está en el catálogo activo. Puedes conservarla o elegir otra.":"";
+    public new bool CanSave=>base.CanSave&&UniversitiesLoaded&&detailsLoaded&&SelectedUniversity is not null&&Universities.Contains(SelectedUniversity);
+    public bool CanSelectUniversity=>base.CanSave&&UniversitiesLoaded;
     [ObservableProperty] private string career="";
     [ObservableProperty] private string cardCode="";
     [ObservableProperty] private string initialPassword="";
@@ -44,24 +56,59 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
     partial void OnMemberChanged(TypeChoice value)=>OnPropertyChanged(nameof(CareerLabel));
     [RelayCommand] private Task LoadAsync()=>WorkAsync(async()=>
     {
-        Require();OnPropertyChanged(nameof(IsNew));if(IsNew)return;var result=await api.UserAsync(UserId);if(!Accepted(result))return;
-        var user=result.Value!;Identification=user.IdentificationNumber;FullName=user.FullName;University=user.University;Career=user.Career??"";CardCode=user.CardCode;Member=Members.Single(x=>x.Code==user.MemberType);
+        Require();var accountId=Session.User!.Id;var targetId=UserId;var previousId=SelectedUniversity?.Id;
+        OnPropertyChanged(nameof(IsNew));UniversitiesLoaded=false;detailsLoaded=false;
+        SelectedUniversity=null;Universities.Clear();currentInactiveId=null;OnPropertyChanged(nameof(CurrentUniversityNotice));
+        var catalog=await api.UniversitiesAsync();if(!Accepted(catalog))return;
+        if(Session.User?.Id!=accountId||UserId!=targetId)return;Require();
+        var values=catalog.Value!;
+        if(values.Any(x=>x.Id==Guid.Empty||string.IsNullOrWhiteSpace(x.Name))||values.Select(x=>x.Id).Distinct().Count()!=values.Length)
+            throw new UserInputException("No fue posible cargar las universidades. Intenta nuevamente.");
+        UserProfileResponse? user=null;
+        if(!IsNew)
+        {
+            var result=await api.UserAsync(UserId);if(!Accepted(result))return;
+            if(Session.User?.Id!=accountId||UserId!=targetId)return;Require();user=result.Value!;
+            if(user.Id!=UserId||user.UniversityId==Guid.Empty||string.IsNullOrWhiteSpace(user.UniversityName))
+                throw new UserInputException("No fue posible cargar la universidad del usuario.");
+        }
+        foreach(var value in values)Universities.Add(value);
+        if(user is not null)
+        {
+            Identification=user.IdentificationNumber;FullName=user.FullName;Career=user.Career??"";CardCode=user.CardCode;
+            Member=Members.FirstOrDefault(x=>x.Code==user.MemberType)??throw new UserInputException("El tipo de miembro no es válido.");
+            var current=Universities.FirstOrDefault(x=>x.Id==user.UniversityId);
+            if(current is null){currentInactiveId=user.UniversityId;current=new(user.UniversityId,"",user.UniversityName);Universities.Add(current);}
+            SelectedUniversity=current;
+        }
+        else if(previousId is { } id)SelectedUniversity=Universities.FirstOrDefault(x=>x.Id==id);
+        detailsLoaded=true;UniversitiesLoaded=true;
+        if(Universities.Count==0)ErrorMessage="No hay universidades activas disponibles.";
     });
     [RelayCommand] private Task SaveAsync()=>WorkAsync(async()=>
     {
-        if(Completed||WriteUncertain)return;Require();Required(FullName,"El nombre",200);Required(University,"La universidad",200);Required(CardCode,"El código de carné",150);
+        if(Completed||WriteUncertain)return;Require();
+        if(!UniversitiesLoaded||!detailsLoaded)throw new UserInputException("Carga las universidades antes de guardar.");
+        if(SelectedUniversity is null||!Universities.Contains(SelectedUniversity)||UniversityId==Guid.Empty)throw new UserInputException("Selecciona una universidad.");
+        Required(FullName,"El nombre",200);Required(CardCode,"El código de carné",150);
         if(Member is null||!Members.Any(x=>x.Code==Member.Code))throw new UserInputException("Selecciona un tipo de miembro válido.");if(Member.Code=="STUDENT")Required(Career,"La carrera",200);else if(Career.Trim().Length>200)throw new UserInputException("La carrera admite hasta 200 caracteres.");
         var kind=Enum.Parse<UserMemberType>(Member.Code);var career=string.IsNullOrWhiteSpace(Career)?null:Career.Trim();
         if(IsNew)
         {
             Required(Identification,"La identificación",50);if(InitialPassword.Length<8||!InitialPassword.Any(char.IsUpper)||!InitialPassword.Any(char.IsLower)||!InitialPassword.Any(char.IsDigit))throw new UserInputException("La contraseña inicial requiere 8 caracteres, mayúscula, minúscula y número.");
             var roles=new List<string>{"USER"};if(AddGuard)roles.Add("GUARD");if(AddAdmin)roles.Add("ADMIN");
-            try {var result=await api.CreateUserAsync(new(Identification.Trim(),FullName.Trim(),University.Trim(),career,kind,CardCode.Trim(),InitialPassword,roles));if(!Mutation(result))return;Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=result.Value!.Id});}
+            try {var result=await api.CreateUserAsync(new(Identification.Trim(),FullName.Trim(),UniversityId,career,kind,CardCode.Trim(),InitialPassword,roles));if(!Mutation(result))return;Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=result.Value!.Id});}
             finally{InitialPassword="";}
         }
-        else {var result=await api.EditUserAsync(UserId,new(FullName.Trim(),University.Trim(),career,kind,CardCode.Trim()));if(Mutation(result)){Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=UserId});}}
+        else {var result=await api.EditUserAsync(UserId,new(FullName.Trim(),UniversityId,career,kind,CardCode.Trim()));if(Mutation(result)){Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=UserId});}}
     });
     [RelayCommand] private Task ListAsync()=>navigation.GoAsync("admin-users");
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if(e.PropertyName is nameof(IsBusy) or nameof(Completed) or nameof(WriteUncertain))
+            base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanSelectUniversity)));
+    }
 }
 public partial class AdminUserDetailViewModel(AdminApiService api,IAuthSession session,IUserNavigation navigation,IAppNavigation appNavigation):PagedUserViewModel<AdminRow>
 {
@@ -70,7 +117,7 @@ public partial class AdminUserDetailViewModel(AdminApiService api,IAuthSession s
     [ObservableProperty] private TypeChoice selectedRole=new("GUARD","GUARD");
     [ObservableProperty] private bool writeUncertain;
     public IReadOnlyList<TypeChoice> Roles {get;}=[new("GUARD","GUARD"),new("ADMIN","ADMIN")];
-    public string Summary=>User is null?"":$"{User.FullName}\n{User.IdentificationNumber} · {AdminPresentation.Member(User.MemberType)}\n{User.University} · {User.Career}\nCarné: {User.CardCode}\n{AdminPresentation.Status(User.Status)}\nRoles: {string.Join(", ",User.Roles)}";
+    public string Summary=>User is null?"":$"{User.FullName}\n{User.IdentificationNumber} · {AdminPresentation.Member(User.MemberType)}\n{User.UniversityName} · {User.Career}\nCarné: {User.CardCode}\n{AdminPresentation.Status(User.Status)}\nRoles: {string.Join(", ",User.Roles)}";
     public string StatusAction=>User?.Status=="ACTIVE"?"DESACTIVAR USUARIO":"ACTIVAR USUARIO";
     partial void OnUserChanged(UserProfileResponse? value){OnPropertyChanged(nameof(Summary));OnPropertyChanged(nameof(StatusAction));}
     public Task LoadAsync()=>LoadPageAsync();

@@ -31,7 +31,7 @@ internal sealed class ParkingTestContext : IParkingLotRepository, IParkingMoveme
         Store.Roles = ["USER", "GUARD"];
         Store.ChangeMember(MemberType.STAFF);
         var before = Clock.UtcNow.AddDays(-1);
-        Target = new User(new IdentificationNumber("target-id"), "Usuario", "ETITC", "Ingeniería",
+        Target = new User(new IdentificationNumber("target-id"), "Usuario", UniversityParking.Domain.Universities.UniversityIds.Etitc, "Ingeniería",
             type == VehicleType.CAR ? MemberType.TEACHER : MemberType.STUDENT, new CardCode("target-card"), before);
         Store.OtherUsers.Add(Target);
         Vehicle = new Vehicle(type, type == VehicleType.BICYCLE ? null : new VehiclePlate("ABC123"),

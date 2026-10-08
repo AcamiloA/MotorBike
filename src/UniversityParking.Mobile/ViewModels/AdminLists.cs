@@ -61,7 +61,7 @@ public partial class AdminUsersViewModel(AdminApiService api,IAuthSession sessio
     public override IReadOnlyList<TypeChoice> States=>AdminPresentation.All(AdminPresentation.Statuses);
     public IReadOnlyList<TypeChoice> Roles=>AdminPresentation.All(AdminPresentation.Roles);
     [ObservableProperty] private TypeChoice selectedRole=new("","Todos");
-    protected override async Task ReadAsync()=>Rows(await Api.UsersAsync(Search,SelectedType?.Code,SelectedStatus?.Code,SelectedRole?.Code,Page),x=>new(x.FullName,$"{x.IdentificationNumber} · {AdminPresentation.Member(x.MemberType)} · {AdminPresentation.Status(x.Status)}\nRoles: {string.Join(", ",x.Roles)}",x));
+    protected override async Task ReadAsync()=>Rows(await Api.UsersAsync(Search,SelectedType?.Code,SelectedStatus?.Code,SelectedRole?.Code,Page),x=>new(x.FullName,$"{x.IdentificationNumber} · {AdminPresentation.Member(x.MemberType)} · {AdminPresentation.Status(x.Status)}\n{x.UniversityName}\nRoles: {string.Join(", ",x.Roles)}",x));
     protected override Task OpenAsync(AdminRow row)=>Navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=((UserListItemResponse)row.Value).Id});
     [RelayCommand] private Task CreateAsync()=>WorkAsync(()=>{Require();return Navigation.GoAsync("admin-user-form");});
 }

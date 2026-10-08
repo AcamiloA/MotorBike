@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using UniversityParking.Contracts.Common;
 using UniversityParking.Contracts.Users;
+using UniversityParking.Contracts.Universities;
 using UniversityParking.Contracts.Vehicles;
 using UniversityParking.Contracts.AcademicPeriods;
 using UniversityParking.Contracts.ParkingLots;
@@ -19,6 +20,7 @@ public sealed class AdminApiService(ApiClient api)
     public Task<ApiResult<AdminDashboardResponse>> DashboardAsync() => api.GetAsync<AdminDashboardResponse>("api/v1/dashboard/admin");
     public Task<ApiResult<PagedResponse<UserListItemResponse>>> UsersAsync(string? search, string? member, string? status, string? role, int page) => api.GetAsync<PagedResponse<UserListItemResponse>>(Query("api/v1/users",("search",search?.Trim()),("memberType",member), ("status",status),("role",role),("page",page),("pageSize",20)));
     public Task<ApiResult<UserProfileResponse>> UserAsync(Guid id) => api.GetAsync<UserProfileResponse>($"api/v1/users/{id}");
+    public Task<ApiResult<UniversityResponse[]>> UniversitiesAsync() => api.GetAsync<UniversityResponse[]>("api/v1/universities");
     public Task<ApiResult<UserCreatedResponse>> CreateUserAsync(CreateUserRequest request) => api.PostAsync<UserCreatedResponse>("api/v1/users",request);
     public Task<ApiResult<bool>> EditUserAsync(Guid id, UpdateUserRequest request) => api.PutAsync($"api/v1/users/{id}",request);
     public Task<ApiResult<bool>> UserStatusAsync(Guid id, bool active) => api.PatchAsync($"api/v1/users/{id}/{(active ? "activate" : "deactivate")}");

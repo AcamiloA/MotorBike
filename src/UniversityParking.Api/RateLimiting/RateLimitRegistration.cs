@@ -11,6 +11,9 @@ public static class RateLimitRegistration
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            // The global limiter skips anonymous endpoints, so explicitly cover public reference data.
+            options.AddPolicy(RateLimitPolicies.PublicCatalog, context => Window(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown", RateLimitPolicies.GeneralPermitLimit));
             options.AddPolicy(RateLimitPolicies.Login, context => Window(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown", RateLimitPolicies.LoginPermitLimit));
             options.AddPolicy(RateLimitPolicies.Lookup, context => context.User.Identity?.IsAuthenticated == true

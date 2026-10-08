@@ -9,7 +9,7 @@ public sealed class UserTests
     private static readonly DateTimeOffset Now = new(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
 
     private static User Create(MemberType type = MemberType.STUDENT, string? career = "Ingeniería") =>
-        new(new IdentificationNumber(" 00-A12 "), " Camilo ", " ETITC ", career, type, new CardCode(" QR-abc "), Now);
+        new(new IdentificationNumber(" 00-A12 "), " Camilo ", UniversityParking.Domain.Universities.UniversityIds.Etitc, career, type, new CardCode(" QR-abc "), Now);
 
     [Fact]
     public void IdentificationNumber_ShouldPreserveTextAndLeadingZeros_WhenNormalized()
@@ -44,7 +44,7 @@ public sealed class UserTests
         var user = Create();
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.Equal("Camilo", user.FullName);
-        Assert.Equal("ETITC", user.University);
+        Assert.Equal(UniversityParking.Domain.Universities.UniversityIds.Etitc, user.UniversityId);
         Assert.Equal(UserStatus.ACTIVE, user.Status);
         Assert.Equal(Now, user.CreatedAt);
         Assert.Equal(Now, user.UpdatedAt);
@@ -69,7 +69,7 @@ public sealed class UserTests
         user.UpdateProfile(" Andrés ", " Sistemas ", Now.AddMinutes(1));
         Assert.Equal("Andrés", user.FullName);
         Assert.Equal("Sistemas", user.Career);
-        Assert.Equal("ETITC", user.University);
+        Assert.Equal(UniversityParking.Domain.Universities.UniversityIds.Etitc, user.UniversityId);
         Assert.Equal("00-A12", user.IdentificationNumber.Value);
         Assert.Equal(MemberType.STUDENT, user.MemberType);
         Assert.Equal("QR-abc", user.CardCode.Value);
@@ -79,9 +79,9 @@ public sealed class UserTests
     public void FailedUpdate_ShouldLeavePreviousUserDataUnchanged()
     {
         var user = Create();
-        Assert.Throws<DomainException>(() => user.Update("Otro", "Nueva", null, MemberType.STUDENT, new CardCode("new"), Now.AddMinutes(1)));
+        Assert.Throws<DomainException>(() => user.Update("Otro", UniversityParking.Domain.Universities.UniversityIds.Cmc, null, MemberType.STUDENT, new CardCode("new"), Now.AddMinutes(1)));
         Assert.Equal("Camilo", user.FullName);
-        Assert.Equal("ETITC", user.University);
+        Assert.Equal(UniversityParking.Domain.Universities.UniversityIds.Etitc, user.UniversityId);
         Assert.Equal("QR-abc", user.CardCode.Value);
         Assert.Equal(Now, user.UpdatedAt);
     }
@@ -100,6 +100,18 @@ public sealed class UserTests
         Assert.Equal(UserStatus.ACTIVE, user.Status);
         Assert.Equal(Now.AddMinutes(3), user.UpdatedAt);
         Assert.Equal(id, user.Id);
+    }
+
+    [Fact]
+    public void UniversityReferenceRejectsEmptyGuidAndPreservesDataOnInvalidUpdate()
+    {
+        Assert.Throws<DomainException>(() => new User(new IdentificationNumber("id"), "Nombre", Guid.Empty,
+            null, MemberType.STAFF, new CardCode("card"), Now));
+        var user = Create();
+        Assert.Throws<DomainException>(() => user.Update("Otro", Guid.Empty, "Ingeniería", MemberType.STUDENT,
+            new CardCode("new"), Now.AddMinutes(1)));
+        Assert.Equal("Camilo", user.FullName);
+        Assert.Equal(UniversityParking.Domain.Universities.UniversityIds.Etitc, user.UniversityId);
     }
 
     [Theory]

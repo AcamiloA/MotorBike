@@ -27,8 +27,8 @@ public sealed class UserOperationContext(ICurrentUser actor, IUserRepository use
         audits.AddAsync(new AuditLog(actor.UserId, action, "User", userId, clock.UtcNow,
             oldValues is null ? null : JsonSerializer.Serialize(oldValues),
             newValues is null ? null : JsonSerializer.Serialize(newValues), requestContext.IpAddress, requestContext.TraceId), cancellationToken);
-    public static object Snapshot(User user) => new
+    public static object Snapshot(User user, string universityName) => new
     {
-        user.FullName, user.University, user.Career, user.MemberType, CardCode = user.CardCode.Value, user.Status
+        user.FullName, user.UniversityId, UniversityName = universityName, user.Career, user.MemberType, CardCode = user.CardCode.Value, user.Status
     };
 }

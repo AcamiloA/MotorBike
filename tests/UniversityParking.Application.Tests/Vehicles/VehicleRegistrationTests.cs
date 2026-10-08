@@ -144,7 +144,7 @@ public sealed class VehicleRegistrationTests
     }
     private User NewOwner(MemberType member = UniversityParking.Domain.Users.MemberType.STUDENT)
     {
-        var owner = new User(new("new-owner"), "New owner", "ETITC", "Ingeniería", member, new("new-card"), store.UtcNow);
+        var owner = new User(new("new-owner"), "New owner", UniversityParking.Domain.Universities.UniversityIds.Etitc, "Ingeniería", member, new("new-card"), store.UtcNow);
         store.OtherUsers.Add(owner);
         return owner;
     }
@@ -221,11 +221,11 @@ public sealed class VehicleRegistrationTests
         public bool FailSave { get; set; }
         public Store()
         {
-            User = new(new("id"), "Student", "ETITC", "Ingeniería", Domain.Users.MemberType.STUDENT, new("card"), UtcNow);
+            User = new(new("id"), "Student", UniversityParking.Domain.Universities.UniversityIds.Etitc, "Ingeniería", Domain.Users.MemberType.STUDENT, new("card"), UtcNow);
             Period = new("2026-2", new(2026, 7, 1), new(2026, 12, 31), UtcNow);
             Period.Activate();
         }
-        public void ChangeMember(MemberType member) => User.Update(User.FullName, User.University, "Ingeniería", member, User.CardCode, UtcNow);
+        public void ChangeMember(MemberType member) => User.Update(User.FullName, User.UniversityId, "Ingeniería", member, User.CardCode, UtcNow);
         Task<User?> IUserRepository.GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult(id == User.Id ? User : OtherUsers.FirstOrDefault(x => x.Id == id));
         public Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken ct) => ((IUserRepository)this).GetByIdAsync(id, ct);
         public Task<User?> GetByIdentificationNumberAsync(IdentificationNumber number, CancellationToken ct) => Task.FromResult(number == User.IdentificationNumber ? User : OtherUsers.FirstOrDefault(x => x.IdentificationNumber == number));

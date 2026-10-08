@@ -57,7 +57,7 @@ public sealed class AuthApiFixture : IAsyncLifetime
     public async Task<User> CreateUserAsync(params string[] roleCodes)
     {
         await using var context = CreateContext();
-        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario E2E", "ETITC", null,
+        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario E2E", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,
             MemberType.STAFF, new CardCode(Guid.NewGuid().ToString("N")), DateTimeOffset.UtcNow);
         context.Users.Add(user);
         var hasher = Factory.Services.GetRequiredService<IPasswordHasher>();

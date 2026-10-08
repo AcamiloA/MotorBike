@@ -10,7 +10,7 @@ namespace UniversityParking.Mobile.Tests;
 
 public sealed class MobileFoundationTests
 {
-    private static UserProfileResponse User(params string[] roles) => new(Guid.NewGuid(), "123", "Camilo", "ETITC", "Ingeniería", "STUDENT", "CARD", "ACTIVE", roles.Length == 0 ? ["USER"] : roles);
+    private static UserProfileResponse User(params string[] roles) => new(Guid.NewGuid(), "123", "Camilo", new Guid("a1100000-0000-4000-8000-000000000001"), "ETITC", "Ingeniería", "STUDENT", "CARD", "ACTIVE", roles.Length == 0 ? ["USER"] : roles);
     private static ApiClient Client(AuthSession session, Navigation navigation, Handler transport) => new(new HttpClient(
         new AuthHttpHandler(session, navigation, new ApiOptions("https://test.example/")) { InnerHandler = transport }) { BaseAddress = new("https://test.example/") });
     private static HttpResponseMessage Ok(object value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };

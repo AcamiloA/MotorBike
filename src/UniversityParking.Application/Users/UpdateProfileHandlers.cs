@@ -7,7 +7,7 @@ using UniversityParking.Domain.Users.ValueObjects;
 
 namespace UniversityParking.Application.Users;
 
-public sealed class UpdateMyProfileCommandHandler(UserOperationContext operation, IUserRepository users, IUnitOfWork unitOfWork)
+public sealed class UpdateMyProfileCommandHandler(UserOperationContext operation, IUserRepository users, IUnitOfWork unitOfWork, IUniversityRepository universities)
     : IRequestHandler<UpdateMyProfileCommand, Result>
 {
     public async Task<Result> Handle(UpdateMyProfileCommand request, CancellationToken cancellationToken)
@@ -17,15 +17,17 @@ public sealed class UpdateMyProfileCommandHandler(UserOperationContext operation
         if (user.MemberType == MemberType.STUDENT && string.IsNullOrWhiteSpace(request.Career))
             return Result.Failure(CommonErrors.Validation(new Dictionary<string, IReadOnlyList<string>>
                 { [nameof(request.Career)] = ["La carrera es obligatoria para estudiantes."] }));
-        var before = UserOperationContext.Snapshot(user);
+        var currentUniversity = await universities.GetByIdAsync(user.UniversityId, cancellationToken);
+        if (currentUniversity is null) return Result.Failure(UniversityErrors.NotFound);
+        var before = UserOperationContext.Snapshot(user, currentUniversity.Name);
         user.UpdateProfile(request.FullName, request.Career, operation.UtcNow);
-        await operation.AuditAsync("USER_UPDATED", user.Id, before, UserOperationContext.Snapshot(user), cancellationToken);
+        await operation.AuditAsync("USER_UPDATED", user.Id, before, UserOperationContext.Snapshot(user, currentUniversity.Name), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 }
 public sealed class UpdateUserCommandHandler(UserOperationContext operation, IUserRepository users,
-    IVehicleRepository vehicles, IUnitOfWork unitOfWork) : IRequestHandler<UpdateUserCommand, Result>
+    IVehicleRepository vehicles, IUnitOfWork unitOfWork, IUniversityRepository universities) : IRequestHandler<UpdateUserCommand, Result>
 {
     public async Task<Result> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
@@ -37,9 +39,14 @@ public sealed class UpdateUserCommandHandler(UserOperationContext operation, IUs
         if (cardOwner is not null && cardOwner.Id != user.Id) return Result.Failure(UserErrors.CardCodeAlreadyExists);
         if (request.MemberType == MemberType.STUDENT && user.MemberType != MemberType.STUDENT &&
             await vehicles.HasActiveCarOwnedByUserAsync(user.Id, cancellationToken)) return Result.Failure(UserErrors.InvalidMemberTypeChange);
-        var before = UserOperationContext.Snapshot(user);
-        user.Update(request.FullName, request.University, request.Career, request.MemberType, card, operation.UtcNow);
-        await operation.AuditAsync("USER_UPDATED", user.Id, before, UserOperationContext.Snapshot(user), cancellationToken);
+        var currentUniversity = await universities.GetByIdAsync(user.UniversityId, cancellationToken);
+        if (currentUniversity is null) return Result.Failure(UniversityErrors.NotFound);
+        var before = UserOperationContext.Snapshot(user, currentUniversity.Name);
+        var university = await universities.GetByIdAsync(request.UniversityId, cancellationToken);
+        if (university is null) return Result.Failure(UniversityErrors.NotFound);
+        if (!university.IsActive && university.Id != user.UniversityId) return Result.Failure(UniversityErrors.Inactive);
+        user.Update(request.FullName, university.Id, request.Career, request.MemberType, card, operation.UtcNow);
+        await operation.AuditAsync("USER_UPDATED", user.Id, before, UserOperationContext.Snapshot(user, university.Name), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

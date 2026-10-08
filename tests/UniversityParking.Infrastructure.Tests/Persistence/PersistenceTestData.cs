@@ -13,7 +13,7 @@ internal static class PersistenceTestData
 {
     internal static readonly DateTimeOffset Now = new(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
     internal static User User(string? identification = null, string? card = null) => new(
-        new IdentificationNumber(identification ?? Guid.NewGuid().ToString("N")), "Usuario de prueba", "ETITC", null,
+        new IdentificationNumber(identification ?? Guid.NewGuid().ToString("N")), "Usuario de prueba", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,
         MemberType.STAFF, new CardCode(card ?? Guid.NewGuid().ToString("N")), Now);
 
     internal static Vehicle Vehicle(VehicleType type = VehicleType.MOTORCYCLE, string? identifier = null) => new(type,

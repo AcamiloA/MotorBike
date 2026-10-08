@@ -45,7 +45,7 @@ public sealed class ReportingEndpointTests(AuthApiFixture fixture) : IAsyncLifet
             services.AddScoped<ITokenService>(p => new JwtTokenService(p.GetRequiredService<IOptions<JwtOptions>>(), new SystemClock()));
         });
         client = factory.CreateClient(new() { BaseAddress = new("https://localhost") });
-        target = new(new IdentificationNumber("STUDENT123"), "Estudiante", "ETITC", "Ingeniería", MemberType.STUDENT, new CardCode("CARDSTUDENT"), start.AddDays(-5));
+        target = new(new IdentificationNumber("STUDENT123"), "Estudiante", UniversityParking.Domain.Universities.UniversityIds.Etitc, "Ingeniería", MemberType.STUDENT, new CardCode("CARDSTUDENT"), start.AddDays(-5));
         lot = new("Principal", "Kennedy", new(6,0), new(22,0), start.AddDays(-5));
         otherLot = new("Secundario", "Centro", new(6,0), new(22,0), start.AddDays(-5));
         var zone = new ParkingZone(lot.Id, "Motos", VehicleType.MOTORCYCLE, start.AddDays(-5));
@@ -84,6 +84,24 @@ public sealed class ReportingEndpointTests(AuthApiFixture fixture) : IAsyncLifet
     {
         Assert.Equal(status, response.StatusCode); using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(code, json.RootElement.GetProperty("code").GetString()); Assert.True(json.RootElement.TryGetProperty("traceId", out _));
+    }
+    [Fact]
+    public async Task ReferenceChangeDoesNotAlterAccessCountsOrHistory()
+    {
+        var daily = await Read<DailyAccessResponse[]>("/api/v1/reports/access/daily?" + Range);
+        var groups = await Read<AccessGroupResponse[]>("/api/v1/reports/access/by-member-type?" + Range);
+        var history = await Read<VehicleHistoryResponse>($"/api/v1/reports/vehicles/{vehicle.Id}/history?pageSize=20");
+        await using (var db = fixture.CreateContext())
+        {
+            var user = await db.Users.SingleAsync(x => x.Id == target.Id);
+            user.Update(user.FullName, new Guid("a1100000-0000-4000-8000-000000000002"),
+                user.Career, user.MemberType, user.CardCode, start.AddDays(2));
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(daily, await Read<DailyAccessResponse[]>("/api/v1/reports/access/daily?" + Range));
+        Assert.Equal(groups, await Read<AccessGroupResponse[]>("/api/v1/reports/access/by-member-type?" + Range));
+        var after = await Read<VehicleHistoryResponse>($"/api/v1/reports/vehicles/{vehicle.Id}/history?pageSize=20");
+        Assert.Equal(JsonSerializer.Serialize(history), JsonSerializer.Serialize(after));
     }
     [Fact]
     public async Task AdminDashboardUsesLocalTodayAndRealCounts()

@@ -15,9 +15,9 @@ public sealed partial class ParkingEndpointTests
         var admin=await UserAsync(MemberType.STAFF,"ADMIN");var session=new AuthSession(new MobileStorage());var nav=new MobileNavigation();
         using var mobile=factory.CreateDefaultClient(new AuthHttpHandler(session,nav,new ApiOptions("https://localhost/")));mobile.BaseAddress=new("https://localhost/");
         var transport=new ApiClient(mobile);Assert.True((await new AuthService(transport,session,nav).LoginAsync(admin.IdentificationNumber.Value,AuthApiFixture.Password)).IsSuccess);var api=new AdminApiService(transport);
-        var created=await api.CreateUserAsync(new("MOBILEADMINOWNER","Propietario nuevo","ETITC",null,UserMemberType.TEACHER,"MOBILEADMINCARD","Password1",["USER","GUARD"]));Assert.True(created.IsSuccess,created.Error?.Message);var ownerId=created.Value!.Id;
+        var created=await api.CreateUserAsync(new("MOBILEADMINOWNER","Propietario nuevo",new Guid("a1100000-0000-4000-8000-000000000001"),null,UserMemberType.TEACHER,"MOBILEADMINCARD","Password1",["USER","GUARD"]));Assert.True(created.IsSuccess,created.Error?.Message);var ownerId=created.Value!.Id;
         Assert.Equal(ownerId,(await api.FindUserAsync("MOBILEADMINOWNER")).Value!.Id);
-        Assert.True((await api.EditUserAsync(ownerId,new("Nombre editado","ETITC","Opcional",UserMemberType.TEACHER,"MOBILEADMINCARD"))).IsSuccess);
+        Assert.True((await api.EditUserAsync(ownerId,new("Nombre editado",new Guid("a1100000-0000-4000-8000-000000000001"),"Opcional",UserMemberType.TEACHER,"MOBILEADMINCARD"))).IsSuccess);
         Assert.True((await api.AssignRoleAsync(ownerId,"ADMIN")).IsSuccess);Assert.True((await api.RemoveRoleAsync(ownerId,"ADMIN")).IsSuccess);
         Assert.False((await api.RemoveRoleAsync(ownerId,"USER")).IsSuccess);
         Assert.True((await api.UserStatusAsync(ownerId,false)).IsSuccess);Assert.Equal("INACTIVE",(await api.UserAsync(ownerId)).Value!.Status);Assert.True((await api.UserStatusAsync(ownerId,true)).IsSuccess);

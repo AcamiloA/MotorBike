@@ -8,7 +8,7 @@ El dashboard obtiene usuarios activos, vehículos activos, vehículos dentro, en
 
 ## Reglas y flujos
 
-Usuarios: lista paginada con búsqueda, tipo de miembro, estado y rol; creación administrativa con identificación, nombre, universidad, carrera, carné, contraseña inicial y roles adicionales. USER se incluye siempre. STUDENT requiere carrera; TEACHER/STAFF la permiten opcional. Editar no modifica identificación, contraseña ni roles. El detalle muestra perfil, roles y vehículos actuales paginados, permite activar/desactivar y asignar/retirar GUARD o ADMIN. USER no se puede retirar. La contraseña inicial se limpia después del envío y al salir de la página. Cambiar los propios roles exige una nueva autenticación para actualizar claims y menú; desactivar la propia cuenta cierra la sesión.
+Usuarios: lista paginada con búsqueda, tipo de miembro, estado y rol; creación administrativa con identificación, nombre, selección de universidad del catálogo, carrera, carné, contraseña inicial y roles adicionales. USER se incluye siempre. STUDENT requiere carrera; TEACHER/STAFF la permiten opcional. Editar no modifica identificación, contraseña ni roles. El detalle muestra perfil, roles y vehículos actuales paginados, permite activar/desactivar y asignar/retirar GUARD o ADMIN. USER no se puede retirar. La contraseña inicial se limpia después del envío y al salir de la página. Cambiar los propios roles exige una nueva autenticación para actualizar claims y menú; desactivar la propia cuenta cierra la sesión.
 
 Vehículos: lista con búsqueda, tipo, estado, identificación del propietario y registro. Detalle incluye propietario, estado, fotografía privada y documentos, edición de marca/modelo/color y consulta de historiales de propiedad, registro, movimientos e incidentes. Corregir identificador exige motivo y confirmación, sin cambiar tipo. Transferir busca el propietario por identificación exacta, vuelve a validarlo antes del envío, requiere usuario activo y distinto del actual y rechaza automóvil para STUDENT. La confirmación explica que se cierra la propiedad anterior y se cancela su registro vigente; el nuevo propietario debe renovar antes de ingresar.
 
@@ -73,3 +73,14 @@ Los TRX finales están en `.data/phase19/TestResults`; el resultado integral de 
 No se modificó el backend de producción ni los originales de references, no se hicieron commits y no se inició despliegue. Ejecución en dispositivo, permisos nativos, conectividad real y revisión visual pendientes del usuario según lo acordado.
 
 El resultado de esta guía corresponde al cierre de Fase 19. Consulte README para el estado actual de las fases y docs/user-manual.md para el manual consolidado.
+
+
+## Catálogo de universidades
+
+Crear y editar usuarios utiliza un Picker que muestra el nombre. La creación
+exige selección explícita; la edición selecciona la referencia actual y permite
+conservarla si está inactiva, con un aviso. Durante carga no permite guardar.
+Ante error se puede reintentar. Actualizar en edición vuelve a cargar los datos
+persistidos. Listado, detalle y perfil muestran UniversityName; las solicitudes
+envían UniversityId. Detalles y validación actual en [catálogo](university-catalog.md).
+Las cifras y APK de la Fase 19 anteriores son evidencias históricas.

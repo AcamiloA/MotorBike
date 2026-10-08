@@ -17,7 +17,7 @@ public sealed class MobileAuthIntegrationTests(AuthApiFixture fixture) : IAsyncL
         client.BaseAddress = new("https://localhost/");
         var auth = new AuthService(new ApiClient(client), session, nav);
         Assert.True((await auth.LoginAsync(user.IdentificationNumber.Value, AuthApiFixture.Password)).IsSuccess);
-        Assert.NotNull(storage.Value); Assert.Equal(user.Id, session.User!.Id); Assert.Equal("ETITC", session.User.University); Assert.Equal(1, nav.HomeCount);
+        Assert.NotNull(storage.Value); Assert.Equal(user.Id, session.User!.Id); Assert.Equal("ETITC", session.User.UniversityName); Assert.Equal(1, nav.HomeCount);
         var restoredSession = new AuthSession(storage); var restoredNav = new Navigation();
         using var restoredClient = fixture.Factory.CreateDefaultClient(new AuthHttpHandler(restoredSession, restoredNav, new ApiOptions("https://localhost/")));
         restoredClient.BaseAddress = new("https://localhost/");

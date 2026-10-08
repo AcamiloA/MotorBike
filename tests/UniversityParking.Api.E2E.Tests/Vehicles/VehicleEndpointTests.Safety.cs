@@ -183,7 +183,7 @@ public sealed partial class VehicleEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, (await client.PatchAsync($"/api/v1/vehicles/{id}/deactivate", null)).StatusCode);
         await LoginAsync(admin);
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"/api/v1/users/{owner.Id}", new
-        { fullName = owner.FullName, university = "ETITC", career = "Ingeniería", memberType = "STUDENT", cardCode = owner.CardCode.Value })).StatusCode);
+        { fullName = owner.FullName, universityId = owner.UniversityId, career = "Ingeniería", memberType = "STUDENT", cardCode = owner.CardCode.Value })).StatusCode);
         await ErrorAsync(await client.PatchAsync($"/api/v1/vehicles/{id}/activate", null), HttpStatusCode.Conflict, "STUDENT_CANNOT_REGISTER_CAR");
         client.DefaultRequestHeaders.Authorization = token;
         await ErrorAsync(await client.PatchAsync($"/api/v1/vehicles/{id}/activate", null), HttpStatusCode.Conflict, "STUDENT_CANNOT_REGISTER_CAR");

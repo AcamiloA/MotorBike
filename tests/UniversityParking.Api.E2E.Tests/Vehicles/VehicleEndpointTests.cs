@@ -55,7 +55,7 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
     private async Task<User> CreateUserAsync(MemberType member = MemberType.STUDENT, params string[] roles)
     {
         await using var context = fixture.CreateContext();
-        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario de vehículos", "ETITC",
+        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario de vehículos", UniversityParking.Domain.Universities.UniversityIds.Etitc,
             member == MemberType.STUDENT ? "Ingeniería" : null, member, new CardCode(Guid.NewGuid().ToString("N")), DateTimeOffset.UtcNow);
         context.Users.Add(user);
         context.UserCredentials.Add(new UserCredential(user.Id, factory.Services.GetRequiredService<IPasswordHasher>().Hash(AuthApiFixture.Password), user.CreatedAt));
