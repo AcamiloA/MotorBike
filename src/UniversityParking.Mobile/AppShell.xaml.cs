@@ -1,37 +1,60 @@
 using Microsoft.Extensions.DependencyInjection;
 using UniversityParking.Mobile.Core;
-using UniversityParking.Mobile.Pages;
-using UniversityParking.Mobile.Pages.User;
-using UniversityParking.Mobile.Pages.Guard;
-using UniversityParking.Mobile.Pages.Admin;
+using UniversityParking.Mobile.Navigation;
+using UniversityParking.Mobile.ViewModels;
+using UniversityParking.Mobile.Views;
+
 namespace UniversityParking.Mobile;
+
 public partial class AppShell : Shell
 {
-    public AppShell(IAuthSession session, IServiceProvider services)
+    private readonly FlyoutMenuViewModel menu;
+    public AppShell(IAuthSession session, IServiceProvider services, AuthService auth)
     {
-        InitializeComponent(); var tabs = new TabBar { Route = "app" };
-        foreach (var role in RoleNavigation.Areas(session.User?.Roles ?? []))
+        InitializeComponent();
+        var user = session.User;
+        var roles = user?.Roles ?? [];
+        // Each role has only one root content: no top tabs or duplicated primary pages.
+        // Existing global routes supply modules and details through their DI factories.
+        var root = new FlyoutItem { Route = "app", Title = "MOTOBIKE PARK" };
+        foreach (var role in RoleNavigation.Areas(roles))
         {
-            var tab = new Tab { Title = RoleNavigation.Title(role), Route = role.ToLowerInvariant() };
-            if (role == "USER")
+            var area = new Tab { Route = role.ToLowerInvariant(), Title = RoleNavigation.Title(role) };
+            foreach (var item in NavigationMenu.Catalog.Where(x => x.Role == role && x.Leaf == "home"))
             {
-                tab.Title = "Inicio";
-                foreach (var item in new[] { ("Inicio", "home", typeof(UserHomePage)), ("Vehículos", "vehicles", typeof(MyVehiclesPage)),
-                    ("Historial", "history", typeof(MyHistoryPage)), ("Noticias", "news", typeof(NewsPage)), ("Perfil", "profile", typeof(ProfilePage)) })
-                {
-                    var type = item.Item3;
-                    tab.Items.Add(new ShellContent { Title = item.Item1, Route = item.Item2, ContentTemplate = new DataTemplate(() => services.GetRequiredService(type)) });
-                }
-                tabs.Items.Add(tab); continue;
+                var pageType = NavigationDestinations.Page(item.Key);
+                area.Items.Add(new ShellContent { Route = item.Leaf, Title = item.Title,
+                    ContentTemplate = new DataTemplate(() => services.GetRequiredService(pageType)) });
             }
-            if (role == "GUARD")
-            {
-                tab.Items.Add(new ShellContent { Title = "Control de acceso", Route = "home", ContentTemplate = new DataTemplate(() => services.GetRequiredService<GuardHomePage>()) });
-                tabs.Items.Add(tab); continue;
-            }
-            tab.Items.Add(new ShellContent { Title = tab.Title, Route = "home", ContentTemplate = new DataTemplate(() => services.GetRequiredService<AdminDashboardPage>()) });
-            tabs.Items.Add(tab);
+            root.Items.Add(area);
         }
-        Items.Add(tabs);
+        menu = new FlyoutMenuViewModel(user?.FullName ?? "Mi cuenta", roles, async item =>
+        {
+            if (Shell.Current != this || session.User?.Id != user?.Id || session.User?.Roles.Contains(item.Role) != true) return;
+            await GoToAsync(item.Route);
+            if (Shell.Current == this && session.User?.Id == user?.Id) FlyoutIsPresented = false;
+        }, async () =>
+        {
+            if (Shell.Current != this || session.User?.Id != user?.Id) return;
+            FlyoutIsPresented = false;
+            await auth.LogoutAsync();
+        });
+        FlyoutContent = new FlyoutMenuView(menu);
+        Items.Add(root);
+        var first = NavigationMenu.Catalog.FirstOrDefault(x => roles.Contains(x.Role));
+        if (first is not null) menu.Select(first.Key);
+    }
+    protected override void OnPropertyChanged(string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName == nameof(FlyoutIsPresented) && FlyoutIsPresented && menu?.ActiveKey is { } key)
+            menu.Select(key);
+    }
+    protected override void OnNavigated(ShellNavigatedEventArgs args)
+    {
+        base.OnNavigated(args);
+        if (menu is null) return;
+        var key = NavigationMenu.ActiveKey(args.Current.Location.OriginalString);
+        if (key is not null) menu.Select(key);
     }
 }
