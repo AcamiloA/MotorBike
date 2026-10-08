@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 
 namespace UniversityParking.Mobile.Services;
 
-public sealed class UserNavigation : IUserNavigation
+public sealed class UserNavigation(IAuthSession session) : IUserNavigation
 {
     public Task GoAsync(string route, IReadOnlyDictionary<string, object>? arguments = null) => MainThread.InvokeOnMainThreadAsync(() =>
-        Shell.Current.GoToAsync(route switch { "guard-home" => "//app/guard/home", "my-vehicles" => "//app/user/vehicles", "my-history" => "//app/user/history", "user-news" => "//app/user/news", "user-profile" => "//app/user/profile", _ => route },
+        Shell.Current.GoToAsync(NavigationMenu.Resolve(route, session.User?.Roles),
             arguments is null ? new Dictionary<string, object>() : new Dictionary<string, object>(arguments)));
     public Task BackAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(".."));
     public Task MessageAsync(string title, string message) => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.CurrentPage.DisplayAlertAsync(title, message, "ACEPTAR"));
