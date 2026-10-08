@@ -1,0 +1,17 @@
+**/bin
+**/obj
+.git
+.vs
+.data
+references
+tests
+docs
+**/App_Data
+**/.env
+**/.env.*
+**/appsettings.*.json
+**/*.user
+**/*.apk
+**/*.aab
+**/*.keystore
+**/*.jks

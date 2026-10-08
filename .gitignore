@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+.env
+.env.*
+!.env.example
+.data/
+backups/
+TestResults/
+*.apk
+*.aab
+*.keystore
+*.jks
+App_Data/

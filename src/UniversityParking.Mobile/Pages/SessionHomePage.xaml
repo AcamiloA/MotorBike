@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" x:Class="UniversityParking.Mobile.Pages.SessionHomePage" x:DataType="vm:SessionHomeViewModel" Title="{Binding AreaTitle}">
+ <ScrollView><VerticalStackLayout Padding="24" Spacing="20" MaximumWidthRequest="560">
+  <Label Text="MOTOBIKE PARK" Style="{StaticResource BrandTitle}" />
+  <Label Text="Bienvenido" Style="{StaticResource Caption}" />
+  <Label Text="{Binding FullName}" FontSize="24" FontFamily="OpenSansSemibold" />
+  <Border Style="{StaticResource CardBorder}"><VerticalStackLayout Spacing="12">
+   <Label Text="{Binding AreaTitle}" FontSize="20" FontFamily="OpenSansSemibold" TextColor="{StaticResource Primary}" />
+   <Label Text="{Binding MemberType}" /><Label Text="{Binding Roles}" Style="{StaticResource Caption}" />
+   <Label Text="Sesión autenticada" TextColor="{StaticResource Success}" />
+  </VerticalStackLayout></Border>
+  <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" />
+  <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+  <Button Text="CERRAR SESIÓN" Command="{Binding LogoutCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource SecondaryButton}" />
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

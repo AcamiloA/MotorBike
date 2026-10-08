@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" x:Class="UniversityParking.Mobile.Pages.LoginPage" x:DataType="vm:LoginViewModel" Title="Acceso">
+ <ScrollView><VerticalStackLayout Padding="28,48,28,28" Spacing="20" MaximumWidthRequest="480" HorizontalOptions="Fill">
+  <Image Source="brandmark.png" HeightRequest="84" WidthRequest="84" SemanticProperties.Description="MOTOBIKE PARK" />
+  <Label Text="MOTOBIKE PARK" Style="{StaticResource BrandTitle}" HorizontalTextAlignment="Center" />
+  <Label Text="SMART PARKING SYSTEM" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" Margin="0,-12,0,24" />
+  <Label Text="NÚMERO DE IDENTIFICACIÓN" Style="{StaticResource Caption}" />
+  <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding IdentificationNumber}" Placeholder="Ingresa tu identificación" IsEnabled="{Binding IsNotBusy}" ReturnType="Next" SemanticProperties.Description="Número de identificación" /></Border>
+  <Label Text="CONTRASEÑA" Style="{StaticResource Caption}" />
+  <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding Password}" Placeholder="Ingresa tu contraseña" IsPassword="True" IsEnabled="{Binding IsNotBusy}" ReturnType="Go" ReturnCommand="{Binding SignInCommand}" SemanticProperties.Description="Contraseña" /></Border>
+  <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" SemanticProperties.Description="{Binding ErrorMessage}" />
+  <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+  <Button Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding IsNotBusy}" Margin="0,8,0,24" />
+  <Label Text="Control de acceso vehicular universitario" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

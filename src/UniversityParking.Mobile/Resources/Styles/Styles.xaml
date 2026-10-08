@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+ <Style TargetType="ContentPage"><Setter Property="BackgroundColor" Value="{StaticResource Background}" /></Style>
+ <Style x:Key="BaseLabel" TargetType="Label"><Setter Property="TextColor" Value="{StaticResource TextPrimary}" /><Setter Property="FontFamily" Value="OpenSansRegular" /><Setter Property="FontSize" Value="15" /></Style>
+ <Style TargetType="Label" BasedOn="{StaticResource BaseLabel}" />
+ <Style x:Key="Caption" TargetType="Label" BasedOn="{StaticResource BaseLabel}"><Setter Property="TextColor" Value="{StaticResource TextSecondary}" /><Setter Property="FontSize" Value="12" /></Style>
+ <Style x:Key="BrandTitle" TargetType="Label" BasedOn="{StaticResource BaseLabel}"><Setter Property="FontFamily" Value="OpenSansSemibold" /><Setter Property="FontSize" Value="24" /><Setter Property="TextColor" Value="{StaticResource Primary}" /></Style>
+ <Style TargetType="Entry"><Setter Property="TextColor" Value="{StaticResource TextPrimary}" /><Setter Property="PlaceholderColor" Value="{StaticResource TextSecondary}" /><Setter Property="BackgroundColor" Value="Transparent" /><Setter Property="FontFamily" Value="OpenSansRegular" /><Setter Property="FontSize" Value="15" /><Setter Property="MinimumHeightRequest" Value="48" /></Style>
+ <Style x:Key="InputBorder" TargetType="Border"><Setter Property="BackgroundColor" Value="{StaticResource Surface}" /><Setter Property="Stroke" Value="{StaticResource Border}" /><Setter Property="StrokeShape" Value="RoundRectangle 12" /><Setter Property="Padding" Value="12,0" /></Style>
+ <Style x:Key="CardBorder" TargetType="Border" BasedOn="{StaticResource InputBorder}"><Setter Property="Padding" Value="20" /></Style>
+ <Style TargetType="ActivityIndicator"><Setter Property="Color" Value="{StaticResource Primary}" /></Style>
+ <Style x:Key="BaseButton" TargetType="Button">
+  <Setter Property="FontFamily" Value="OpenSansSemibold" /><Setter Property="FontSize" Value="14" />
+  <Setter Property="TextColor" Value="{StaticResource Background}" /><Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+  <Setter Property="CornerRadius" Value="12" /><Setter Property="MinimumHeightRequest" Value="52" /><Setter Property="Padding" Value="16,12" />
+  <Setter Property="VisualStateManager.VisualStateGroups"><VisualStateGroupList><VisualStateGroup x:Name="CommonStates">
+   <VisualState x:Name="Normal" /><VisualState x:Name="Pressed"><VisualState.Setters><Setter Property="BackgroundColor" Value="{StaticResource PrimaryPressed}" /></VisualState.Setters></VisualState>
+   <VisualState x:Name="Disabled"><VisualState.Setters><Setter Property="BackgroundColor" Value="{StaticResource Border}" /><Setter Property="TextColor" Value="{StaticResource TextDisabled}" /></VisualState.Setters></VisualState>
+  </VisualStateGroup></VisualStateGroupList></Setter>
+ </Style>
+ <Style TargetType="Button" BasedOn="{StaticResource BaseButton}" />
+ <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}"><Setter Property="BackgroundColor" Value="{StaticResource SurfaceVariant}" /><Setter Property="TextColor" Value="{StaticResource TextPrimary}" /><Setter Property="BorderColor" Value="{StaticResource Border}" /><Setter Property="BorderWidth" Value="1" /></Style>
+ <Style TargetType="Shell"><Setter Property="Shell.BackgroundColor" Value="{StaticResource Surface}" /><Setter Property="Shell.ForegroundColor" Value="{StaticResource Primary}" /><Setter Property="Shell.TitleColor" Value="{StaticResource TextPrimary}" /><Setter Property="Shell.TabBarBackgroundColor" Value="{StaticResource Surface}" /><Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource Primary}" /><Setter Property="Shell.TabBarUnselectedColor" Value="{StaticResource TextSecondary}" /></Style>
+</ResourceDictionary>

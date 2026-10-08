@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" x:Class="UniversityParking.Mobile.Pages.StartupPage" x:DataType="vm:StartupViewModel">
+ <VerticalStackLayout Padding="28" Spacing="24" VerticalOptions="Center" MaximumWidthRequest="480">
+  <Image Source="brandmark.png" HeightRequest="84" WidthRequest="84" />
+  <Label Text="MOTOBIKE PARK" Style="{StaticResource BrandTitle}" HorizontalTextAlignment="Center" />
+  <Label Text="Validando tu sesión" HorizontalTextAlignment="Center" />
+  <ActivityIndicator IsRunning="{Binding IsBusy}" />
+  <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" HorizontalTextAlignment="Center" />
+  <Button Text="REINTENTAR" Command="{Binding RestoreCommand}" IsEnabled="{Binding IsNotBusy}" />
+  <Button Text="CERRAR SESIÓN" Command="{Binding LogoutCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource SecondaryButton}" />
+ </VerticalStackLayout>
+</ContentPage>
