@@ -7,6 +7,7 @@ using UniversityParking.Domain.Incidents;
 using UniversityParking.Domain.News;
 using UniversityParking.Domain.Parking;
 using UniversityParking.Domain.Users;
+using UniversityParking.Domain.Universities;
 using UniversityParking.Domain.Vehicles;
 
 namespace UniversityParking.Infrastructure.Persistence;
@@ -14,6 +15,7 @@ namespace UniversityParking.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IUnitOfWork
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<University> Universities => Set<University>();
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();

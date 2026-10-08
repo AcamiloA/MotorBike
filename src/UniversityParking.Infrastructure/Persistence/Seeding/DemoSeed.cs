@@ -90,7 +90,7 @@ public sealed class DemoSeed(AppDbContext db, IPasswordHasher passwords, IFileSt
                     // Existing reserved entities retain passwords, roles and profile edits.
                     if (await db.Users.FindAsync([DemoSeedData.Id(account.Key)], token) is not null) continue;
                     var user = Add(account.Key, new User(new IdentificationNumber(account.Identification),
-                        "Demo " + account.Card[5..], "ETITC", account.Member == MemberType.STUDENT ? "Ingeniería de Sistemas" : null,
+                        "Demo " + account.Card[5..], UniversityParking.Domain.Universities.UniversityIds.Etitc, account.Member == MemberType.STUDENT ? "Ingeniería de Sistemas" : null,
                         account.Member, new CardCode(account.Card), created));
                     db.UserCredentials.Add(new(user.Id, passwords.Hash(options.DemoPassword!), created));
                     foreach (var code in new[] { "USER", account.Role }.Distinct()) db.UserRoles.Add(new(user.Id, roles[code].Id));

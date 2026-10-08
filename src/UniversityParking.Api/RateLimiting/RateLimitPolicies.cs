@@ -3,6 +3,7 @@ namespace UniversityParking.Api.RateLimiting;
 public static class RateLimitPolicies
 {
     public const string Login = "Login";
+    public const string PublicCatalog = "PublicCatalog";
     public const string Lookup = "ParkingLookup";
     public const string ParkingCommands = "ParkingCommands";
     public const int LoginPermitLimit = 5;

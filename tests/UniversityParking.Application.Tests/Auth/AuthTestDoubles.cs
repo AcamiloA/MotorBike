@@ -24,7 +24,7 @@ internal sealed class FakeUsers : IUserRepository
     public Task<UniversityParking.Application.Common.Pagination.PagedResult<UniversityParking.Application.Users.UserProfile>> SearchAsync(
         UniversityParking.Application.Users.GetUsersQuery query, CancellationToken cancellationToken) =>
         Task.FromResult(new UniversityParking.Application.Common.Pagination.PagedResult<UniversityParking.Application.Users.UserProfile>(
-            Values.Values.Take(query.PageSize).Select(x => UniversityParking.Application.Users.UserProfile.From(x, [])), query.Page, query.PageSize, Values.Count));
+            Values.Values.Take(query.PageSize).Select(x => UniversityParking.Application.Users.UserProfile.From(x, [], "ETITC")), query.Page, query.PageSize, Values.Count));
     public Dictionary<Guid, User> Values { get; } = [];
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {

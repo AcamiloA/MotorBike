@@ -59,6 +59,25 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
         return client;
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CatalogReferenceDataIsIndependentOfSeedAndRemainsStable(bool enabled, bool demo)
+    {
+        await using var before = fixture.CreateContext();
+        var original = await before.Universities.OrderBy(x => x.Code)
+            .Select(x => new { x.Id, x.Code, x.Name, x.IsActive, x.CreatedAt, x.UpdatedAt }).ToArrayAsync();
+        Assert.Equal(3, original.Length);
+        await SeedAsync(new() { Enabled = enabled, DemoEnabled = demo, DemoPassword = AuthApiFixture.Password });
+        await SeedAsync(new() { Enabled = enabled, DemoEnabled = demo, DemoPassword = AuthApiFixture.Password });
+        await using var after = fixture.CreateContext();
+        Assert.Equal(original, await after.Universities.OrderBy(x => x.Code)
+            .Select(x => new { x.Id, x.Code, x.Name, x.IsActive, x.CreatedAt, x.UpdatedAt }).ToArrayAsync());
+        var references = await after.Users.Select(x => x.UniversityId).Distinct().ToArrayAsync();
+        Assert.All(references, id => Assert.Contains(original, u => u.Id == id));
+        if (demo) Assert.Equal(UniversityParking.Domain.Universities.UniversityIds.Etitc, Assert.Single(references));
+    }
     [Fact]
     public async Task DisabledSeed_WritesNothing()
     {
@@ -173,6 +192,9 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
             var credential = await db.UserCredentials.SingleAsync(x => x.UserId == DemoSeedData.Id(3));
             using var scope = factory.Services.CreateScope();
             credential.ChangePasswordHash(scope.ServiceProvider.GetRequiredService<IPasswordHasher>().Hash("ChangedDemoPassword2"), clock.UtcNow);
+            var edited = await db.Users.SingleAsync(x => x.Id == DemoSeedData.Id(3));
+            edited.Update("Nombre conservado", new Guid("a1100000-0000-4000-8000-000000000002"),
+                "Carrera conservada", edited.MemberType, edited.CardCode, clock.UtcNow);
             (await db.Vehicles.FindAsync(DemoSeedData.Id(30)))!.Deactivate(clock.UtcNow);
             var guardRole = await db.Roles.SingleAsync(x => x.Code == "GUARD");
             db.UserRoles.Remove(await db.UserRoles.SingleAsync(x => x.UserId == DemoSeedData.Id(2) && x.RoleId == guardRole.Id));
@@ -183,6 +205,10 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
         }
         await SeedAsync();
         await using var after = fixture.CreateContext();
+        var preserved = await after.Users.SingleAsync(x => x.Id == DemoSeedData.Id(3));
+        Assert.Equal("Nombre conservado", preserved.FullName);
+        Assert.Equal("Carrera conservada", preserved.Career);
+        Assert.Equal(new Guid("a1100000-0000-4000-8000-000000000002"), preserved.UniversityId);
         Assert.Equal(VehicleStatus.INACTIVE, (await after.Vehicles.FindAsync(DemoSeedData.Id(30)))!.Status);
         Assert.Equal(6, await after.UserRoles.CountAsync());
         Assert.Equal(DemoSeedData.Id(4), (await after.VehicleOwnerships.SingleAsync(x => x.VehicleId == DemoSeedData.Id(31) && x.EndAt == null)).UserId);
@@ -240,7 +266,7 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
     {
         await using (var db = fixture.CreateContext())
         {
-            db.Users.Add(new User(new IdentificationNumber("900000001"), "Cuenta existente", "ETITC", null,
+            db.Users.Add(new User(new IdentificationNumber("900000001"), "Cuenta existente", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,
                 MemberType.STAFF, new CardCode("EXISTENTE"), clock.UtcNow.AddDays(-10)));
             await db.SaveChangesAsync();
         }

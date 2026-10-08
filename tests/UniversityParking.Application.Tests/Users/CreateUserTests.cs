@@ -16,17 +16,18 @@ public sealed class CreateUserTests
     private readonly FakeUnitOfWork unitOfWork = new();
     private readonly RecordingAudit audits = new();
     private readonly FakeClock clock = new();
+    private readonly FakeUniversities universities = new();
     private readonly CreateUserCommandHandler handler;
     public CreateUserTests()
     {
-        var admin = new User(new IdentificationNumber("admin"), "Admin", "ETITC", null,
+        var admin = new User(new IdentificationNumber("admin"), "Admin", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,
             MemberType.STAFF, new CardCode("admin-card"), clock.UtcNow.AddDays(-1));
         users.Values.Add(admin.Id, admin);
         actor.UserId = admin.Id;
         handler = new(new UserOperationContext(actor, users, roles, audits, clock, new TestRequestContext()),
-            users, credentials, roles, new FakePasswordHasher(), unitOfWork);
+            users, credentials, roles, new FakePasswordHasher(), unitOfWork, universities);
     }
-    private static CreateUserCommand Request() => new("000123", "Estudiante", "ETITC", "Ingeniería",
+    private static CreateUserCommand Request() => new("000123", "Estudiante", new Guid("a1100000-0000-4000-8000-000000000001"), "Ingeniería",
         MemberType.STUDENT, "STUDENT-CARD", "TestPassword1");
     [Fact]
     public async Task CreateUser_ShouldCreateStudent_WithUserRole()
@@ -120,11 +121,11 @@ public sealed class CreateUserTests
     [Fact]
     public async Task ProfileUpdate_ShouldRequireCareerFromPersistedMemberType()
     {
-        var user = new User(new IdentificationNumber("student"), "Student", "ETITC", "Ingeniería",
+        var user = new User(new IdentificationNumber("student"), "Student", UniversityParking.Domain.Universities.UniversityIds.Etitc, "Ingeniería",
             MemberType.STUDENT, new CardCode("student"), clock.UtcNow.AddDays(-1));
         users.Values.Add(user.Id, user);
         actor.UserId = user.Id;
-        var update = new UpdateMyProfileCommandHandler(new UserOperationContext(actor, users, roles, audits, clock, new TestRequestContext()), users, unitOfWork);
+        var update = new UpdateMyProfileCommandHandler(new UserOperationContext(actor, users, roles, audits, clock, new TestRequestContext()), users, unitOfWork, universities);
         var result = await update.Handle(new("Changed", null), default);
         Assert.Equal("VALIDATION_ERROR", result.Error!.Code);
         Assert.Equal("Student", user.FullName);
@@ -136,6 +137,28 @@ public sealed class CreateUserTests
         var result = new GetUsersQueryValidator().Validate(new GetUsersQuery(Page: 0, PageSize: 101, Role: "ROOT", MemberType: (MemberType)99));
         Assert.Equal(4, result.Errors.Count);
     }
+    [Theory]
+    [InlineData(false, "UNIVERSITY_NOT_FOUND")]
+    [InlineData(true, "UNIVERSITY_INACTIVE")]
+    public async Task InvalidUniversityDoesNotCreatePartialAccount(bool inactive, string expected)
+    {
+        if (inactive) universities.University.Deactivate(universities.University.UpdatedAt.AddDays(1));
+        var result = await handler.Handle(Request() with { UniversityId = inactive ? universities.University.Id : Guid.NewGuid() }, default);
+        Assert.Equal(expected, result.Error!.Code);
+        Assert.Single(users.Values);
+        Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.Empty(audits.Values);
+    }
+
+    [Fact]
+    public void UniversityIdIsRequiredForCreateAndUpdate()
+    {
+        Assert.Contains(new CreateUserCommandValidator().Validate(Request() with { UniversityId = Guid.Empty }).Errors,
+            x => x.PropertyName == "UniversityId");
+        Assert.Contains(new UpdateUserCommandValidator().Validate(new UpdateUserCommand(Guid.NewGuid(), "Nombre", Guid.Empty, "Ingeniería", MemberType.STUDENT, "CARD")).Errors,
+            x => x.PropertyName == "UniversityId");
+    }
+
     private sealed class RecordingAudit : IAuditLogRepository
     {
         public List<AuditLog> Values { get; } = [];

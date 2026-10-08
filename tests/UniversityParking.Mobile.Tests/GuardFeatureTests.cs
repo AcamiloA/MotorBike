@@ -20,7 +20,7 @@ public sealed class GuardFeatureTests
     private static HttpResponseMessage LotPage(params ParkingLotResponse[] lots) => Ok(new PagedResponse<ParkingLotResponse>(lots,1,100,lots.Length,lots.Length > 0 ? 1 : 0));
     private static async Task<(GuardApiService Api, GuardLotSession Lots, Transport Transport, AuthSession Session)> Setup(Func<HttpRequestMessage,Task<HttpResponseMessage>> send, params string[] roles)
     {
-        var session = new AuthSession(new Storage()); await session.SaveAsync("token",new(Guid.NewGuid(),"GUARD123","Guarda","ETITC",null,"STAFF","CARD","ACTIVE",roles.Length == 0 ? ["GUARD"] : roles));
+        var session = new AuthSession(new Storage()); await session.SaveAsync("token",new(Guid.NewGuid(),"GUARD123","Guarda",new Guid("a1100000-0000-4000-8000-000000000001"), "ETITC",null,"STAFF","CARD","ACTIVE",roles.Length == 0 ? ["GUARD"] : roles));
         var transport = new Transport(send); var api = new GuardApiService(new ApiClient(new HttpClient(transport) { BaseAddress = new("https://test.example/") }));
         return (api,new(api,session,new Store()),transport,session);
     }

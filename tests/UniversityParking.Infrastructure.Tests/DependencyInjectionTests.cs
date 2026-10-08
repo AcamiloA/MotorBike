@@ -32,6 +32,9 @@ public sealed class DependencyInjectionTests
         var firstContext = first.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Same(firstContext, first.ServiceProvider.GetRequiredService<IUnitOfWork>());
         Assert.NotSame(firstContext, second.ServiceProvider.GetRequiredService<AppDbContext>());
+        var universities = first.ServiceProvider.GetRequiredService<IUniversityRepository>();
+        Assert.Same(universities, first.ServiceProvider.GetRequiredService<IUniversityRepository>());
+        Assert.NotSame(universities, second.ServiceProvider.GetRequiredService<IUniversityRepository>());
         Assert.IsType<SystemClock>(first.ServiceProvider.GetRequiredService<IClock>());
         Assert.Equal(TimeSpan.Zero, first.ServiceProvider.GetRequiredService<IClock>().UtcNow.Offset);
     }

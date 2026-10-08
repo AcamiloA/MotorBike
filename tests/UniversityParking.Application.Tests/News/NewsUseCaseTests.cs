@@ -22,7 +22,7 @@ public sealed class NewsUseCaseTests
     private readonly NewsQueryHandlers queries;
     public NewsUseCaseTests()
     {
-        var user = new User(new IdentificationNumber("123"), "Admin", "ETITC", null, MemberType.STAFF, new CardCode("CARD"), clock.UtcNow);
+        var user = new User(new IdentificationNumber("123"), "Admin", UniversityParking.Domain.Universities.UniversityIds.Etitc, null, MemberType.STAFF, new CardCode("CARD"), clock.UtcNow);
         users.Values[user.Id] = user; actor.UserId = user.Id;
         var operation = new AdministrationOperationContext(actor, users, roles, store, clock, new Request());
         commands = new(operation, actor, store, unit); queries = new(operation, store);

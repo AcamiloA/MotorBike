@@ -12,7 +12,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         ConfigurationDefaults.Entity(builder, "users");
         builder.Property(x => x.IdentificationNumber).HasConversion(x => x.Value, x => new IdentificationNumber(x)).HasMaxLength(50).IsRequired();
         builder.Property(x => x.FullName).HasMaxLength(200).IsRequired();
-        builder.Property(x => x.University).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.UniversityId).IsRequired();
+        builder.HasIndex(x => x.UniversityId).HasDatabaseName("ix_users_university_id");
+        builder.HasOne<UniversityParking.Domain.Universities.University>().WithMany()
+            .HasForeignKey(x => x.UniversityId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.Career).HasMaxLength(200);
         builder.Property(x => x.MemberType).HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(x => x.CardCode).HasConversion(x => x.Value, x => new CardCode(x)).HasMaxLength(150).IsRequired();

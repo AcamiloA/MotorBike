@@ -8,7 +8,7 @@ using UniversityParking.Domain.Users.ValueObjects;
 namespace UniversityParking.Application.Users;
 
 public sealed class CreateUserCommandHandler(UserOperationContext operation, IUserRepository users,
-    IUserCredentialRepository credentials, IRoleRepository roles, IPasswordHasher hasher, IUnitOfWork unitOfWork)
+    IUserCredentialRepository credentials, IRoleRepository roles, IPasswordHasher hasher, IUnitOfWork unitOfWork, IUniversityRepository universities)
     : IRequestHandler<CreateUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -26,12 +26,15 @@ public sealed class CreateUserCommandHandler(UserOperationContext operation, IUs
             if (role is null) return Result<Guid>.Failure(new Error("ROLE_NOT_FOUND", "El rol solicitado no existe.", ErrorType.NotFound));
             requestedRoles.Add(role);
         }
-        var user = new User(identification, request.FullName, request.University, request.Career,
+        var university = await universities.GetByIdAsync(request.UniversityId, cancellationToken);
+        if (university is null) return Result<Guid>.Failure(UniversityErrors.NotFound);
+        if (!university.IsActive) return Result<Guid>.Failure(UniversityErrors.Inactive);
+        var user = new User(identification, request.FullName, university.Id, request.Career,
             request.MemberType, card, operation.UtcNow);
         await users.AddAsync(user, cancellationToken);
         await credentials.AddAsync(new UserCredential(user.Id, hasher.Hash(request.InitialPassword), operation.UtcNow), cancellationToken);
         foreach (var role in requestedRoles) await roles.AssignAsync(new UserRole(user.Id, role.Id), cancellationToken);
-        await operation.AuditAsync("USER_CREATED", user.Id, null, new { Profile = UserOperationContext.Snapshot(user), Roles = codes }, cancellationToken);
+        await operation.AuditAsync("USER_CREATED", user.Id, null, new { Profile = UserOperationContext.Snapshot(user, university.Name), Roles = codes }, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<Guid>.Success(user.Id);
     }

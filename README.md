@@ -23,6 +23,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 
 - [Instalación en máquina nueva, backend, migraciones, Android y tests](docs/installation.md).
 - [Manual USER, GUARD y ADMIN](docs/user-manual.md).
+- [Catálogo de universidades, UniversityId y revisión de migración](docs/university-catalog.md).
 - [Docker local y configuración Railway](docs/deployment.md).
 - [Seed, cuentas y APK demo](docs/demo.md).
 - [Respaldos PostgreSQL y archivos privados](docs/backups.md).

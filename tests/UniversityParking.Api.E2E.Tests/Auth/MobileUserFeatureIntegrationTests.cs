@@ -25,7 +25,7 @@ public sealed class MobileUserFeatureIntegrationTests(AuthApiFixture fixture) : 
     private async Task<User> CreateUser(string member)
     {
         await using var context = fixture.CreateContext(); var now = DateTimeOffset.UtcNow;
-        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario móvil", "ETITC", member == "STUDENT" ? "Ingeniería" : null,
+        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario móvil", UniversityParking.Domain.Universities.UniversityIds.Etitc, member == "STUDENT" ? "Ingeniería" : null,
             Enum.Parse<MemberType>(member), new CardCode(Guid.NewGuid().ToString("N")), now);
         context.Users.Add(user); context.UserCredentials.Add(new(user.Id, fixture.Factory.Services.GetRequiredService<IPasswordHasher>().Hash(AuthApiFixture.Password), now));
         context.UserRoles.Add(new(user.Id, (await context.Roles.SingleAsync(x => x.Code == "USER")).Id)); await context.SaveChangesAsync(); return user;

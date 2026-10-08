@@ -45,12 +45,15 @@ public sealed class UserRepository(AppDbContext context) : IUserRepository
         var users = await selection.OrderBy(x => x.FullName).ThenBy(x => x.Id)
             .Skip((int)offset).Take(query.PageSize).ToListAsync(cancellationToken);
         var ids = users.Select(x => x.Id).ToArray();
+        var universityIds = users.Select(x => x.UniversityId).Distinct().ToArray();
+        var universityNames = await context.Universities.AsNoTracking().Where(x => universityIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
         var assignments = await (from assignment in context.UserRoles.AsNoTracking()
             join role in context.Roles.AsNoTracking() on assignment.RoleId equals role.Id
             where ids.Contains(assignment.UserId)
             orderby role.Code
             select new { assignment.UserId, role.Code }).ToListAsync(cancellationToken);
         var lookup = assignments.ToLookup(x => x.UserId, x => x.Code);
-        return new PagedResult<UserProfile>(users.Select(x => UserProfile.From(x, lookup[x.Id].ToArray())), query.Page, query.PageSize, total);
+        return new PagedResult<UserProfile>(users.Select(x => UserProfile.From(x, lookup[x.Id].ToArray(), universityNames[x.UniversityId])), query.Page, query.PageSize, total);
     }
 }

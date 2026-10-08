@@ -32,7 +32,7 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
     }
     public Task DisposeAsync() => Task.CompletedTask;
     private static CreateUserRequest Request(string? identification = null, string? card = null) =>
-        new(identification ?? Guid.NewGuid().ToString("N"), "Estudiante nuevo", "ETITC", "Ingeniería",
+        new(identification ?? Guid.NewGuid().ToString("N"), "Estudiante nuevo", new Guid("a1100000-0000-4000-8000-000000000001"), "Ingeniería",
             UserMemberType.STUDENT, card ?? Guid.NewGuid().ToString("N"), "NewPassword1");
     private async Task<User> AuthenticateAsync(params string[] roles)
     {
@@ -100,7 +100,7 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
             new HttpRequestMessage(HttpMethod.Get, "/api/v1/users"),
             new HttpRequestMessage(HttpMethod.Get, $"/api/v1/users/{id}"),
             new HttpRequestMessage(HttpMethod.Post, "/api/v1/users") { Content = JsonContent.Create(Request()) },
-            new HttpRequestMessage(HttpMethod.Put, $"/api/v1/users/{id}") { Content = JsonContent.Create(new UpdateUserRequest("Name", "ETITC", null, UserMemberType.STAFF, "card")) },
+            new HttpRequestMessage(HttpMethod.Put, $"/api/v1/users/{id}") { Content = JsonContent.Create(new UpdateUserRequest("Name", new Guid("a1100000-0000-4000-8000-000000000001"), null, UserMemberType.STAFF, "card")) },
             new HttpRequestMessage(HttpMethod.Patch, $"/api/v1/users/{id}/activate"),
             new HttpRequestMessage(HttpMethod.Patch, $"/api/v1/users/{id}/deactivate"),
             new HttpRequestMessage(HttpMethod.Post, $"/api/v1/users/{id}/roles") { Content = JsonContent.Create(new AssignRoleRequest("ADMIN")) },
@@ -151,7 +151,7 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
             "career" => request with { Career = " " },
             "password" => request with { InitialPassword = "weak" },
             "role" => request with { Roles = ["ROOT"] },
-            _ => new { request.IdentificationNumber, request.FullName, request.University, request.Career,
+            _ => new { request.IdentificationNumber, request.FullName, request.UniversityId, request.Career,
                 memberType = "INVALID", request.CardCode, request.InitialPassword }
         };
         await AssertError(await Client.PostJsonAsync("/api/v1/users", input), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
@@ -169,7 +169,7 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NoContent, (await Client.PutJsonAsync("/api/v1/users/me", new UpdateMyProfileRequest("Nombre cambiado", "Sistemas"))).StatusCode);
         var profile = (await Client.GetFromJsonAsync<UserProfileResponse>("/api/v1/users/me"))!;
         Assert.Equal("Nombre cambiado", profile.FullName);
-        Assert.Equal(request.University, profile.University);
+        Assert.Equal(request.UniversityId, profile.UniversityId);
         await AssertError(await Client.PutJsonAsync("/api/v1/users/me", new { fullName = "Attack", career = "Sistemas", roles = new[] { "ADMIN" }, memberType = "STAFF" }),
             HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await AssertError(await Client.PutJsonAsync("/api/v1/users/me", new UpdateMyProfileRequest("Attack", null)), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
@@ -213,16 +213,116 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
         await AuthenticateAsync("USER", "ADMIN");
         var request = Request();
         var id = await CreateAsync(request);
-        var update = new UpdateUserRequest("Docente", "Nueva universidad", null, UserMemberType.TEACHER, "NEW-CARD");
+        // Institution changes now target actual reference data, not arbitrary free text.
+        var update = new UpdateUserRequest("Docente", UniversityParking.Domain.Universities.UniversityIds.Cmc, null, UserMemberType.TEACHER, "NEW-CARD");
         Assert.Equal(HttpStatusCode.NoContent, (await Client.PutJsonAsync($"/api/v1/users/{id}", update)).StatusCode);
         var profile = (await Client.GetFromJsonAsync<UserProfileResponse>($"/api/v1/users/{id}"))!;
         Assert.Equal("TEACHER", profile.MemberType);
+        Assert.Equal("Colegio Mayor de Cundinamarca", profile.UniversityName);
         Assert.Equal(request.IdentificationNumber, profile.IdentificationNumber);
         await using var context = fixture.CreateContext();
         var audit = await context.AuditLogs.SingleAsync(x => x.EntityId == id && x.Action == "USER_UPDATED");
         Assert.Contains(request.CardCode, audit.OldValues!);
         Assert.Contains("NEW-CARD", audit.NewValues!);
         await AssertError(await Client.PutJsonAsync($"/api/v1/users/{id}", new { fullName = "Wrong", university = "ETITC", memberType = "STAFF", cardCode = "NEW-CARD", identificationNumber = "hacked" }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+    }
+
+    [Fact]
+    public async Task UnknownUniversityIdCannotCreateUser()
+    {
+        await AuthenticateAsync("USER", "ADMIN");
+        await AssertError(await Client.PostJsonAsync("/api/v1/users", Request() with { UniversityId = Guid.NewGuid() }),
+            HttpStatusCode.BadRequest, "UNIVERSITY_NOT_FOUND");
+        await using var context = fixture.CreateContext();
+        Assert.Equal(1, await context.Users.CountAsync());
+        Assert.Empty(await context.AuditLogs.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task InvalidUniversityIdIsControlledForCreateAndUpdate(bool update, bool empty)
+    {
+        await AuthenticateAsync("USER", "ADMIN");
+        var request = Request(); var badId = empty ? Guid.Empty : Guid.NewGuid();
+        HttpResponseMessage response;
+        Guid? targetId = null;
+        if (update)
+        {
+            targetId = await CreateAsync(request);
+            response = await Client.PutJsonAsync($"/api/v1/users/{targetId}",
+                new UpdateUserRequest("Cambio inválido", badId, "Ingeniería", UserMemberType.STUDENT, request.CardCode));
+        }
+        else response = await Client.PostJsonAsync("/api/v1/users", request with { UniversityId = badId });
+        await AssertError(response, HttpStatusCode.BadRequest, empty ? "VALIDATION_ERROR" : "UNIVERSITY_NOT_FOUND");
+        await using var context = fixture.CreateContext();
+        Assert.Equal(update ? 2 : 1, await context.Users.CountAsync());
+        if (targetId is { } id)
+        {
+            var unchanged = await context.Users.SingleAsync(x => x.Id == id);
+            Assert.Equal(request.FullName, unchanged.FullName); Assert.Equal(request.UniversityId, unchanged.UniversityId);
+            Assert.Empty(await context.AuditLogs.Where(x => x.Action == "USER_UPDATED").ToListAsync());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InactiveUniversityCannotBeAssigned(bool update)
+    {
+        await AuthenticateAsync("USER", "ADMIN");
+        var request = Request();
+        var targetId = update ? await CreateAsync(request) : Guid.Empty;
+        await WithInactiveUniversityAsync(UniversityParking.Domain.Universities.UniversityIds.Cmc, async () =>
+        {
+            var response = update
+                ? await Client.PutJsonAsync($"/api/v1/users/{targetId}", new UpdateUserRequest("Cambio", UniversityParking.Domain.Universities.UniversityIds.Cmc, "Ingeniería", UserMemberType.STUDENT, request.CardCode))
+                : await Client.PostJsonAsync("/api/v1/users", request with { UniversityId = UniversityParking.Domain.Universities.UniversityIds.Cmc });
+            await AssertError(response, HttpStatusCode.BadRequest, "UNIVERSITY_INACTIVE");
+        });
+    }
+
+    [Fact]
+    public async Task CurrentInactiveUniversityRemainsReadableAndCanBeKeptOnEdit()
+    {
+        await AuthenticateAsync("USER", "ADMIN"); var request = Request(); var id = await CreateAsync(request);
+        await WithInactiveUniversityAsync(request.UniversityId, async () =>
+        {
+            var response = await Client.PutJsonAsync($"/api/v1/users/{id}", new UpdateUserRequest("Nombre actualizado", request.UniversityId, "Ingeniería", UserMemberType.STUDENT, request.CardCode));
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            var profile = (await Client.GetFromJsonAsync<UserProfileResponse>($"/api/v1/users/{id}"))!;
+            Assert.Equal(request.UniversityId, profile.UniversityId); Assert.Equal("ETITC", profile.UniversityName);
+            var users = (await Client.GetFromJsonAsync<PagedResponse<UserListItemResponse>>("/api/v1/users"))!;
+            Assert.Equal("ETITC", users.Items.Single(x => x.Id == id).UniversityName);
+        });
+    }
+
+    [Fact]
+    public async Task OldFreeTextFieldAndProfileUniversityChangeAreRejected()
+    {
+        await AuthenticateAsync("USER", "ADMIN"); var request = Request();
+        await AssertError(await Client.PostJsonAsync("/api/v1/users", new
+        {
+            request.IdentificationNumber, request.FullName, request.UniversityId, university = "ETITC",
+            request.Career, request.MemberType, request.CardCode, request.InitialPassword
+        }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+        await AssertError(await Client.PutJsonAsync("/api/v1/users/me", new { fullName = "Cambio", career = "Carrera", universityId = UniversityParking.Domain.Universities.UniversityIds.Cmc }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
+    }
+
+    private async Task WithInactiveUniversityAsync(Guid id, Func<Task> action)
+    {
+        await using var context = fixture.CreateContext();
+        var university = (await context.Universities.FindAsync(id))!;
+        var originalDate = university.UpdatedAt;
+        university.Deactivate(originalDate.AddDays(1)); await context.SaveChangesAsync();
+        try { await action(); }
+        finally
+        {
+            context.ChangeTracker.Clear();
+            await context.Database.ExecuteSqlInterpolatedAsync($"UPDATE universities SET is_active = true, updated_at = {originalDate} WHERE id = {id}");
+        }
     }
     [Fact]
     public async Task SearchFilters_PaginateAndSearchNamesIdentifiersAndCards()
@@ -293,7 +393,7 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
         if (!currentOwnership) ownership.Close(now, "Transfer test");
         context.AddRange(car, ownership);
         await context.SaveChangesAsync();
-        var response = await Client.PutJsonAsync($"/api/v1/users/{id}", new UpdateUserRequest("Estudiante", "ETITC", "Ingeniería", UserMemberType.STUDENT, "NEW-CARD"));
+        var response = await Client.PutJsonAsync($"/api/v1/users/{id}", new UpdateUserRequest("Estudiante", new Guid("a1100000-0000-4000-8000-000000000001"), "Ingeniería", UserMemberType.STUDENT, "NEW-CARD"));
         if (allowed) Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         else await AssertError(response, HttpStatusCode.Conflict, "INVALID_MEMBER_TYPE_CHANGE");
         var user = await context.Users.FindAsync(id);
@@ -381,13 +481,47 @@ public sealed class UserEndpointTests(AuthApiFixture fixture) : IAsyncLifetime
         await AuthenticateAsync("USER", "ADMIN");
         var request = Request();
         await AssertError(await Client.PostJsonAsync("/api/v1/users", new { request.IdentificationNumber,
-            request.FullName, request.University, request.Career, request.CardCode, request.InitialPassword }),
+            request.FullName, request.UniversityId, request.Career, request.CardCode, request.InitialPassword }),
             HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await AssertError(await Client.PostJsonAsync("/api/v1/users", new { request.IdentificationNumber,
-            request.FullName, request.University, request.Career, request.CardCode, request.InitialPassword, memberType = 0 }),
+            request.FullName, request.UniversityId, request.Career, request.CardCode, request.InitialPassword, memberType = 0 }),
             HttpStatusCode.BadRequest, "VALIDATION_ERROR");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UniversityAuditKeepsReadableNamesForCreationAndUpdates(bool self)
+    {
+        var actor = await AuthenticateAsync("USER", "ADMIN");
+        var request = Request();
+        var id = await CreateAsync(request);
+        await using (var db = fixture.CreateContext())
+        {
+            var created = await db.AuditLogs.SingleAsync(x => x.EntityId == id);
+            using var values = JsonDocument.Parse(created.NewValues!);
+            var profile = values.RootElement.GetProperty("Profile");
+            Assert.Equal(request.UniversityId, profile.GetProperty("UniversityId").GetGuid());
+            Assert.Equal("ETITC", profile.GetProperty("UniversityName").GetString());
+        }
+        if (self) await LoginAsync(request.IdentificationNumber, request.InitialPassword);
+        var next = new Guid("a1100000-0000-4000-8000-000000000002");
+        var response = self
+            ? await Client.PutJsonAsync("/api/v1/users/me", new UpdateMyProfileRequest("Nombre editado", "Carrera editada"))
+            : await Client.PutJsonAsync($"/api/v1/users/{id}", new UpdateUserRequest("Nombre editado", next, "Carrera editada", UserMemberType.STUDENT, request.CardCode));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await using var context = fixture.CreateContext();
+        var audit = await context.AuditLogs.SingleAsync(x => x.EntityId == id && x.Action == "USER_UPDATED");
+        using var before = JsonDocument.Parse(audit.OldValues!);
+        using var after = JsonDocument.Parse(audit.NewValues!);
+        Assert.Equal(request.UniversityId, before.RootElement.GetProperty("UniversityId").GetGuid());
+        Assert.Equal("ETITC", before.RootElement.GetProperty("UniversityName").GetString());
+        Assert.Equal(self ? request.UniversityId : next, after.RootElement.GetProperty("UniversityId").GetGuid());
+        Assert.Equal(self ? "ETITC" : "Colegio Mayor de Cundinamarca", after.RootElement.GetProperty("UniversityName").GetString());
+        Assert.Equal(self ? id : actor.Id, audit.ActorUserId);
+        Assert.DoesNotContain("Password", audit.NewValues!);
+        Assert.DoesNotContain("Password", audit.OldValues!);
+    }
     private sealed class InvalidActorAuditRepository(AppDbContext context) : IAuditLogRepository
     {
         public async Task AddAsync(AuditLog auditLog, CancellationToken cancellationToken) =>

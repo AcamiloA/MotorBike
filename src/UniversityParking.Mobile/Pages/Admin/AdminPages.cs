@@ -65,7 +65,9 @@ public sealed class AdminUserFormPage:UserPage<AdminUserFormViewModel>
         var identification=AdminViews.Field("Identification","Número de identificación");identification.SetBinding(IsVisibleProperty,"IsNew");
         var existing=UserViews.Bound("Identification");existing.SetBinding(IsVisibleProperty,new Binding("IsNew",converter:new InverseBooleanConverter()));
         var newOnly=UserViews.Stack(AdminViews.Field("InitialPassword","Contraseña inicial",true),UserViews.Text("8 caracteres, mayúscula, minúscula y número. USER es obligatorio."),AdminViews.Check("AddGuard","Agregar GUARD"),AdminViews.Check("AddAdmin","Agregar ADMIN"));newOnly.SetBinding(IsVisibleProperty,"IsNew");
-        Form(identification,existing,AdminViews.Field("FullName","Nombre completo"),AdminViews.Field("University","Universidad"),GuardViews.Picker("Members","Member"),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("CardCode","Código de carné"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
+        var universities=GuardViews.Picker("Universities","SelectedUniversity","Name","Seleccionar universidad");
+        universities.SetBinding(IsEnabledProperty,"CanSelectUniversity");SemanticProperties.SetDescription(universities,"Universidad");
+        Form(identification,existing,AdminViews.Field("FullName","Nombre completo"),UserViews.Text("Universidad",true),UserViews.Input(universities),UserViews.Bound("CurrentUniversityNotice",true),UserViews.Button("ACTUALIZAR / REINTENTAR UNIVERSIDADES","LoadCommand"),GuardViews.Picker("Members","Member"),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("CardCode","Código de carné"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");
     protected override void OnDisappearing(){ViewModel.InitialPassword="";base.OnDisappearing();}

@@ -9,7 +9,7 @@ public sealed class CreateUserCommandValidator : AbstractValidator<CreateUserCom
     {
         RuleFor(x => x.IdentificationNumber).NotEmpty().WithMessage("La identificación es obligatoria.").MaximumLength(50).WithMessage("La identificación admite hasta 50 caracteres.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.University).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
+        RuleFor(x => x.UniversityId).NotEmpty().WithMessage("Selecciona una universidad.");
         RuleFor(x => x.Career).MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
         RuleFor(x => x.Career).NotEmpty().When(x => x.MemberType == MemberType.STUDENT)
             .WithMessage("La carrera es obligatoria para estudiantes.");
@@ -36,7 +36,7 @@ public sealed class UpdateUserCommandValidator : AbstractValidator<UpdateUserCom
     {
         RuleFor(x => x.UserId).NotEmpty().WithMessage("El identificador es obligatorio.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.University).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
+        RuleFor(x => x.UniversityId).NotEmpty().WithMessage("Selecciona una universidad.");
         RuleFor(x => x.Career).MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
         RuleFor(x => x.Career).NotEmpty().When(x => x.MemberType == MemberType.STUDENT)
             .WithMessage("La carrera es obligatoria para estudiantes.");

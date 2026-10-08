@@ -21,7 +21,7 @@ public sealed class IncidentUseCaseTests
     private readonly AdministrationOperationContext operation;
     public IncidentUseCaseTests()
     {
-        var user = new User(new IdentificationNumber("123"), "Admin", "ETITC", null, MemberType.STAFF, new CardCode("CARD"), clock.UtcNow);
+        var user = new User(new IdentificationNumber("123"), "Admin", UniversityParking.Domain.Universities.UniversityIds.Etitc, null, MemberType.STAFF, new CardCode("CARD"), clock.UtcNow);
         users.Values[user.Id] = user; actor.UserId = user.Id;
         store.Incident = new(Guid.NewGuid(), user.Id, IncidentType.DAMAGE, "Daño", clock.UtcNow, clock.UtcNow);
         operation = new(actor, users, roles, store, clock, new Request());

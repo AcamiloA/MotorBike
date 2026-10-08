@@ -91,7 +91,7 @@ public sealed class ParkingCommandTests
     public async Task StudentCarInconsistentDataIsRejectedByBackend()
     {
         var context = new ParkingTestContext(VehicleType.CAR);
-        context.Target.Update(context.Target.FullName, "ETITC", "Ingeniería", MemberType.STUDENT, context.Target.CardCode, context.Clock.UtcNow);
+        context.Target.Update(context.Target.FullName, context.Target.UniversityId, "Ingeniería", MemberType.STUDENT, context.Target.CardCode, context.Clock.UtcNow);
         Assert.Equal("STUDENT_CANNOT_REGISTER_CAR", (await context.CheckIn.Handle(context.Request, default)).Error!.Code);
     }
     [Fact]

@@ -29,7 +29,7 @@ internal sealed class AdministrationTestContext : IAcademicPeriodRepository, IPa
     public string? TraceId => "administration-test";
     public AdministrationTestContext()
     {
-        var user = new User(new IdentificationNumber("admin"), "Administrador", "ETITC", null, MemberType.STAFF,
+        var user = new User(new IdentificationNumber("admin"), "Administrador", UniversityParking.Domain.Universities.UniversityIds.Etitc, null, MemberType.STAFF,
             new CardCode("admin-card"), Clock.UtcNow.AddDays(-1));
         Users.Values.Add(user.Id, user);
         Actor.UserId = user.Id;

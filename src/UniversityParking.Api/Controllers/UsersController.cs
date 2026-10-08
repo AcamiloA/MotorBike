@@ -46,7 +46,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
         if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
         var value = result.Value;
         var items = value.Items.Select(x => new UserListItemResponse(x.Id, x.IdentificationNumber, x.FullName,
-            x.University, x.Career, x.MemberType.ToString(), x.CardCode, x.Status.ToString(), x.Roles)).ToArray();
+            x.UniversityId, x.UniversityName, x.Career, x.MemberType.ToString(), x.CardCode, x.Status.ToString(), x.Roles)).ToArray();
         return Ok(new PagedResponse<UserListItemResponse>(items, value.Page, value.PageSize, value.TotalCount, value.TotalPages));
     }
     [HttpGet("{id:guid}")]
@@ -63,7 +63,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     public async Task<IActionResult> Create(CreateUserRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new CreateUserCommand(request.IdentificationNumber, request.FullName,
-            request.University, request.Career, (MemberType)request.MemberType, request.CardCode, request.InitialPassword, request.Roles), cancellationToken);
+            request.UniversityId, request.Career, (MemberType)request.MemberType, request.CardCode, request.InitialPassword, request.Roles), cancellationToken);
         return result.IsSuccess ? CreatedAtAction(nameof(GetById), new { id = result.Value }, new UserCreatedResponse(result.Value)) :
             ProblemResponses.Map(HttpContext, result.Error!);
     }
@@ -72,7 +72,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     [ProducesResponseType(204)]
     public async Task<IActionResult> Update(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new UpdateUserCommand(id, request.FullName, request.University, request.Career,
+        var result = await sender.Send(new UpdateUserCommand(id, request.FullName, request.UniversityId, request.Career,
             (MemberType)request.MemberType, request.CardCode), cancellationToken);
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
@@ -109,5 +109,5 @@ public sealed class UsersController(ISender sender) : ControllerBase
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
     private static UserProfileResponse Map(UserProfile value) => new(value.Id, value.IdentificationNumber,
-        value.FullName, value.University, value.Career, value.MemberType.ToString(), value.CardCode, value.Status.ToString(), value.Roles);
+        value.FullName, value.UniversityId, value.UniversityName, value.Career, value.MemberType.ToString(), value.CardCode, value.Status.ToString(), value.Roles);
 }

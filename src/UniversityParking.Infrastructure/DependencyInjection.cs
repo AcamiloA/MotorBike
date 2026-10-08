@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddFileStorage(configuration);
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUniversityRepository, UniversityRepository>();
         services.AddScoped<IUserCredentialRepository, UserCredentialRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();

@@ -73,7 +73,7 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
     private async Task<User> UserAsync(MemberType member = MemberType.STUDENT, params string[] roles)
     {
         var before = clock.UtcNow.AddDays(-2);
-        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario parqueo", "ETITC", member == MemberType.STUDENT ? "Ingeniería" : null,
+        var user = new User(new IdentificationNumber(Guid.NewGuid().ToString("N")), "Usuario parqueo", UniversityParking.Domain.Universities.UniversityIds.Etitc, member == MemberType.STUDENT ? "Ingeniería" : null,
             member, new CardCode(Guid.NewGuid().ToString("N")), before);
         await using var context = fixture.CreateContext();
         context.Users.Add(user);

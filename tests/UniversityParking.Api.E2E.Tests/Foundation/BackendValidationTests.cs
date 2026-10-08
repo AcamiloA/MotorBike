@@ -21,7 +21,7 @@ public sealed class BackendValidationTests(AuthApiFixture fixture) : IAsyncLifet
         await Login(admin.IdentificationNumber.Value);
         var identification = Guid.NewGuid().ToString("N");
         var response = await fixture.Client.PostAsJsonAsync("/api/v1/users", new { identificationNumber = identification,
-            fullName = "Estudiante integral", university = "ETITC", career = "Ingeniería", memberType = "STUDENT", cardCode = "CARD-INTEGRAL", initialPassword = AuthApiFixture.Password });
+            fullName = "Estudiante integral", universityId = UniversityParking.Domain.Universities.UniversityIds.Etitc, career = "Ingeniería", memberType = "STUDENT", cardCode = "CARD-INTEGRAL", initialPassword = AuthApiFixture.Password });
         Assert.True(response.StatusCode == HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         var id = (await response.Content.ReadFromJsonAsync<UserCreatedResponse>())!.Id;
         await Login(identification);
