@@ -166,3 +166,7 @@ pruebas al comportamiento existente: ADMIN consulta acceso pero no hace check-in
 login tiene límite por IP y un documento ajeno devuelve 404. Las ejecuciones
 intermedias fallidas se conservan en `TestResults`; la carpeta `final` contiene
 la regresión aprobada. No quedan fallos pendientes de estas comprobaciones.
+
+## Transición de evidencia única
+
+El seed y sus archivos sintéticos permanecen como legacy y no se convierten automáticamente en una Licencia de Tránsito ni evidencia autoritativa. Los vehículos sin VehicleVerificationImage mostrarán pendiente y deberán cargarla antes de renovar; los APK históricos no incluyen el formulario nuevo. Consulte [evidencia única](vehicle-verification-image.md).

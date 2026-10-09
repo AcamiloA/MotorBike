@@ -171,12 +171,15 @@ public partial class AdminVehicleDetailViewModel(AdminApiService api,IAuthSessio
     [ObservableProperty] private byte[]? photo;
     public string Summary=>Detail is null?"":AdminVehiclesViewModel.VehicleRow(Detail.Vehicle).Title+"\n"+AdminVehiclesViewModel.VehicleRow(Detail.Vehicle).Summary;
     public string StatusAction=>Detail?.Vehicle.Status=="ACTIVE"?"DESACTIVAR VEHÍCULO":"ACTIVAR VEHÍCULO";
+    public string VerificationLabel=>VehiclePresentation.VerificationLabel(Detail?.Vehicle.Type);
+    public string VerificationPending=>Detail?.VerificationImage is null?"Evidencia de verificación pendiente.":"";
+    [RelayCommand] private Task UpdateVerificationAsync()=>navigation.GoAsync("vehicle-verification",new Dictionary<string,object>{["vehicleId"]=VehicleId});
     partial void OnDetailChanged(VehicleDetailResponse? value){OnPropertyChanged(nameof(Summary));OnPropertyChanged(nameof(StatusAction));}
     [RelayCommand] private Task LoadAsync()=>WorkAsync(ReadAsync);
     private async Task ReadAsync()
     {
         Require();Detail=null;Photo=null;var result=await api.VehicleAsync(VehicleId);if(!Accepted(result))return;Detail=result.Value;WriteUncertain=false;
-        var path=Detail!.Photos.FirstOrDefault()?.ContentUrl;if(path is not null){var image=await api.FileAsync(path);if(Accepted(image))Photo=image.Value;}
+        var path=Detail!.VerificationImage?.ContentUrl;OnPropertyChanged(nameof(VerificationLabel));OnPropertyChanged(nameof(VerificationPending));if(path is not null){var image=await api.FileAsync(path);if(Accepted(image))Photo=image.Value;}
     }
     [RelayCommand] private Task StatusAsync()=>WorkAsync(async()=>{if(Detail is null||WriteUncertain)return;Require();var active=Detail.Vehicle.Status!="ACTIVE";if(!active&&!await navigation.ConfirmAsync("Desactivar vehículo","¿Desactivar este vehículo?"))return;if(Mutation(await api.VehicleStatusAsync(VehicleId,active)))await ReadAsync();});
     [RelayCommand] private Task TransferAsync()=>OpenForm("admin-transfer");

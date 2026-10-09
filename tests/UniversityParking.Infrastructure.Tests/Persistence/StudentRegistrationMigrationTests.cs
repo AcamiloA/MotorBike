@@ -62,8 +62,12 @@ public sealed class StudentRegistrationMigrationTests(PostgresFixture fixture):I
     {
         await using var db=fixture.CreateContext();var user=Student();if(rejected)user.RejectRegistration(PersistenceTestData.Now);
         db.Users.Add(user);await db.SaveChangesAsync();var migrator=db.GetService<IMigrator>();
-        var error=await Assert.ThrowsAsync<PostgresException>(()=>migrator.MigrateAsync(Previous));
-        Assert.Equal("P0001",error.SqlState);Assert.Contains(Current,await db.Database.GetAppliedMigrationsAsync());
-        Assert.Equal(rejected?UserStatus.REJECTED:UserStatus.PENDING,(await db.Users.AsNoTracking().SingleAsync()).Status);
+        try
+        {
+            var error=await Assert.ThrowsAsync<PostgresException>(()=>migrator.MigrateAsync(Previous));
+            Assert.Equal("P0001",error.SqlState);Assert.Contains(Current,await db.Database.GetAppliedMigrationsAsync());
+            Assert.Equal(rejected?UserStatus.REJECTED:UserStatus.PENDING,(await db.Users.AsNoTracking().SingleAsync()).Status);
+        }
+        finally { await migrator.MigrateAsync(); }
     }
 }

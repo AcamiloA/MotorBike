@@ -27,10 +27,12 @@ public sealed class GetVehicleByIdQueryHandler(VehicleOperationContext operation
         var vehicle = (await vehicles.GetViewAsync(request.VehicleId, cancellationToken))!;
         var photos = await evidence.GetPhotosAsync(request.VehicleId, cancellationToken);
         var documents = await evidence.GetDocumentsAsync(request.VehicleId, cancellationToken);
+        var image = await evidence.GetVerificationImageAsync(request.VehicleId, cancellationToken);
         return Result<VehicleDetail>.Success(new(vehicle,
             photos.Select(x => new VehiclePhotoView(x.Id, x.Type, x.OriginalFileName, x.ContentType, x.SizeBytes)).ToArray(),
             documents.Select(x => new VehicleDocumentView(x.Id, x.Type, x.DocumentNumber, x.OriginalFileName,
-                x.ContentType, x.SizeBytes, x.IssuedOn, x.ExpiresOn)).ToArray()));
+                x.ContentType, x.SizeBytes, x.IssuedOn, x.ExpiresOn)).ToArray(),
+            image is null ? null : new VerificationImageView(image.Id, image.Type, image.OriginalFileName, image.ContentType, image.SizeBytes)));
     }
 }
 public sealed class GetVehiclesQueryHandler(VehicleOperationContext operation, IVehicleRepository vehicles)

@@ -15,11 +15,12 @@ public sealed class ConstraintTests(PostgresFixture fixture) : IAsyncLifetime
     public async Task Migration_ShouldApplyFromEmptyDatabase_AndCreateAllTables()
     {
         await using var context = fixture.CreateContext();
-        Assert.Equal(new[] { "20261007060306_InitialCreate", "20261008140000_AddUniversityCatalog", "20261008214600_AddStudentRegistrationStatuses" },
+        Assert.Equal(new[] { "20261007060306_InitialCreate", "20261008140000_AddUniversityCatalog", "20261008214600_AddStudentRegistrationStatuses", "20261009011853_AddVehicleVerificationImages" },
             await context.Database.GetAppliedMigrationsAsync());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
         var tables = await context.Database.SqlQueryRaw<string>("SELECT tablename AS \"Value\" FROM pg_tables WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory'").ToListAsync();
-        Assert.Equal(18, tables.Count);
+        Assert.Equal(19, tables.Count);
+        Assert.Contains("vehicle_verification_images", tables);
         Assert.Contains("universities", tables);
         Assert.Contains("parking_movements", tables);
         Assert.Contains("vehicle_registrations", tables);

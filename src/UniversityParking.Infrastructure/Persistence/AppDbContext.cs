@@ -23,6 +23,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<VehicleOwnership> VehicleOwnerships => Set<VehicleOwnership>();
     public DbSet<VehicleRegistration> VehicleRegistrations => Set<VehicleRegistration>();
     public DbSet<VehiclePhoto> VehiclePhotos => Set<VehiclePhoto>();
+    public DbSet<VehicleVerificationImage> VehicleVerificationImages => Set<VehicleVerificationImage>();
     public DbSet<VehicleDocument> VehicleDocuments => Set<VehicleDocument>();
     public DbSet<AcademicPeriod> AcademicPeriods => Set<AcademicPeriod>();
     public DbSet<ParkingLot> ParkingLots => Set<ParkingLot>();

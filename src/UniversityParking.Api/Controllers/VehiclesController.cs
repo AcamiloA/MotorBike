@@ -31,9 +31,7 @@ public sealed class VehiclesController(ISender sender) : ControllerBase
     {
         if (!VehicleMultipart.ValidFields(Request.Form, false)) return InvalidForm();
         var command = new RegisterVehicleCommand(VehicleMultipart.Parse<VehicleType>(request.Type), request.Plate, request.FrameNumber,
-            request.Brand, request.Model, request.Color,
-            request.Photos.Select(x => new PhotoUpload(VehicleMultipart.Parse<VehiclePhotoType>(x.Type), VehicleMultipart.File(x.File))).ToArray(),
-            request.Documents.Select(VehicleMultipart.Document).ToArray());
+            request.Brand, request.Model, request.Color, VehicleMultipart.File(request.VerificationImage.File));
         var result = await sender.Send(command, cancellationToken);
         return result.IsSuccess ? CreatedAtAction(nameof(GetById), new { id = result.Value }, new VehicleCreatedResponse(result.Value)) :
             ProblemResponses.Map(HttpContext, result.Error!);
@@ -67,7 +65,9 @@ public sealed class VehiclesController(ISender sender) : ControllerBase
         return Ok(new VehicleDetailResponse(Map(detail.Vehicle), detail.Photos.Select(x => new VehiclePhotoResponse(x.Id, x.Type.ToString(),
             x.OriginalFileName, x.ContentType, x.SizeBytes, PhotoUrl(id, x.Id))).ToArray(),
             detail.Documents.Select(x => new VehicleDocumentResponse(x.Id, x.Type.ToString(), x.DocumentNumber, x.OriginalFileName,
-                x.ContentType, x.SizeBytes, x.IssuedOn, x.ExpiresOn, DocumentUrl(id, x.Id))).ToArray()));
+                x.ContentType, x.SizeBytes, x.IssuedOn, x.ExpiresOn, DocumentUrl(id, x.Id))).ToArray(),
+            detail.VerificationImage is not { } image ? null : new VehicleVerificationImageResponse(image.Id, image.Type.ToString(),
+                image.OriginalFileName, image.ContentType, image.SizeBytes, VerificationUrl(id))));
     }
     [HttpGet]
     [Authorize(Policy = PolicyNames.Admin)]
@@ -144,8 +144,26 @@ public sealed class VehiclesController(ISender sender) : ControllerBase
         new Dictionary<string, IReadOnlyList<string>> { ["request"] = ["Los campos no son válidos o sus índices no son consecutivos."] }));
     private static string PhotoUrl(Guid vehicleId, Guid photoId) => $"/api/v1/vehicles/{vehicleId:D}/photos/{photoId:D}/content";
     private static string DocumentUrl(Guid vehicleId, Guid documentId) => $"/api/v1/vehicles/{vehicleId:D}/documents/{documentId:D}/content";
+    private static string VerificationUrl(Guid vehicleId) => $"/api/v1/vehicles/{vehicleId:D}/verification-image/content";
+    [HttpPut("{id:guid}/verification-image")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(50 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 50 * 1024 * 1024)]
+    [ProducesResponseType(204)]
+    public async Task<IActionResult> UpdateVerificationImage(Guid id, [FromForm] UpdateVerificationImageForm request, CancellationToken cancellationToken)
+    {
+        if (!VehicleMultipart.VerificationFields(Request.Form) || Request.Form.Keys.Count != 0) return InvalidForm();
+        var result = await sender.Send(new UpdateVehicleVerificationImageCommand(id, VehicleMultipart.File(request.VerificationImage.File)), cancellationToken);
+        return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
+    }
+    [HttpGet("{id:guid}/verification-image/content")]
+    [ProducesResponseType(typeof(byte[]), 200)]
+    public async Task<IActionResult> VerificationContent(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new GetVehicleVerificationImageContentQuery(id), cancellationToken);
+        return result.IsSuccess ? ContentResult(result.Value) : ProblemResponses.Map(HttpContext, result.Error!);
+    }
     private static VehicleResponse Map(VehicleView x) => new(x.Id, x.Type.ToString(), x.Plate, x.FrameNumber, x.Brand, x.Model, x.Color,
         x.Status.ToString(), x.CurrentOwnerId, x.CurrentOwnerFullName, x.RegistrationState.ToString(), x.IsInside,
-        x.GeneralPhotoId.HasValue ? PhotoUrl(x.Id, x.GeneralPhotoId.Value) : null);
+        x.VerificationImageId.HasValue ? VerificationUrl(x.Id) : null);
 }
-

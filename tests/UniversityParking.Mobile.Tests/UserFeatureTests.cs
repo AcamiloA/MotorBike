@@ -11,7 +11,7 @@ using UniversityParking.Mobile.ViewModels;
 
 namespace UniversityParking.Mobile.Tests;
 
-public sealed class UserFeatureTests
+public sealed partial class UserFeatureTests
 {
     private static PickedAttachment Photo => new("photo.png", "image/png", [137,80,78,71,13,10,26,10]);
     private static PickedAttachment Pdf => new("support.pdf", "application/pdf", "%PDF-1.7"u8.ToArray());
@@ -29,9 +29,9 @@ public sealed class UserFeatureTests
         var session = await Session(member); var service = Service(_ => Task.FromResult(Ok(session.User!)));
         var vm = new RegisterVehicleViewModel(service.Api, session, new Picker(), new Navigation());
         await vm.LoadCommand.ExecuteAsync(null);
-        Assert.Equal(hasCar, vm.Types.Any(x => x.Code == "CAR")); Assert.Equal(2, vm.Documents.Count);
+        Assert.Equal(hasCar, vm.Types.Any(x => x.Code == "CAR")); Assert.Null(typeof(RegisterVehicleViewModel).GetProperty("Documents")); Assert.Equal("Frente de la Licencia de Tránsito", vm.VerificationLabel);
         vm.SelectedType = vm.Types.Single(x => x.Code == "BICYCLE");
-        Assert.Equal("Número de marco", vm.IdentifierLabel); Assert.Equal("OWNERSHIP_SUPPORT", Assert.Single(vm.Documents).Type);
+        Assert.Equal("Número de marco", vm.IdentifierLabel); Assert.Equal("Foto de la bicicleta", vm.VerificationLabel);
     }
     [Fact]
     public async Task StudentCannotSubmitInjectedCarSelection()
@@ -45,27 +45,26 @@ public sealed class UserFeatureTests
     {
         string? body = null; string? mime = null;
         var service = Service(async request => { body = await request.Content!.ReadAsStringAsync(); mime = request.Content.Headers.ContentType!.MediaType; return new(HttpStatusCode.Created) { Content = JsonContent.Create(new VehicleCreatedResponse(Guid.NewGuid())) }; });
-        await service.Api.RegisterAsync(new("BICYCLE", "FRAME-01", "Brand", "Model", "Black", Photo,
-            [new("OWNERSHIP_SUPPORT", Pdf, "N1", new(2026,10,1), new(2027,10,1))]));
+        await service.Api.RegisterAsync(new("BICYCLE", "FRAME-01", "Brand", "Model", "Black", Photo));
         Assert.Equal("multipart/form-data", mime); Assert.Contains("FrameNumber", body); Assert.DoesNotContain("name=Plate", body);
-        foreach (var key in new[] { "Photos[0].Type", "Photos[0].File", "Documents[0].Type", "Documents[0].File", "Documents[0].IssuedOn" }) Assert.Contains(key, body);
-        Assert.Contains("2026-10-01", body); Assert.DoesNotContain("OwnerId", body); Assert.Equal(1, service.Transport.Count);
+        Assert.Contains("VerificationImage.File", body); Assert.DoesNotContain("Photos[", body); Assert.DoesNotContain("Documents[", body); Assert.DoesNotContain("VerificationImage.Type", body);
+        Assert.DoesNotContain("OWNERSHIP_SUPPORT", body); Assert.DoesNotContain("OwnerId", body); Assert.Equal(1, service.Transport.Count);
     }
     [Fact]
-    public async Task RegisterRequiresPhotoAndDocumentsBeforeSending()
+    public async Task RegisterRequiresVerificationAndRejectsPdfBeforeSending()
     {
         var service = Service(_ => throw new InvalidOperationException()); var vm = new RegisterVehicleViewModel(service.Api, await Session(), new Picker(), new Navigation())
         { Identifier = "ABC123", Brand = "Brand", Model = "Model", Color = "Black" };
-        await vm.SaveCommand.ExecuteAsync(null); Assert.Contains("GENERAL", vm.ErrorMessage); Assert.Equal(0, service.Transport.Count);
-        vm.Photo = Photo; await vm.SaveCommand.ExecuteAsync(null); Assert.Contains("documentos", vm.ErrorMessage); Assert.Equal(0, service.Transport.Count);
+        await vm.SaveCommand.ExecuteAsync(null); Assert.Contains("verificación", vm.ErrorMessage); Assert.Equal(0, service.Transport.Count);
+        vm.VerificationImage = Pdf; await vm.SaveCommand.ExecuteAsync(null); Assert.NotEmpty(vm.ErrorMessage); Assert.Equal(0, service.Transport.Count);
     }
     [Fact]
     public async Task RegisterSuccessNavigatesToServerReturnedIdWithoutDuplicateTap()
     {
         var created = Guid.NewGuid(); var sent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var reply = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var service = Service(async _ => { sent.SetResult(); await reply.Task; return new(HttpStatusCode.Created) { Content = JsonContent.Create(new VehicleCreatedResponse(created)) }; });
-        var nav = new Navigation(); var vm = new RegisterVehicleViewModel(service.Api, await Session(), new Picker(), nav) { Identifier = "ABC123", Brand = "Brand", Model = "Model", Color = "Black", Photo = Photo };
-        foreach (var doc in vm.Documents) doc.File = Pdf;
+        var nav = new Navigation(); var vm = new RegisterVehicleViewModel(service.Api, await Session(), new Picker(), nav) { Identifier = "ABC123", Brand = "Brand", Model = "Model", Color = "Black", VerificationImage = Photo };
+
         var saving = vm.SaveCommand.ExecuteAsync(null); await sent.Task; await vm.SaveCommand.ExecuteAsync(null); Assert.Equal(1, service.Transport.Count);
         reply.SetResult(); await saving; Assert.Equal("vehicle-detail", nav.Route); Assert.Equal(created, nav.Arguments!["vehicleId"]); Assert.False(vm.IsBusy);
     }
@@ -73,13 +72,13 @@ public sealed class UserFeatureTests
     public async Task RenewalReusesExistingEvidenceAndCallsOnlyRenewEndpoint()
     {
         var session = await Session(); var vehicle = Vehicle(session.User!.Id); var detail = new VehicleDetailResponse(vehicle, [],
-            [new(Guid.NewGuid(), "VEHICLE_REGISTRATION", null, "reg.pdf", "application/pdf", 8, null, null, "/content/1"), new(Guid.NewGuid(), "INSURANCE", null, "insurance.pdf", "application/pdf", 8, null, null, "/content/2")]);
+            [new(Guid.NewGuid(), "VEHICLE_REGISTRATION", null, "reg.pdf", "application/pdf", 8, null, null, "/content/1"), new(Guid.NewGuid(), "INSURANCE", null, "insurance.pdf", "application/pdf", 8, null, null, "/content/2")], new(Guid.NewGuid(), "TRANSIT_LICENSE_FRONT", "verification.png", "image/png", 8, "/verification/content"));
         string? upload = null; var service = Service(async request =>
         {
             if (request.Method == HttpMethod.Post) { upload = request.RequestUri!.AbsolutePath; return new(HttpStatusCode.Created) { Content = JsonContent.Create(new VehicleRenewedResponse(Guid.NewGuid())) }; }
             return request.RequestUri!.AbsolutePath.Contains("academic-periods") ? Ok(new AcademicPeriodResponse(Guid.NewGuid(), "2026-2", new(2026,7,1), new(2026,12,31), "ACTIVE")) : await Task.FromResult(Ok(detail));
         });
-        var vm = new RenewRegistrationViewModel(service.Api, new Picker(), new Navigation()) { VehicleId = vehicle.Id };
+        var vm = new RenewRegistrationViewModel(service.Api, new Navigation()) { VehicleId = vehicle.Id };
         await vm.LoadCommand.ExecuteAsync(null); Assert.All(vm.Documents, x => Assert.True(x.HasExisting)); await vm.SaveCommand.ExecuteAsync(null);
         Assert.Equal($"/api/v1/vehicles/{vehicle.Id}/renew", upload); Assert.Empty(vm.ErrorMessage);
     }
@@ -168,7 +167,7 @@ public sealed class UserFeatureTests
     [Fact]
     public async Task PhotoPreviewDownloadsThroughPrivateApiPath()
     {
-        var user = Profile(); var vehicle = Vehicle(user.Id) with { PhotoPreviewUrl = "/api/v1/vehicles/private/photos/id/content" };
+        var user = Profile(); var vehicle = Vehicle(user.Id) with { VerificationImagePreviewUrl = "/api/v1/vehicles/private/photos/id/content" };
         string? path = null; var service = Service(request => { path = request.RequestUri!.AbsolutePath; return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Photo.Bytes) }); });
         var card = new VehicleCardViewModel(vehicle, service.Api); await card.LoadPhotoCommand.ExecuteAsync(null); Assert.Equal(Photo.Bytes, card.Photo); Assert.EndsWith("/content", path);
     }

@@ -83,12 +83,12 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
         body.Add(new StringContent("Black"), "Color");
         if (photo)
         {
-            body.Add(new StringContent("GENERAL"), "Photos[0].Type");
+
             var file = new ByteArrayContent(photoBytes ?? Png);
             file.Headers.ContentType = new MediaTypeHeaderValue(photoMime);
-            body.Add(file, "Photos[0].File", photoName);
+            body.Add(file, "VerificationImage.File", photoName);
         }
-        var types = (documentTypes ?? (type == "BICYCLE" ? "OWNERSHIP_SUPPORT" : "VEHICLE_REGISTRATION,INSURANCE"))
+        var types = (documentTypes ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries);
         for (var i = 0; i < types.Length; i++)
         {
@@ -123,11 +123,11 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
     }
     private int FileCount() => Directory.Exists(root) ? Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Count() : 0;
     [Theory]
-    [InlineData(MemberType.STUDENT, "MOTORCYCLE", 2)]
-    [InlineData(MemberType.STUDENT, "BICYCLE", 1)]
-    [InlineData(MemberType.TEACHER, "CAR", 2)]
-    [InlineData(MemberType.STAFF, "CAR", 2)]
-    public async Task RegistrationCreatesVehicleOwnerPeriodEvidenceAndAudit(MemberType member, string type, int documents)
+    [InlineData(MemberType.STUDENT, "MOTORCYCLE")]
+    [InlineData(MemberType.STUDENT, "BICYCLE")]
+    [InlineData(MemberType.TEACHER, "CAR")]
+    [InlineData(MemberType.STAFF, "CAR")]
+    public async Task RegistrationCreatesVehicleOwnerPeriodEvidenceAndAudit(MemberType member, string type)
     {
         var user = await CreateUserAsync(member);
         await LoginAsync(user);
@@ -135,13 +135,15 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
         await using var context = fixture.CreateContext();
         Assert.Equal(user.Id, (await context.VehicleOwnerships.SingleAsync()).UserId);
         Assert.Equal(user.Id, (await context.VehicleRegistrations.SingleAsync()).UserId);
-        Assert.Equal(1, await context.VehiclePhotos.CountAsync());
-        Assert.Equal(documents, await context.VehicleDocuments.CountAsync());
-        Assert.Equal(documents + 1, FileCount());
+        Assert.Equal(1, await context.VehicleVerificationImages.CountAsync()); Assert.Equal(0, await context.VehiclePhotos.CountAsync());
+        Assert.Equal(0, await context.VehicleDocuments.CountAsync());
+        Assert.Equal(1, FileCount());
         Assert.Equal(1, await context.AuditLogs.CountAsync(x => x.Action == "VEHICLE_REGISTERED"));
         Assert.Equal(1, await context.AuditLogs.CountAsync(x => x.Action == "VEHICLE_REGISTRATION_CREATED"));
         var detail = (await client.GetFromJsonAsync<VehicleDetailResponse>($"/api/v1/vehicles/{id}"))!;
         Assert.Equal(type, detail.Vehicle.Type);
+        Assert.Equal(type == "BICYCLE" ? "BICYCLE_PHOTO" : "TRANSIT_LICENSE_FRONT", detail.VerificationImage!.Type);
+        Assert.Equal("image/png", detail.VerificationImage.ContentType); Assert.Empty(detail.Photos); Assert.Empty(detail.Documents);
         Assert.Equal("ACTIVE", detail.Vehicle.RegistrationState);
         Assert.False(detail.Vehicle.IsInside);
         Assert.Equal(type == "BICYCLE" ? "FRAME0001" : "ABC123", detail.Vehicle.Plate ?? detail.Vehicle.FrameNumber);
@@ -208,11 +210,12 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         await LoginAsync(await CreateUserAsync());
         var id = await RegisterAsync();
+        await AddLegacyAsync(id);
         var detail = (await client.GetFromJsonAsync<VehicleDetailResponse>($"/api/v1/vehicles/{id}"))!;
         await LoginAsync(await CreateUserAsync());
         await ErrorAsync(await client.GetAsync($"/api/v1/vehicles/{id}"), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
         await ErrorAsync(await client.PutAsJsonAsync($"/api/v1/vehicles/{id}", new UpdateVehicleRequest("New", "New", "New")), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
-        await ErrorAsync(await client.GetAsync(detail.Photos[0].ContentUrl), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
+        await ErrorAsync(await client.GetAsync(detail.VerificationImage!.ContentUrl), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
         await ErrorAsync(await client.GetAsync(detail.Documents[0].ContentUrl), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
         using var renewal = EmptyRenewal();
         await ErrorAsync(await client.PostAsync($"/api/v1/vehicles/{id}/renew", renewal), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
@@ -222,19 +225,20 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         await LoginAsync(await CreateUserAsync());
         var id = await RegisterAsync();
+        await AddLegacyAsync(id);
         var detail = (await client.GetFromJsonAsync<VehicleDetailResponse>($"/api/v1/vehicles/{id}"))!;
-        var photo = await client.GetAsync(detail.Photos[0].ContentUrl);
+        var photo = await client.GetAsync(detail.VerificationImage!.ContentUrl);
         Assert.Equal(Png, await photo.Content.ReadAsByteArrayAsync());
         Assert.Equal("image/png", photo.Content.Headers.ContentType!.MediaType);
         Assert.Equal("nosniff", Assert.Single(photo.Headers.GetValues("X-Content-Type-Options")));
         Assert.True(photo.Headers.CacheControl!.NoStore);
         await LoginAsync(await CreateUserAsync(MemberType.STAFF, "GUARD"));
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(detail.Photos[0].ContentUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(detail.VerificationImage!.ContentUrl)).StatusCode);
         await ErrorAsync(await client.GetAsync(detail.Documents[0].ContentUrl), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
         await LoginAsync(await CreateUserAsync(MemberType.STAFF, "ADMIN"));
         Assert.Equal(Pdf, await (await client.GetAsync(detail.Documents[0].ContentUrl)).Content.ReadAsByteArrayAsync());
         client.DefaultRequestHeaders.Authorization = null;
-        await ErrorAsync(await client.GetAsync(detail.Photos[0].ContentUrl), HttpStatusCode.Unauthorized, "AUTH_INVALID_CREDENTIALS");
+        await ErrorAsync(await client.GetAsync(detail.VerificationImage!.ContentUrl), HttpStatusCode.Unauthorized, "AUTH_INVALID_CREDENTIALS");
     }
     [Fact]
     public async Task TransferAndSamePeriodRenewalPreserveOwnershipAndRegistrationHistory()
@@ -259,7 +263,7 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
         var renewalResponse = await client.PostAsync($"/api/v1/vehicles/{id}/renew", renewal);
         Assert.True(renewalResponse.StatusCode == HttpStatusCode.Created, await renewalResponse.Content.ReadAsStringAsync());
         Assert.Equal(2, await context.VehicleRegistrations.CountAsync());
-        Assert.Equal(3, FileCount());
+        Assert.Equal(1, FileCount());
         using var duplicate = EmptyRenewal();
         await ErrorAsync(await client.PostAsync($"/api/v1/vehicles/{id}/renew", duplicate), HttpStatusCode.Conflict, "VEHICLE_REGISTRATION_ALREADY_EXISTS");
         await LoginAsync(owner);
@@ -350,8 +354,8 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
         Assert.True(paths.GetProperty("/api/v1/vehicles").GetProperty("post").GetProperty("requestBody").GetProperty("content").TryGetProperty("multipart/form-data", out _));
         var fields = paths.GetProperty("/api/v1/vehicles").GetProperty("post").GetProperty("requestBody").GetProperty("content")
             .GetProperty("multipart/form-data").GetProperty("schema").GetProperty("properties");
-        Assert.Equal("binary", fields.GetProperty("Photos[0].File").GetProperty("format").GetString());
-        Assert.Equal("binary", fields.GetProperty("Documents[1].File").GetProperty("format").GetString());
+        Assert.Equal("binary", fields.GetProperty("VerificationImage.File").GetProperty("format").GetString());
+        Assert.False(fields.TryGetProperty("Documents[1].File", out _)); Assert.False(fields.TryGetProperty("VerificationImage.Type", out _));
         Assert.False(fields.TryGetProperty("Photos", out _));
         Assert.True(paths.GetProperty("/api/v1/vehicles/{id}/renew").GetProperty("post").GetProperty("requestBody").GetProperty("content").TryGetProperty("multipart/form-data", out _));
         Assert.True(paths.TryGetProperty("/api/v1/vehicles/{vehicleId}/photos/{photoId}/content", out _));
@@ -363,7 +367,3 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
             await context.AuditLogs.AddAsync(new AuditLog(Guid.NewGuid(), audit.Action, audit.EntityType, audit.EntityId, audit.CreatedAt), cancellationToken);
     }
 }
-
-
-
-

@@ -14,8 +14,15 @@ public sealed class RegisterVehicleForm
     [Required, StringLength(100)] public string Brand { get; set; } = "";
     [Required, StringLength(100)] public string Model { get; set; } = "";
     [Required, StringLength(100)] public string Color { get; set; } = "";
-    public List<VehiclePhotoForm> Photos { get; set; } = [];
-    public List<VehicleDocumentForm> Documents { get; set; } = [];
+    [Required] public VerificationImageForm VerificationImage { get; set; } = null!;
+}
+public sealed class VerificationImageForm
+{
+    [Required] public IFormFile File { get; set; } = null!;
+}
+public sealed class UpdateVerificationImageForm
+{
+    [Required] public VerificationImageForm VerificationImage { get; set; } = null!;
 }
 public sealed class RenewVehicleForm
 {
@@ -38,6 +45,10 @@ internal static class VehicleMultipart
 {
     public static bool ValidFields(IFormCollection form, bool renewal)
     {
+        if (!renewal)
+            return VerificationFields(form) && form.Keys.All(key =>
+                new[] { "type", "plate", "frameNumber", "brand", "model", "color" }.Contains(key, StringComparer.OrdinalIgnoreCase)
+                && form[key].Count == 1);
         var keys = form.Keys.Concat(form.Files.Select(x => x.Name)).ToArray();
         foreach (var key in keys)
         {
@@ -56,6 +67,8 @@ internal static class VehicleMultipart
         }
         return true;
     }
+    public static bool VerificationFields(IFormCollection form) => form.Files.Count == 1 &&
+        form.Files[0].Name.Equals("VerificationImage.File", StringComparison.OrdinalIgnoreCase);
     public static T Parse<T>(string value) where T : struct, Enum =>
         Enum.TryParse<T>(value, out var result) && Enum.IsDefined(result) && result.ToString() == value ? result : (T)Enum.ToObject(typeof(T), 999);
     public static UploadSource File(IFormFile file) => new(file.FileName, file.ContentType, file.Length, file.OpenReadStream);

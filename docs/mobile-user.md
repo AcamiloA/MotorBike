@@ -6,7 +6,7 @@ Inicio muestra datos reales: vehículos activos, vehículos propios, movimientos
 
 Las doce pantallas son Inicio, Mis vehículos, Detalle de vehículo, Registrar vehículo, Editar vehículo, Renovar registro, Mi historial, Noticias, Detalle de noticia, Perfil, Editar perfil y Cambiar contraseña. Las áreas GUARD y ADMIN están implementadas en las fases 18 y 19; sus guías describen las funciones correspondientes.
 
-STUDENT puede registrar motocicleta o bicicleta; TEACHER y STAFF también automóvil. MemberType determina los tipos permitidos y no sustituye los roles. El registro envía placa para automotores o número de marco para bicicletas, fotografía GENERAL y los soportes exigidos. Editar vehículo solo permite marca, modelo y color. Desactivar exige confirmación. Renovar conserva el vehículo y permite reutilizar documentos existentes o aportar reemplazos.
+STUDENT puede registrar motocicleta o bicicleta; TEACHER y STAFF también automóvil. MemberType determina los tipos permitidos y no sustituye los roles. El registro envía placa para automotores o número de marco para bicicletas y una única imagen: frente de la Licencia de Tránsito para carro/moto, fotografía de la bicicleta para BICYCLE. Consulte [evidencia y legacy](vehicle-verification-image.md). Editar vehículo solo permite marca, modelo y color. Desactivar exige confirmación. Renovar conserva el vehículo y reutiliza la evidencia única; si falta debe agregarla desde el detalle antes de renovar.
 
 Historial personal tiene paginación y filtros de fecha y vehículo, muestra instantes en Bogotá y conserva las salidas pendientes como pendientes. Noticias consulta únicamente contenido publicado; el detalle usa el elemento recibido en la lista. Perfil permite editar nombre y carrera. Cambio de contraseña valida confirmación y política local, envía solo contraseña actual y nueva, y limpia los campos sensibles.
 
@@ -14,7 +14,7 @@ Historial personal tiene paginación y filtros de fecha y vehículo, muestra ins
 
 Todas las rutas tienen prefijo `/api/v1`: `vehicles/me`, `vehicles/{id}`, `vehicles`, `vehicles/{id}/activate`, `vehicles/{id}/deactivate`, `vehicles/{id}/renew`, `academic-periods/current`, `parking/history/me`, `news`, `users/me` y `auth/change-password`. Los archivos se obtienen mediante las URL privadas recibidas del backend y el cliente autenticado.
 
-Fotografía: cámara o galería, JPEG/PNG, máximo 5 MB y vista previa. Documentos: PDF/JPEG/PNG, máximo 10 MB, número y fechas opcionales. Se comprueban extensión, MIME y firma básica antes del envío. Motocicleta/automóvil requieren matrícula y seguro; bicicleta requiere soporte de propiedad. Cámara solicita permiso al utilizarla y no exige hardware para instalar la app.
+Evidencia única: cámara o galería, JPEG/PNG, máximo 5 MB y vista previa. Documentos históricos: PDF/JPEG/PNG, máximo 10 MB; se conservan en lectura, sin exigirse en el registro nuevo. Se comprueban extensión, MIME y firma básica antes del envío. El registro nuevo no requiere matrícula/seguro/soporte de propiedad por separado; los documentos anteriores se preservan como históricos. Cámara solicita permiso al utilizarla y no exige hardware para instalar la app.
 
 Renovación sin reemplazos envía un cuerpo multipart de longitud cero con Content-Type y boundary; esto permite al formulario opcional del backend reutilizar los documentos. Con reemplazos utiliza partes indexadas. Las operaciones de escritura no tienen reintentos automáticos y se impide el doble envío durante carga.
 
@@ -24,10 +24,10 @@ Los documentos se abren desde una caché privada temporal, con comprobación de 
 
 1. Instalar el APK actual indicado en `installation.md` con la API accesible. Para la demo del emulador use `.data/phase21/com.motobikepark.mobile-demo-emulator-Signed.apk` y la API en 8086; la ruta de Fase 17 corresponde a una entrega anterior.
 2. Entrar como STUDENT: comprobar que solo aparecen motocicleta y bicicleta. Entrar como TEACHER/STAFF y comprobar automóvil. Revisar las áreas de cuentas con varios roles.
-3. Registrar motocicleta y bicicleta con sus identificadores y soportes; comprobar que el detalle y la lista muestran los datos reales y la fotografía. Probar campos vacíos, archivos incompatibles y archivos que superen los límites.
+3. Registrar motocicleta y bicicleta con sus identificadores y la única imagen correspondiente; comprobar que el detalle y la lista muestran los datos reales y la fotografía. Probar campos vacíos, archivos incompatibles y archivos que superen los límites.
 4. Probar galería, cámara, cancelar selección y denegar permiso. Revisar vista previa, teclado, desplazamiento, rotación, contraste y tamaños de texto.
 5. Abrir documentos privados. Editar marca/modelo/color; confirmar que propietario, identificador y tipo no se editan. Cancelar y confirmar desactivación; volver a activar.
-6. Con un periodo académico nuevo y activo, renovar un vehículo sin nuevos soportes y luego con reemplazos donde corresponda. Verificar que conserva el vehículo y crea su registro para el periodo actual.
+6. Con un periodo académico nuevo y activo, renovar un vehículo con evidencia existente sin volver a cargarla; agregarla primero si el vehículo legacy muestra pendiente. Verificar que conserva el vehículo y crea su registro para el periodo actual.
 7. Consultar historial con fechas, vehículo y varias páginas. Revisar horas de Bogotá, entradas abiertas, resultados vacíos, errores de conexión y actualización.
 8. Abrir noticias publicadas y sus detalles; comprobar paginación y texto completo. Las noticias no publicadas no deben aparecer.
 9. Consultar perfil; editar solo nombre y carrera. Cambiar contraseña con confirmación incorrecta y luego correcta; cerrar sesión y entrar con la nueva contraseña.

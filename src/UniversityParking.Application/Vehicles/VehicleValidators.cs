@@ -15,17 +15,7 @@ public sealed class RegisterVehicleCommandValidator : AbstractValidator<Register
         RuleFor(x => x.Plate).Empty().When(x => x.Type == VehicleType.BICYCLE).WithMessage("Una bicicleta no utiliza placa.");
         RuleFor(x => x.FrameNumber).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(150).When(x => x.Type == VehicleType.BICYCLE).WithMessage("El número de marco es obligatorio.");
         RuleFor(x => x.FrameNumber).Empty().When(x => x.Type != VehicleType.BICYCLE).WithMessage("El vehículo utiliza placa y no número de marco.");
-        RuleFor(x => x.Photos).NotEmpty().Must(x => x is not null && x.Any(p => p?.Type == VehiclePhotoType.GENERAL)).WithMessage("Se requiere una fotografía GENERAL.");
-        RuleForEach(x => x.Photos).ChildRules(photo =>
-        {
-            photo.RuleFor(x => x.Type).IsInEnum().WithMessage("El valor no es válido.");
-            photo.RuleFor(x => x.File).NotNull().WithMessage("El campo es obligatorio.");
-        });
-        RuleFor(x => x.Documents).NotNull().WithMessage("El campo es obligatorio.");
-        RuleForEach(x => x.Documents).SetValidator(new DocumentUploadValidator());
-        RuleFor(x => x).Must(x => x.Photos is not null && x.Documents is not null && x.Photos.All(p => p?.File is not null) && x.Documents.All(d => d?.File is not null) &&
-            x.Photos.Sum(p => (decimal)p.File.SizeBytes) + x.Documents.Sum(d => (decimal)d.File.SizeBytes) <= 50 * 1024 * 1024)
-            .WithMessage("Los archivos de una solicitud no pueden superar 50 MB.");
+        RuleFor(x => x.VerificationImage).NotNull().WithMessage("Selecciona la evidencia de verificación.");
     }
 }
 public sealed class DocumentUploadValidator : AbstractValidator<DocumentUpload>
@@ -97,4 +87,3 @@ public sealed class GetVehiclesQueryValidator : AbstractValidator<GetVehiclesQue
         RuleFor(x => x.PageSize).InclusiveBetween(1, 100).WithMessage("El tamaño de página debe estar entre 1 y 100.");
     }
 }
-

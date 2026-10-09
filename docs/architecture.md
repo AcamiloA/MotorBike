@@ -96,3 +96,7 @@ permanecen a cargo del usuario. No se acredita distribución Android ni cloud.
 ## Integraciones universitarias futuras
 
 Application dispone de contratos y un orquestador por UniversityId; Options valida referencias y proveedores al inicio. No hay proveedores institucionales reales. El handler de registro conserva su flujo y AutoApprove; la política externa se incorporará posteriormente. Consulte [contratos, diagrama y configuración](university-integrations.md).
+
+## Evidencia autoritativa por vehículo
+
+VehicleVerificationImage deriva su tipo del vehículo y tiene FK Restrict e índice único por VehicleId. Los nuevos registros requieren una imagen; legacy puede carecer de ella sin relabel ni eliminación. Reemplazo transaccional con UploadedFileBatch y retiro anterior posterior al commit. Consulte [contratos, migración y transición](vehicle-verification-image.md).

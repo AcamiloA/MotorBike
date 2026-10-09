@@ -23,9 +23,9 @@ public sealed class AttachmentPicker : IAttachmentPicker
             {
                 if (!MediaPicker.Default.IsCaptureSupported) throw new UserInputException("La cámara no está disponible. Selecciona una imagen.");
                 if (await Permissions.RequestAsync<Permissions.Camera>() != PermissionStatus.Granted) throw new UserInputException("Permite el acceso a la cámara para tomar una fotografía.");
-                result = await MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions { Title = "Foto GENERAL del vehículo" });
+                result = await MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions { Title = "Imagen de verificación" });
             }
-            else result = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Seleccionar foto", FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> { [DevicePlatform.Android] = ["image/jpeg", "image/png"] }) });
+            else result = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Seleccionar imagen", FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> { [DevicePlatform.Android] = ["image/jpeg", "image/png"] }) });
             return result is null ? null : await ReadAsync(result, true);
         }
         catch (UserInputException) { throw; }

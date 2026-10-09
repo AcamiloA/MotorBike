@@ -50,6 +50,7 @@ public static class MauiProgram
         builder.Services.AddTransient<UserHomeViewModel>(); builder.Services.AddTransient<UserHomePage>();
         builder.Services.AddTransient<MyVehiclesViewModel>(); builder.Services.AddTransient<MyVehiclesPage>();
         builder.Services.AddTransient<VehicleDetailViewModel>(); builder.Services.AddTransient<VehicleDetailPage>();
+        builder.Services.AddTransient<VerificationImageViewModel>(); builder.Services.AddTransient<VerificationImagePage>();
         builder.Services.AddTransient<RegisterVehicleViewModel>(); builder.Services.AddTransient<RegisterVehiclePage>();
         builder.Services.AddTransient<EditVehicleViewModel>(); builder.Services.AddTransient<EditVehiclePage>();
         builder.Services.AddTransient<RenewRegistrationViewModel>(); builder.Services.AddTransient<RenewRegistrationPage>();

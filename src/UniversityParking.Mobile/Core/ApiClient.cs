@@ -54,6 +54,7 @@ public sealed class ApiClient(HttpClient client)
     public Task<ApiResult<bool>> PostEmptyAsync(string path, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Post, path, null, token);
     public Task<ApiResult<bool>> PostCommandAsync(string path, object body, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Post, path, body, token);
     public Task<ApiResult<T>> MultipartAsync<T>(string path, HttpContent content, CancellationToken token = default) => SendAsync<T>(HttpMethod.Post, path, content, token);
+    public Task<ApiResult<bool>> PutMultipartAsync(string path, HttpContent content, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Put, path, content, token);
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, CancellationToken token)
     {
         for (var attempt = 0; ; attempt++)

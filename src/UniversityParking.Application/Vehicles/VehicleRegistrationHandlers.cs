@@ -26,24 +26,11 @@ public sealed class RegisterVehicleCommandHandler(VehicleOperationContext operat
             frame is not null && await vehicles.ExistsByFrameNumberAsync(frame, cancellationToken)) return Result<Guid>.Failure(VehicleErrors.IdentifierAlreadyExists);
         var period = await periods.GetActiveForShareAsync(cancellationToken);
         if (period is null) return Result<Guid>.Failure(AcademicPeriodErrors.NotActive);
-        if (VehicleOperationContext.RequiredDocuments(request.Type).Except(request.Documents.Select(x => x.Type)).Any())
-            return Result<Guid>.Failure(VehicleOperationContext.MissingDocuments());
-        if (!request.Photos.Any(x => x.Type == VehiclePhotoType.GENERAL))
-            return Result<Guid>.Failure(CommonErrors.Validation(new Dictionary<string, IReadOnlyList<string>> { ["Photos"] = ["Se requiere una fotografía GENERAL."] }));
-        var photoFiles = new List<ValidatedUpload>();
-        var documentFiles = new List<ValidatedUpload>();
-        foreach (var photo in request.Photos)
-        {
-            var validation = await fileValidator.ValidateAsync(photo.File, true, cancellationToken);
-            if (validation.IsFailure) return Result<Guid>.Failure(validation.Error!);
-            photoFiles.Add(validation.Value);
-        }
-        foreach (var document in request.Documents)
-        {
-            var validation = await fileValidator.ValidateAsync(document.File, false, cancellationToken);
-            if (validation.IsFailure) return Result<Guid>.Failure(validation.Error!);
-            documentFiles.Add(validation.Value);
-        }
+        if (request.VerificationImage is null)
+            return Result<Guid>.Failure(CommonErrors.Validation(new Dictionary<string, IReadOnlyList<string>> { ["VerificationImage"] = ["Selecciona la evidencia de verificación."] }));
+        var validation = await fileValidator.ValidateAsync(request.VerificationImage, true, cancellationToken);
+        if (validation.IsFailure) return Result<Guid>.Failure(validation.Error!);
+        var file = validation.Value;
         var now = operation.UtcNow;
         var vehicle = new Vehicle(request.Type, plate, frame, request.Brand, request.Model, request.Color, now);
         await using var uploaded = new UploadedFileBatch(storage, logger);
@@ -51,22 +38,10 @@ public sealed class RegisterVehicleCommandHandler(VehicleOperationContext operat
         await ownerships.AddAsync(new VehicleOwnership(vehicle.Id, actor.Value.Id, now, actor.Value.Id), cancellationToken);
         var registration = new VehicleRegistration(vehicle.Id, actor.Value.Id, period.Id, now);
         await registrations.AddAsync(registration, cancellationToken);
-        for (var index = 0; index < request.Photos.Count; index++)
-        {
-            var file = photoFiles[index];
-            var key = await uploaded.UploadAsync(vehicle.Id, "photos", file, cancellationToken);
-            await evidence.AddPhotoAsync(new VehiclePhoto(vehicle.Id, request.Photos[index].Type, key, file.FileName,
-                file.ContentType, file.Bytes.LongLength, now), cancellationToken);
-        }
-        for (var index = 0; index < request.Documents.Count; index++)
-        {
-            var file = documentFiles[index];
-            var source = request.Documents[index];
-            var key = await uploaded.UploadAsync(vehicle.Id, "documents", file, cancellationToken);
-            await evidence.AddDocumentAsync(new VehicleDocument(vehicle.Id, source.Type, key, file.FileName, file.ContentType,
-                file.Bytes.LongLength, now, source.DocumentNumber, source.IssuedOn, source.ExpiresOn), cancellationToken);
-        }
-        await operation.AuditAsync("VEHICLE_REGISTERED", vehicle.Id, null, new { Type = request.Type.ToString(), OwnerId = actor.Value.Id, PeriodId = period.Id }, cancellationToken);
+        var key = await uploaded.UploadAsync(vehicle.Id, "verification", file, cancellationToken);
+        var image = new VehicleVerificationImage(vehicle, key, file.FileName, file.ContentType, file.Bytes.LongLength, now);
+        await evidence.AddVerificationImageAsync(image, cancellationToken);
+        await operation.AuditAsync("VEHICLE_REGISTERED", vehicle.Id, null, new { Type = request.Type.ToString(), VerificationImageType = image.Type.ToString(), OwnerId = actor.Value.Id, PeriodId = period.Id }, cancellationToken);
         await operation.AuditAsync("VEHICLE_REGISTRATION_CREATED", vehicle.Id, null,
             new { registration.Id, registration.UserId, registration.AcademicPeriodId }, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -94,9 +69,9 @@ public sealed class RenewVehicleRegistrationCommandHandler(VehicleOperationConte
         if (period is null) return Result<Guid>.Failure(AcademicPeriodErrors.NotActive);
         var previous = await registrations.GetByVehicleUserAndPeriodAsync(vehicle.Id, operation.ActorId, period.Id, cancellationToken);
         if (previous is not null) return Result<Guid>.Failure(previous.Status == VehicleRegistrationStatus.CANCELLED ? VehicleErrors.RegistrationCancelled : VehicleErrors.RegistrationAlreadyExists);
-        var existing = await evidence.GetDocumentsAsync(vehicle.Id, cancellationToken);
-        if (VehicleOperationContext.RequiredDocuments(vehicle.Type).Except(existing.Select(x => x.Type).Concat(request.Documents.Select(x => x.Type))).Any())
-            return Result<Guid>.Failure(VehicleOperationContext.MissingDocuments());
+        var image = await evidence.GetVerificationImageAsync(vehicle.Id, cancellationToken);
+        if (image is null) return Result<Guid>.Failure(VehicleVerificationErrors.Required);
+        image.EnsureCompatible(vehicle.Type);
         var files = new List<ValidatedUpload>();
         foreach (var document in request.Documents)
         {
@@ -124,4 +99,3 @@ public sealed class RenewVehicleRegistrationCommandHandler(VehicleOperationConte
         return Result<Guid>.Success(registration.Id);
     }
 }
-
