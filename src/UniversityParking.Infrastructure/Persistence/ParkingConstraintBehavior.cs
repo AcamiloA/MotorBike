@@ -16,8 +16,9 @@ public sealed class ParkingConstraintBehavior<TRequest, TResponse>(AppDbContext 
         try { return await next(cancellationToken); }
         catch (DbUpdateException exception) when (request is CheckInVehicleCommand &&
             exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres &&
-            postgres.ConstraintName is "ux_parking_movements_open_vehicle" or "ux_parking_movements_open_user")
+            postgres.ConstraintName is "ux_parking_movements_open_vehicle" or "ux_parking_movements_open_user" or "PK_parking_movements")
         {
+            if (postgres.ConstraintName == "PK_parking_movements") return TResponse.Failure(new("PARKING_MOVEMENT_ID_ALREADY_USED", "El identificador de este intento ya fue utilizado. Consulta el estado actual.", ErrorType.Conflict));
             var command = (CheckInVehicleCommand)(object)request;
             var vehicleOpen = await context.ParkingMovements.AsNoTracking().AnyAsync(x => x.VehicleId == command.VehicleId && x.Status == ParkingMovementStatus.OPEN, cancellationToken);
             return TResponse.Failure(vehicleOpen ? ParkingErrors.VehicleAlreadyInside : ParkingErrors.UserAlreadyHasVehicleInside);

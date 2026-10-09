@@ -10,8 +10,6 @@ namespace UniversityParking.Mobile.Core;
 
 public interface IGuardSelectionStore { Guid? Get(Guid userId); void Set(Guid userId, Guid? lotId); }
 public interface IScannerPermission { Task<bool> RequestAsync(); }
-public sealed record AccessContext(ParkingAccessRequest Request, ParkingAccessResponse Result);
-public sealed record EntryContext(AccessContext Access, EligibleVehicleResponse Vehicle);
 public sealed record IncidentContext(Guid ParkingLotId, Guid? UserId = null, Guid? VehicleId = null, Guid? MovementId = null, string? UserName = null, string? VehicleIdentifier = null, string? ParkingLotName = null);
 public sealed record IncidentInput(IncidentContext Context, string Type, string Description, DateTimeOffset? OccurredAt, IReadOnlyList<PickedAttachment> Attachments);
 
@@ -22,8 +20,10 @@ public sealed class GuardApiService(ApiClient api)
     public Task<ApiResult<PagedResponse<ParkingLotResponse>>> LotsAsync(int page = 1) => api.GetAsync<PagedResponse<ParkingLotResponse>>($"api/v1/parking-lots?status=ACTIVE&page={page}&pageSize=100");
     public Task<ApiResult<GuardDashboardResponse>> DashboardAsync(Guid lot) => api.GetAsync<GuardDashboardResponse>($"api/v1/dashboard/guard?parkingLotId={lot}");
     public Task<ApiResult<ParkingAccessResponse>> LookupAsync(ParkingAccessRequest request) => api.PostAsync<ParkingAccessResponse>("api/v1/parking/access/lookup", request);
-    public Task<ApiResult<ParkingMovementResponse>> CheckInAsync(Guid user, Guid vehicle, Guid lot) => api.PostAsync<ParkingMovementResponse>("api/v1/parking/check-in", new CheckInVehicleRequest(user, vehicle, lot));
-    public Task<ApiResult<ParkingMovementResponse>> CheckOutAsync(Guid vehicle) => api.PostAsync<ParkingMovementResponse>("api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle));
+    public Task<ApiResult<ParkingMovementResponse>> CheckInAsync(Guid user, Guid vehicle, Guid lot, Guid? movementId = null, string? expectedSession = null) => expectedSession is null ? api.PostAsync<ParkingMovementResponse>("api/v1/parking/check-in", new CheckInVehicleRequest(user, vehicle, lot, movementId)) : api.PostForSessionAsync<ParkingMovementResponse>("api/v1/parking/check-in", new CheckInVehicleRequest(user, vehicle, lot, movementId), expectedSession);
+    public Task<ApiResult<ParkingMovementResponse>> CheckOutAsync(Guid movementId, Guid vehicle, string? expectedSession = null) => expectedSession is null ? api.PostAsync<ParkingMovementResponse>("api/v1/parking/check-out", new CheckOutVehicleRequest(movementId, vehicle)) : api.PostForSessionAsync<ParkingMovementResponse>("api/v1/parking/check-out", new CheckOutVehicleRequest(movementId, vehicle), expectedSession);
+    public Task<ApiResult<ParkingMovementResponse>> MovementAsync(Guid movementId) => api.GetAsync<ParkingMovementResponse>($"api/v1/parking/movements/{movementId}");
+    public Task<ApiResult<EligibleVehicleResponse>> MovementVehicleAsync(Guid movementId) => api.GetAsync<EligibleVehicleResponse>($"api/v1/parking/movements/{movementId}/vehicle");
     public Task<ApiResult<VehiclesInsideResponse>> InsideAsync(Guid? lot, string? type, string? search, int page) => api.GetAsync<VehiclesInsideResponse>(Query("api/v1/parking/inside", ("parkingLotId", lot), ("vehicleType", type), ("search", search?.Trim()), ("page", page), ("pageSize", 20)));
     public Task<ApiResult<PagedResponse<ParkingMovementResponse>>> HistoryAsync(Guid? lot, DateOnly? from, DateOnly? to, string? identification, string? plate, string? frame, string? type, string? status, int page) =>
         api.GetAsync<PagedResponse<ParkingMovementResponse>>(Query("api/v1/parking/movements", ("parkingLotId", lot), ("dateFrom", from), ("dateTo", to), ("identificationNumber", identification?.Trim()), ("plate", plate?.Trim()), ("frameNumber", frame?.Trim()), ("vehicleType", type), ("status", status), ("page", page), ("pageSize", 20)));

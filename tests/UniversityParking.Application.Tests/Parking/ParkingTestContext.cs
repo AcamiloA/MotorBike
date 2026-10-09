@@ -26,6 +26,7 @@ internal sealed class ParkingTestContext : IParkingLotRepository, IParkingMoveme
     public CheckInVehicleCommandHandler CheckIn { get; }
     public CheckOutVehicleCommandHandler CheckOut { get; }
     public CheckInVehicleCommand Request => new(Target.Id, Vehicle.Id, Lot.Id);
+    public Guid MovementId => Store.Movements.LastOrDefault()?.Id ?? Guid.NewGuid();
     public ParkingTestContext(VehicleType type = VehicleType.MOTORCYCLE)
     {
         Store.Roles = ["USER", "GUARD"];
@@ -37,12 +38,13 @@ internal sealed class ParkingTestContext : IParkingLotRepository, IParkingMoveme
         Vehicle = new Vehicle(type, type == VehicleType.BICYCLE ? null : new VehiclePlate("ABC123"),
             type == VehicleType.BICYCLE ? new FrameNumber("FRAME123") : null, "Brand", "Model", "Black", before);
         Store.Vehicles.Add(Vehicle);
+        Store.VerificationImages.Add(new(Vehicle, "test/verification.jpg", "verification.jpg", "image/jpeg", 100, before));
         Store.Ownerships.Add(new VehicleOwnership(Vehicle.Id, Target.Id, before, Store.User.Id));
         Store.Registrations.Add(new VehicleRegistration(Vehicle.Id, Target.Id, Store.Period!.Id, before));
         Lot = new ParkingLot("Principal", "Kennedy", new(6, 0), new(22, 0), before);
         foreach (var kind in Enum.GetValues<VehicleType>()) Zones.Add(new(Lot.Id, kind.ToString(), kind, before));
         Operation = new(Store, Store, Store, Store, Clock, Store);
-        CheckIn = new(Operation, Store, Store, Store, Store, Store, Store, this, Store, this, this, Clock, Store);
+        CheckIn = new(Operation, Store, Store, Store, Store, Store, Store, this, Store, this, this, Clock, Store, Store);
         CheckOut = new(Operation, Store, Store, Store, Store, this, Clock, Store);
     }
     public Task<ParkingLot?> GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult(id == Lot.Id ? Lot : null);

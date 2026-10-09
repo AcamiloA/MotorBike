@@ -249,12 +249,12 @@ public sealed partial class VehicleRegistrationTests
         public Task<bool> ExistsByFrameNumberAsync(FrameNumber frame, CancellationToken ct) => Task.FromResult(Vehicles.Any(x => x.FrameNumber == frame));
         public Task<bool> HasActiveCarOwnedByUserAsync(Guid id, CancellationToken ct) => Task.FromResult(false);
         public Task AddAsync(Vehicle vehicle, CancellationToken ct) { Vehicles.Add(vehicle); return Task.CompletedTask; }
-        public Task<VehicleView?> GetViewAsync(Guid id, CancellationToken ct) => Task.FromResult<VehicleView?>(null);
+        public Task<VehicleView?> GetViewAsync(Guid id, CancellationToken ct) => Task.FromResult(Vehicles.FirstOrDefault(x => x.Id == id) is { } v ? new VehicleView(v.Id,v.Type,v.Plate?.Value,v.FrameNumber?.Value,v.Brand,v.Model,v.Color,v.Status,null,null,RegistrationState.NONE,false,VerificationImages.FirstOrDefault(i=>i.VehicleId==id)?.Id,VerificationImages.FirstOrDefault(i=>i.VehicleId==id)?.Type) : null);
         public Task<IReadOnlyList<VehicleView>> GetByCurrentOwnerAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<VehicleView>>(Vehicles
             .Where(v => Ownerships.Any(o => o.VehicleId == v.Id && o.UserId == id && o.EndAt == null))
             .Select(v => new VehicleView(v.Id, v.Type, v.Plate?.Value, v.FrameNumber?.Value, v.Brand, v.Model, v.Color, v.Status, id, null,
                 Registrations.Any(r => r.VehicleId == v.Id && r.UserId == id && r.AcademicPeriodId == Period?.Id && r.Status == VehicleRegistrationStatus.ACTIVE) ? RegistrationState.ACTIVE : RegistrationState.NONE,
-                Movements.Any(m => m.VehicleId == v.Id && m.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN), null)).ToArray());
+                Movements.Any(m => m.VehicleId == v.Id && m.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN), VerificationImages.FirstOrDefault(i => i.VehicleId == v.Id)?.Id, VerificationImages.FirstOrDefault(i => i.VehicleId == v.Id)?.Type)).ToArray());
         public Task<PagedResult<VehicleView>> SearchAsync(GetVehiclesQuery query, CancellationToken ct) => Task.FromResult(new PagedResult<VehicleView>([], query.Page, query.PageSize, 0));
         public Task<VehicleOwnership?> GetCurrentByVehicleIdAsync(Guid id, CancellationToken ct) => Task.FromResult(Ownerships.FirstOrDefault(x => x.VehicleId == id && x.EndAt == null));
         public Task<VehicleOwnership?> GetCurrentByVehicleAndUserAsync(Guid vehicleId, Guid userId, CancellationToken ct) => Task.FromResult(Ownerships.FirstOrDefault(x => x.VehicleId == vehicleId && x.UserId == userId && x.EndAt == null));
@@ -291,6 +291,7 @@ public sealed partial class VehicleRegistrationTests
         public Task<UniversityParking.Domain.Parking.ParkingMovement?> GetOpenByVehicleIdAsync(Guid id, CancellationToken ct) => Task.FromResult(Movements.FirstOrDefault(x => x.VehicleId == id && x.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN));
         public Task<UniversityParking.Domain.Parking.ParkingMovement?> GetOpenByUserIdAsync(Guid id, CancellationToken ct) => Task.FromResult(Movements.FirstOrDefault(x => x.UserId == id && x.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN));
         Task<UniversityParking.Domain.Parking.ParkingMovement?> IParkingMovementRepository.GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult(Movements.FirstOrDefault(x => x.Id == id));
+        Task<UniversityParking.Domain.Parking.ParkingMovement?> IParkingMovementRepository.GetByIdForUpdateAsync(Guid id, CancellationToken ct) => Task.FromResult(Movements.FirstOrDefault(x => x.Id == id));
         public Task<bool> ExistsOpenByVehicleIdAsync(Guid id, CancellationToken ct) => Task.FromResult(VehicleInside || Movements.Any(x => x.VehicleId == id && x.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN));
         public Task<bool> ExistsOpenByUserIdAsync(Guid id, CancellationToken ct) => Task.FromResult(VehicleInside || Movements.Any(x => x.UserId == id && x.Status == UniversityParking.Domain.Parking.ParkingMovementStatus.OPEN));
         public Task<bool> ExistsOpenByParkingLotIdAsync(Guid id, CancellationToken ct) => Task.FromResult(VehicleInside);

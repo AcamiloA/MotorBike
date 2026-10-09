@@ -41,7 +41,7 @@ public sealed partial class ParkingEndpointTests
     [Fact]
     public async Task MobileAdministrativeLotsIncidentsReportsAuditAndGuardBoundaryUseRealApi()
     {
-        var admin=await UserAsync(MemberType.STAFF,"ADMIN");await EnterAsync();clock.UtcNow=clock.UtcNow.AddMinutes(19);await client.PostAsJsonAsync("/api/v1/parking/check-out",new UniversityParking.Contracts.Parking.CheckOutVehicleRequest(vehicle.Id));
+        var admin=await UserAsync(MemberType.STAFF,"ADMIN");await EnterAsync();clock.UtcNow=clock.UtcNow.AddMinutes(19);await client.PostAsJsonAsync("/api/v1/parking/check-out",new UniversityParking.Contracts.Parking.CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id));
         var session=new AuthSession(new MobileStorage());var nav=new MobileNavigation();using var mobile=factory.CreateDefaultClient(new AuthHttpHandler(session,nav,new ApiOptions("https://localhost/")));mobile.BaseAddress=new("https://localhost/");var transport=new ApiClient(mobile);
         Assert.True((await new AuthService(transport,session,nav).LoginAsync(admin.IdentificationNumber.Value,AuthApiFixture.Password)).IsSuccess);var api=new AdminApiService(transport);
         var newLot=await api.CreateLotAsync(new("Móvil","Sede",new(6,0),new(22,0)));Assert.True(newLot.IsSuccess);var lotId=newLot.Value!.Id;var createdLot=(await api.LotsAsync(null,1)).Value!.Items.Single(x=>x.Id==lotId);Assert.Equal(3,createdLot.Zones.Count);

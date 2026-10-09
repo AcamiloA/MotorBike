@@ -37,4 +37,27 @@ public sealed class ParkingConflictTranslationTests(PostgresFixture fixture) : I
         await using var verification = fixture.CreateContext();
         Assert.Single(await verification.ParkingMovements.ToArrayAsync());
     }
+    [Fact]
+    public async Task ReusedMovementIdentityMapsActualPrimaryKeyConflict()
+    {
+        await using var context = fixture.CreateContext();
+        var data = await PersistenceTestData.ParkingAsync(context);
+        var original = PersistenceTestData.Movement(data);
+        original.Close(PersistenceTestData.Now.AddMinutes(1), data.Guard.Id);
+        context.ParkingMovements.Add(original);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var behavior = new ParkingConstraintBehavior<CheckInVehicleCommand, Result<ParkingMovementView>>(context);
+        var result = await behavior.Handle(new(data.User.Id, data.Vehicle.Id, data.Lot.Id, original.Id), async cancellationToken =>
+        {
+            context.ParkingMovements.Add(new ParkingMovement(data.User.Id, data.Vehicle.Id, data.Lot.Id, data.Zone.Id,
+                PersistenceTestData.Now.AddMinutes(2), data.Guard.Id, original.Id));
+            await context.SaveChangesAsync(cancellationToken);
+            throw new InvalidOperationException("A duplicate movement identity cannot persist.");
+        }, default);
+        Assert.Equal("PARKING_MOVEMENT_ID_ALREADY_USED", result.Error!.Code);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        await using var verify = fixture.CreateContext();
+        Assert.Equal(ParkingMovementStatus.CLOSED, (await verify.ParkingMovements.SingleAsync()).Status);
+    }
 }

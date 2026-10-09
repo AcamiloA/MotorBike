@@ -39,7 +39,7 @@ try {
         if ($actor.Id -eq '900000003' -and @($vehicles | Where-Object type -eq 'CAR').Count -ne 0) { throw 'Student no puede tener Car.' }
         $results += [pscustomobject]@{Identification=$actor.Id;Roles=@($me.roles);MemberType=$me.memberType;VehicleCount=$vehicles.Count}
     }
-    $lookup = Invoke-RestMethod ([uri]::new($BaseUrl,'api/v1/parking/access/lookup')) -Headers $headers['900000002'] -Method Post -ContentType 'application/json' -Body '{"cardCode":"DEMO-STUDENT"}'
+    $lookup = Invoke-RestMethod ([uri]::new($BaseUrl,'api/v1/parking/access/lookup')) -Headers $headers['900000002'] -Method Post -ContentType 'application/json' -Body '{"qrPayload":"OTAwMDAwMDAz"}'
     if ($lookup.user.id -ne '21de0000-0000-4000-8000-000000000003') { throw 'Lookup demo incorrecto.' }
     $history = Invoke-RestMethod ([uri]::new($BaseUrl,'api/v1/parking/history/me')) -Headers $headers['900000003']
     $news = Invoke-RestMethod ([uri]::new($BaseUrl,'api/v1/news')) -Headers $headers['900000003']

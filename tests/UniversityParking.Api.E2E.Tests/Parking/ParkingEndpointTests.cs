@@ -89,10 +89,15 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
         var vehicle = new Vehicle(type, type == VehicleType.BICYCLE ? null : new VehiclePlate(Guid.NewGuid().ToString("N")[..12]),
             type == VehicleType.BICYCLE ? new FrameNumber(Guid.NewGuid().ToString("N")) : null, "Brand", "Model", "Black", before);
         await using var context = fixture.CreateContext();
-        context.AddRange(vehicle, new VehicleOwnership(vehicle.Id, owner.Id, before, guard.Id));
+        context.AddRange(vehicle, new VehicleOwnership(vehicle.Id, owner.Id, before, guard.Id), new VehicleVerificationImage(vehicle, $"vehicles/{vehicle.Id}/verification/test.jpg", "test.jpg", "image/jpeg", 100, before));
         if (registered) context.VehicleRegistrations.Add(new(vehicle.Id, owner.Id, period.Id, before));
         await context.SaveChangesAsync();
         return vehicle;
+    }
+    private async Task<Guid> MovementIdAsync()
+    {
+        await using var context = fixture.CreateContext();
+        return await context.ParkingMovements.OrderByDescending(x => x.CheckInAt).Select(x => (Guid?)x.Id).FirstOrDefaultAsync() ?? Guid.NewGuid();
     }
     private async Task LoginAsync(User user, HttpClient? selected = null)
     {
@@ -119,7 +124,7 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
     [Fact]
     public async Task RealGuardFlow_LoginLookupEntryInsideExitAndPersonalHistory()
     {
-        var lookupResponse = await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value));
+        var lookupResponse = await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))));
         Assert.Equal(HttpStatusCode.OK, lookupResponse.StatusCode);
         var lookup = (await lookupResponse.Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
         Assert.Equal(vehicle.Id, Assert.Single(lookup.EligibleVehicles).Id);
@@ -135,7 +140,7 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
         Assert.NotNull(lookup.CurrentMovement);
         Assert.Empty(lookup.EligibleVehicles);
         clock.UtcNow = clock.UtcNow.AddHours(2);
-        var exited = (await (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id))).Content.ReadFromJsonAsync<ParkingMovementResponse>())!;
+        var exited = (await (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id))).Content.ReadFromJsonAsync<ParkingMovementResponse>())!;
         Assert.Equal("CLOSED", exited.Status);
         Assert.Equal(guard.Id, exited.CheckOutGuardId);
         Assert.Equal(TimeSpan.FromHours(2), exited.Duration);
@@ -211,9 +216,9 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
             }
             await context.SaveChangesAsync();
         }
-        var response = await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id));
+        var response = await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id));
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id)), HttpStatusCode.Conflict, "VEHICLE_NOT_INSIDE");
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id)), HttpStatusCode.Conflict, "VEHICLE_NOT_INSIDE");
     }
     [Fact]
     public async Task AdminWithoutGuardCannotCheckInOrOut_ButCanLookupAndReadInside()
@@ -221,8 +226,8 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
         var admin = await UserAsync(MemberType.STAFF, "ADMIN");
         await LoginAsync(admin);
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-in", Entry()), HttpStatusCode.Forbidden, "FORBIDDEN");
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id)), HttpStatusCode.Forbidden, "FORBIDDEN");
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value))).StatusCode);
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id)), HttpStatusCode.Forbidden, "FORBIDDEN");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/parking/inside")).StatusCode);
         await using var context = fixture.CreateContext();
         context.UserRoles.Add(new(admin.Id, (await context.Roles.SingleAsync(x => x.Code == "GUARD")).Id));
@@ -235,7 +240,7 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         await LoginAsync(target);
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-in", Entry()), HttpStatusCode.Forbidden, "FORBIDDEN");
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value)), HttpStatusCode.Forbidden, "FORBIDDEN");
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value)))), HttpStatusCode.Forbidden, "FORBIDDEN");
         await ErrorAsync(await client.GetAsync("/api/v1/parking/inside"), HttpStatusCode.Forbidden, "FORBIDDEN");
         await ErrorAsync(await client.GetAsync("/api/v1/parking/movements"), HttpStatusCode.Forbidden, "FORBIDDEN");
         client.DefaultRequestHeaders.Authorization = null;
@@ -246,10 +251,10 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest()), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest("card", "id")), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: "UNKNOWN")), HttpStatusCode.NotFound, "USER_NOT_FOUND");
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(IdentificationNumber: "UNKNOWN")), HttpStatusCode.NotFound, "USER_NOT_FOUND");
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-in", new { userId = target.Id, vehicleId = vehicle.Id, parkingLotId = lot.Id, guardId = Guid.NewGuid() }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new { vehicleId = vehicle.Id, checkOutAt = clock.UtcNow }), HttpStatusCode.BadRequest, "VALIDATION_ERROR");
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(Guid.NewGuid())), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(Guid.NewGuid(), Guid.NewGuid())), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
     }
     [Fact]
     public async Task ConcurrentEntriesForSameVehicleAllowOneMovement()
@@ -276,7 +281,7 @@ public sealed partial class ParkingEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         await EnterAsync();
         clock.UtcNow = clock.UtcNow.AddHours(1);
-        var request = new CheckOutVehicleRequest(vehicle.Id);
+        var request = new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id);
         var responses = await Task.WhenAll(client.PostAsJsonAsync("/api/v1/parking/check-out", request), client.PostAsJsonAsync("/api/v1/parking/check-out", request));
         Assert.Single(responses, x => x.StatusCode == HttpStatusCode.OK);
         await ErrorAsync(Assert.Single(responses, x => x.StatusCode != HttpStatusCode.OK), HttpStatusCode.Conflict, "VEHICLE_NOT_INSIDE");

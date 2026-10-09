@@ -1,59 +1,74 @@
-# Fase 18 — Portería GUARD en Android
+# Portería GUARD — Registro de acceso
 
-## Implementación
+El inicio de Portería conserva la selección de parqueadero activo y el dashboard. **REGISTRO DE ACCESO** abre `guard-access-control`, una sola pantalla para scanner, búsqueda manual, selección, evidencia, confirmación y resultado. ADMIN puede consultar acceso desde la API; registrar entradas/salidas exige GUARD activo, comprobado también en la base de datos.
 
-Las once pantallas son Control de acceso, Escanear carné, Buscar por identificación, Resultado de acceso, Registrar ingreso, Registrar salida, Vehículos dentro, Incidentes, Registrar incidente, Detalle de incidente e Historial de parqueo. La navegación exige GUARD; ADMIN por sí solo no agrega esta capacidad. Las funciones administrativas de Fase 19 están descritas en mobile-admin.md.
+## QR institucional y búsqueda manual
 
-El parqueadero se selecciona entre los activos, leyendo todas las páginas. Con uno se autoselecciona; con varios se requiere selección. Solo su identificador se conserva en Preferences, separado por usuario. Cada actualización vuelve a comprobar los activos. El dashboard obtiene Dentro, Entradas hoy, Salidas hoy e Incidentes abiertos de la API; no muestra cupos, puestos ni porcentajes de ocupación.
+El QR transporta **Base64 UTF-8**, no CardCode. `MTAxNDI4NTU1Mw==` representa `1014285553`. Base64 es codificación: no aporta autenticidad ni seguridad. La sesión GUARD, el backend, los estados de la base, la propiedad, el registro y las restricciones de movimientos protegen el acceso. Nunca se toman roles, placa, vehículo, parqueadero u operación del QR.
 
-El escáner usa ZXing.Net.Maui.Controls 0.10.4 para MAUI 10, inicializado con UseBarcodeReader según la [documentación oficial](https://github.com/Redth/ZXing.Net.Maui). Solicita permiso CAMERA al entrar. Cámara denegada conserva la búsqueda manual. El carné se trata como cadena opaca, sin abrir URL ni ejecutar su contenido. Una lectura detiene detección y cámara, reclama la solicitud una sola vez y comparte la pantalla de resultado con la búsqueda manual. Salir de la pantalla o suspender la ventana detiene detección, desconecta el handler y descarta navegación de respuestas tardías. Reactivar requiere una acción explícita.
+Application usa `IQrIdentityParser`: hasta 256 caracteres de entrada antes de trim, Base64 válido, UTF-8 estricto y hasta 50 caracteres de identificación normalizada. Admite identificadores alfanuméricos y guion; rechaza texto estructurado, caracteres de control, bytes inválidos y entradas vacías/excesivas con `INVALID_QR_IDENTITY`: “El código QR no contiene una identificación válida.” Conserva ceros iniciales. No consulta base de datos ni verifica permisos. El Value Object existente valida la identificación resultante. CardCode permanece en User para compatibilidad histórica y otros usos.
 
-Resultado de acceso muestra usuario, tipo y estado. Un usuario inactivo no puede iniciar un ingreso. Si tiene un movimiento abierto se ofrece salida; en otro caso se muestran vehículos habilitados con selección única. Un vehículo habilitado se preselecciona. Ingreso consulta nuevamente el acceso, comprueba el parqueadero y exige confirmación; salida verifica el movimiento concreto y exige confirmación. Los botones se bloquean durante ejecución y después del éxito. La duración final proviene de la API, y las horas se muestran en Bogotá.
+`POST /api/v1/parking/access/lookup` admite exactamente una fuente:
 
-Las escrituras no se reintentan automáticamente. Ante timeout, fallo de red, respuesta inválida, HTTP 408 o error de servidor, se consulta el estado antes de habilitar otra acción. Ingreso verifica mediante lookup; salida consulta el historial hasta encontrar el mismo movimiento. Si la verificación falla permanece bloqueado y ofrece VERIFICAR ESTADO. Si el estado ya refleja el resultado se muestra como verificado. Si no hay ingreso registrado, otra entrada requiere confirmación explícita. Un movimiento anterior ya cerrado no envía una nueva salida.
+~~~json
+{"qrPayload":"MTAxNDI4NTU1Mw=="}
+~~~
 
-Dentro permite filtrar por tipo y búsqueda, elegir parqueadero, actualizar y paginar; muestra contadores de la respuesta y accesos a salida e incidente. Historial permite fechas inclusivas locales, identificación, placa, marco, tipo, estado y paginación. Un ingreso abierto muestra salida pendiente.
+~~~json
+{"identificationNumber":"1014285553"}
+~~~
 
-Incidentes permite listar, filtrar por parqueadero/tipo/estado/fechas, paginar, registrar y consultar detalle. Desde un movimiento se prellenan usuario, vehículo, movimiento y parqueadero. En un registro independiente se puede asociar un usuario por identificación y elegir su vehículo habilitado; un movimiento actual conserva sus referencias. Ocurrencia opcional se interpreta en Bogotá y se envía UTC. Se admiten hasta cuatro adjuntos PDF/JPEG/PNG de 10 MB, con selección, eliminación y validación previa. Los adjuntos se abren mediante descarga autenticada y caché privada compartida con Fase 17. Un registro con resultado incierto se bloquea y pide revisar la lista antes de crear otro. Esta área no ofrece resolver ni cancelar incidentes; esas operaciones corresponden a administración.
+La acción REGISTRAR MANUALMENTE aparece siempre en la misma pantalla. Abre un formulario integrado y pausa detección; cancelar vuelve al scanner. Denegar cámara conserva esta alternativa. Ambas fuentes terminan en el mismo resolver y las mismas reglas, evidencia y operación. La policy de lookup sigue limitando a 60 consultas por minuto y usuario; comandos, a 30 solicitudes por minuto y usuario.
 
-## Rutas utilizadas
+## Operación y evidencia
 
-Todas bajo `/api/v1`: GET `parking-lots?status=ACTIVE`, GET `dashboard/guard`, POST `parking/access/lookup`, POST `parking/check-in`, POST `parking/check-out`, GET `parking/inside`, GET `parking/movements`, GET/POST `incidents`, GET `incidents/{id}` y GET de URL privada de adjunto. Ingreso solo envía UserId, VehicleId y ParkingLotId; salida solo VehicleId. No se envían horas de ingreso/salida, duración ni espacios desde Android.
+El movimiento **OPEN actual del usuario** determina EXIT. Se muestra exclusivamente su vehículo, hora de entrada, parqueadero y duración aproximada; EligibleVehicles queda vacío. No se permite seleccionar otro vehículo ni iniciar otra entrada. Sin OPEN, corresponde ENTRY: cuenta ACTIVE, vehículo ACTIVE, dueño actual, registro vigente del periodo activo, reglas del tipo de miembro, ausencia de OPEN y evidencia compatible. El servidor revalida además parqueadero, zona y horario dentro de la transacción de ingreso.
 
-## Pruebas manuales a cargo del usuario
+Un vehículo elegible se selecciona automáticamente; dos o más requieren selección explícita mediante tarjetas con tipo, identificador, marca/modelo e imagen. Cero vehículos muestra un mensaje y permite otra lectura o búsqueda manual. PENDING, REJECTED e INACTIVE no ingresan sin OPEN. No existe límite de entradas por día: entrada/salida/entrada/salida son válidas en la misma fecha.
 
-1. Instalar el APK actual y conectar la API según `installation.md`. Para la demo del emulador use `.data/phase21/com.motobikepark.mobile-demo-emulator-Signed.apk` y 8086. Iniciar sesión como GUARD y como USER/GUARD/ADMIN; verificar navegación. ADMIN sin GUARD no debe ofrecer portería.
-2. Probar cero, uno y varios parqueaderos activos. Elegir uno, reiniciar sesión y comprobar que se recuerda únicamente para esa cuenta. Desactivar el elegido desde administración y actualizar; no debe conservar una selección inválida.
-3. Revisar contadores reales del dashboard y selección de parqueadero. No debe aparecer mapa, capacidad, puestos ni disponibilidad.
-4. Escanear carné QR/código de barras. Mantenerlo frente a la cámara: debe hacer una sola consulta. Probar código desconocido y cadena con forma de URL: no debe abrir navegador. Salir durante consulta y comprobar que no se navega por una respuesta tardía.
-5. Denegar cámara y realizar búsqueda manual por identificación. Probar permiso concedido, revocado, app en segundo plano y reactivación explícita; verificar liberación de cámara.
-6. Buscar usuario inactivo, usuario sin vehículos habilitados, uno con varios vehículos y uno con vehículo dentro. Revisar estados y acciones ofrecidas.
-7. Confirmar/cancelar ingreso, probar doble tap y verificar el vehículo dentro. Probar parqueadero cerrado, vehículo inactivo, registro vencido y usuario ya dentro.
-8. Abrir salida desde lookup y desde Dentro. Cancelar, confirmar y comprobar hora y duración devueltas. Una pantalla anterior ya cerrada no debe cerrar otro ingreso posterior.
-9. Cortar conectividad durante ingreso/salida. No debe repetirse silenciosamente la escritura. Recuperar conexión y usar VERIFICAR ESTADO; comprobar que el resultado coincide con backend antes de realizar otra acción.
-10. Filtrar/paginar Dentro e Historial, incluyendo entradas abiertas, fechas de Bogotá, resultados vacíos y errores. Registrar incidente desde un movimiento y revisar referencias sin reescribirlas.
-11. Crear incidente independiente con asociación opcional, fecha/hora opcional y adjuntos. Probar cancelar selección, archivos inválidos, límites y apertura privada en detalle. Revisar resolución existente, filtros y paginación; GUARD no debe resolver/cancelar.
-12. Comprobar teclado, desplazamiento, contraste, rotación y tamaños de texto. Logout o 401 debe cerrar la sesión; Atrás no debe recuperar portería ni adjuntos privados.
+La evidencia autoritativa es VehicleVerificationImage: TRANSIT_LICENSE_FRONT para carro/moto y BICYCLE_PHOTO para bicicleta. Se muestra placa o marco **registrado**, marca/modelo e imagen completa. El guarda compara físicamente vehículo y documento/foto. El OCR previo validó formato documental; **no verifica automáticamente la placa física ni se ejecuta Textract en portería**.
 
-No se ha ejecutado la interfaz ni los permisos nativos en dispositivo. Estas verificaciones quedan a cargo del usuario, según su autorización.
+La proyección del lookup incluye metadatos mínimos y URL del contenido privado, sin consultas por vehículo para obtener metadatos, StorageKey, imágenes Base64 en JSON ni URLs firmadas persistidas. La imagen original se descarga por el endpoint privado existente. El visor integrado cubre la pantalla y admite pinch hasta 8x, desplazamiento acotado y cerrar; no desmonta la cámara ni reactiva detección al cerrarse.
 
-## Archivos y comprobaciones automáticas
+Los legacy sin evidencia se excluyen de ENTRY y devuelven `VEHICLE_VERIFICATION_REQUIRED`: “El vehículo no tiene evidencia de verificación registrada.” La ausencia de imagen, contenido ilegible o fallo de descarga impide confirmar ENTRY. Se permite reintentar la carga. Si hay OPEN histórico, EXIT sigue disponible aunque falte evidencia, falle su descarga, venza el registro o se desactive el usuario/vehículo. No se usa una foto GENERAL como sustituto.
 
-- `Core/GuardServices.cs`: contratos móviles, filtros escapados, rutas de API, multipart de incidentes y mensajes de acceso.
-- `ViewModels/GuardViewModels.cs`: selección de parqueadero, permisos, búsqueda/escáner, resultados, ingreso/salida, verificación posterior, listas e incidentes.
-- `Pages/Guard/GuardPages.cs`: once pantallas, bindings, navegación y ciclo de vida de la cámara.
-- `Services/GuardPlatformServices.cs`: permiso de cámara y selección no sensible por cuenta en Preferences.
-- `MauiProgram.cs`, `AppShell.xaml.cs`, `UserPlatformServices.cs` y el proyecto Mobile: DI, rutas, Shell GUARD y dependencia ZXing.
-- `GuardFeatureTests.cs`: 29 casos nuevos sobre selección/paginación de parqueaderos, aislamiento por sesión, permisos, lecturas duplicadas y tardías, búsqueda manual, usuario inactivo, confirmación, doble envío, timeout, verificación y filtros/adjuntos.
-- `ParkingEndpointTests.Mobile.cs`: tres casos integrales nuevos con login móvil, scan/manual lookup, ingreso, incidente privado, Dentro, salida, historial y rechazo a ADMIN sin GUARD.
+## Estado y cámara
 
-Los primeros errores de compilación de las vistas y notificaciones fueron corregidos. Una prueba usaba un identificador de parqueadero diferente en cada respuesta; se corrigió para representar un parqueadero estable. La suite móvil final pasó sus 75 casos. Los resultados previos fallidos se conservan en TRX junto a las ejecuciones posteriores, sin ocultar errores.
+| Estado | Comportamiento |
+|---|---|
+| INITIALIZING | Comprueba sesión, lotes y permiso de cámara. |
+| SCANNING | Cámara montada y detección activa si hay permiso. |
+| PROCESSING_IDENTITY | Una sola consulta; detección pausada. |
+| MANUAL_LOOKUP | Formulario integrado; detección pausada. |
+| SELECTING_VEHICLE | Elección explícita entre varias tarjetas. |
+| CONFIRMING_ENTRY | Evidencia cargada y un único botón REGISTRAR INGRESO. |
+| CONFIRMING_EXIT | Movimiento exacto y un único botón REGISTRAR SALIDA. |
+| SUBMITTING | Botón bloqueado; no doble envío ni detección. |
+| SUCCESS_ENTRY / SUCCESS_EXIT | Resultado y CONTINUAR. |
+| ERROR | Mensaje controlado; volver a escanear o verificar resultado incierto. |
 
-## Resultado de validación
+CameraBarcodeReaderView se crea una vez por permanencia en pantalla. Procesar QR, elegir vehículo, confirmar o abrir zoom solo cambia IsDetecting; el control continúa montado. Eventos repetidos se reclaman una vez. CONTINUAR/cancelar limpia identidad, vehículo, movimiento, imagen y errores y regresa a SCANNING. Cambiar parqueadero invalida el contexto y descarta respuestas tardías.
 
-Compilación completa de UniversityParking.sln, incluido Android: cero errores y cero advertencias. Regresión integral: 687 pruebas aprobadas, cero fallos y cero omisiones (Domain 112, Application 196, Infrastructure 54, Api.E2E 250, Mobile 75). El TRX integral de API es `.data/phase18/TestResults/phase18_net10.0_20261007181842.trx`; los demás TRX de la misma ejecución están en esa carpeta.
+La cámara se desconecta al abandonar la página o detenerse la ventana. Al reanudarse se inicializa un contexto nuevo, sin procesar códigos antiguos. Cambiar sesión/token/perfil descarta el contexto y la imagen en memoria. Antes de un POST operativo se comprueba la sesión inicial; el handler HTTP verifica también el token esperado, como metadato local que nunca se transmite, para no enviar una operación con otro guarda.
 
-La revisión final ocultó la selección de ingreso para usuarios inactivos o con movimiento abierto; se recompiló el APK y se verificó nuevamente la suite móvil. No cambió el backend. Build y tests se ejecutan en el directorio aislado de artefactos sin detener la API que ya estaba en ejecución. No se modificaron los originales de references ni se crearon commits.
+## Salida exacta, incertidumbre y concurrencia
 
-Este resultado corresponde al cierre de Fase 18. Consulte README para el estado
-actual y user-manual.md para el manual consolidado.
+~~~json
+{"movementId":"UUID-del-movimiento-confirmado","vehicleId":"UUID-del-vehiculo"}
+~~~
+
+`POST /api/v1/parking/check-out` exige ambos UUID. Observa MovementId sin tracking, bloquea usuarios y vehículo en el orden compartido con los otros comandos y vuelve a leer **ese mismo MovementId con FOR UPDATE**. Debe estar OPEN y pertenecer a VehicleId. Cierra exactamente ese movimiento. Si Movement 1 se cerró y el vehículo creó Movement 2, una petición antigua de Movement 1 devuelve conflicto y deja Movement 2 abierto. La petición antigua que solo incluye VehicleId ya no es operativa.
+
+El botón de ingreso/salida es la confirmación; no abre otro diálogo genérico. Mobile no reintenta POST automáticamente. Para ENTRY genera MovementId antes de enviar y la API lo usa como identidad del movimiento; otros clientes pueden omitirlo y dejar que el servidor genere uno. No es una autorización ni cambia esquema. Reutilizar un UUID produce conflicto y no modifica el movimiento anterior.
+
+Ante timeout, red, 408, 5xx o respuesta inválida, Mobile consulta `GET /api/v1/parking/movements/{movementId}`. ENTRY solo reconoce su UUID, usuario, vehículo, parqueadero y guarda; EXIT reconoce ese UUID CLOSED y su vehículo. Si no puede verificarlo, bloquea otra confirmación y ofrece VERIFICAR ESTADO: “No fue posible confirmar el estado. Verifica antes de intentar nuevamente.” No considera un OPEN de otro intento como éxito. El resultado final y duración provienen del servidor.
+
+Los índices parciales únicos existentes `ux_parking_movements_open_user` y `ux_parking_movements_open_vehicle`, con `status = 'OPEN'`, garantizan un máximo de un OPEN por usuario y vehículo. Se conservan las comprobaciones de Application y la traducción de conflictos PostgreSQL. **No se crea migración ni índices duplicados**: no cambia persistencia.
+
+Vehículos dentro abre la misma pantalla con su MovementId, verifica el movimiento y obtiene metadatos por `GET /api/v1/parking/movements/{movementId}/vehicle`. Ambos GET exigen GUARD/ADMIN activo. Historial, dashboard, reportes e incidentes conservan sus endpoints. Se retiraron las páginas, ViewModels y rutas anteriores de scan/manual/result/check-in/check-out.
+
+## Validación automatizada y pruebas manuales pendientes
+
+La suite cubre parser, QR/manual, CardCode ajeno coincidente, evidencia compatible y legacy, ciclos diarios, salida exacta/antigua, reglas frescas, permisos, límites, auditoría, restricciones concurrentes PostgreSQL, estados Mobile, duplicados, sesión/lote/lifecycle, cargas de imagen, incertidumbre y matemáticas del zoom. Se ejecuta con bases temporales de tests y OCR sintético, sin AWS ni movimientos reales. El build incluye Android.
+
+Codex no usa cámara física, instala APK, escanea carné real ni ejecuta movimientos en producción. El usuario comprobará en dispositivo: continuidad real de cámara, permiso denegado, QR institucional, manual/cancelar, dos vehículos, comparación visual y pinch/pan de documentos y bicicletas; éxito/CONTINUAR, background y cambio de sesión/lote; evidencia fallida en ENTRY/EXIT; doble tap, pérdida de red y el movimiento antiguo. Ver también [evidencia de vehículos](vehicle-verification-image.md) y [límites del OCR documental](transit-license-ocr.md).

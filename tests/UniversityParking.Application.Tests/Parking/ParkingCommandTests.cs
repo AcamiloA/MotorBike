@@ -77,7 +77,7 @@ public sealed class ParkingCommandTests
         var context = new ParkingTestContext();
         context.Store.Roles = ["USER", role];
         Assert.Equal("FORBIDDEN", (await context.CheckIn.Handle(context.Request, default)).Error!.Code);
-        Assert.Equal("FORBIDDEN", (await context.CheckOut.Handle(new(context.Vehicle.Id), default)).Error!.Code);
+        Assert.Equal("FORBIDDEN", (await context.CheckOut.Handle(new(context.MovementId, context.Vehicle.Id), default)).Error!.Code);
     }
     [Fact]
     public async Task UnauthenticatedActorCannotCheckInOrOut()
@@ -85,7 +85,7 @@ public sealed class ParkingCommandTests
         var context = new ParkingTestContext();
         context.Store.IsAuthenticated = false;
         Assert.Equal(ErrorType.Unauthorized, (await context.CheckIn.Handle(context.Request, default)).Error!.Type);
-        Assert.Equal(ErrorType.Unauthorized, (await context.CheckOut.Handle(new(context.Vehicle.Id), default)).Error!.Type);
+        Assert.Equal(ErrorType.Unauthorized, (await context.CheckOut.Handle(new(context.MovementId, context.Vehicle.Id), default)).Error!.Type);
     }
     [Fact]
     public async Task StudentCarInconsistentDataIsRejectedByBackend()
@@ -128,27 +128,27 @@ public sealed class ParkingCommandTests
             case "registration-cancelled": context.Store.Registrations[0].Cancel(context.Clock.UtcNow, context.Store.User.Id, "Cancellation"); break;
             case "lot-inactive": context.Lot.Deactivate(context.Clock.UtcNow); break;
         }
-        var result = await context.CheckOut.Handle(new(context.Vehicle.Id), default);
+        var result = await context.CheckOut.Handle(new(context.MovementId, context.Vehicle.Id), default);
         Assert.True(result.IsSuccess);
         Assert.Equal(ParkingMovementStatus.CLOSED, result.Value.Status);
         Assert.Equal(context.Store.User.Id, result.Value.CheckOutGuardId);
         Assert.Equal(context.Clock.UtcNow - entered.CheckInAtUtc, result.Value.Duration);
         Assert.Equal("PARKING_CHECK_OUT", context.Store.Audits.Last().Action);
-        Assert.Equal("VEHICLE_NOT_INSIDE", (await context.CheckOut.Handle(new(context.Vehicle.Id), default)).Error!.Code);
+        Assert.Equal("VEHICLE_NOT_INSIDE", (await context.CheckOut.Handle(new(context.MovementId, context.Vehicle.Id), default)).Error!.Code);
     }
     [Fact]
     public async Task CheckoutRejectsMissingVehicleOrNoOpenMovement()
     {
         var context = new ParkingTestContext();
-        Assert.Equal("VEHICLE_NOT_FOUND", (await context.CheckOut.Handle(new(Guid.NewGuid()), default)).Error!.Code);
-        Assert.Equal("VEHICLE_NOT_INSIDE", (await context.CheckOut.Handle(new(context.Vehicle.Id), default)).Error!.Code);
+        Assert.Equal("VEHICLE_NOT_FOUND", (await context.CheckOut.Handle(new(Guid.NewGuid(), Guid.NewGuid()), default)).Error!.Code);
+        Assert.Equal("VEHICLE_NOT_INSIDE", (await context.CheckOut.Handle(new(context.MovementId, context.Vehicle.Id), default)).Error!.Code);
     }
     [Fact]
     public async Task LookupShowsEligibleVehicle_ThenCurrentMovementAndNoEligibleVehicles()
     {
         var context = new ParkingTestContext();
-        var lookup = new GetParkingAccessUserQueryHandler(context.Operation, context.Store, context.Store, context, context.Store, context.Store, context.Clock);
-        var before = await lookup.Handle(new("target-card", null), default);
+        var lookup = new GetParkingAccessUserQueryHandler(context.Operation, context.Store, context.Store, context, context.Store, context.Store, context.Clock, new QrIdentityParser());
+        var before = await lookup.Handle(new(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("target-id")), null), default);
         Assert.Single(before.Value.EligibleVehicles);
         await context.CheckIn.Handle(context.Request, default);
         var after = await lookup.Handle(new(null, "target-id"), default);

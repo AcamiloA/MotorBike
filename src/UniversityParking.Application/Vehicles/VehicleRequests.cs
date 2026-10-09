@@ -28,7 +28,7 @@ public sealed record GetVehiclePhotoContentQuery(Guid VehicleId, Guid PhotoId) :
 public sealed record GetVehicleDocumentContentQuery(Guid VehicleId, Guid DocumentId) : IQuery<FileContent>;
 public sealed record VehicleView(Guid Id, VehicleType Type, string? Plate, string? FrameNumber, string Brand, string Model,
     string Color, VehicleStatus Status, Guid? CurrentOwnerId, string? CurrentOwnerFullName, RegistrationState RegistrationState,
-    bool IsInside, Guid? VerificationImageId);
+    bool IsInside, Guid? VerificationImageId, VehicleVerificationImageType? VerificationImageType = null);
 public sealed record VehiclePhotoView(Guid Id, VehiclePhotoType Type, string OriginalFileName, string ContentType, long SizeBytes);
 public sealed record VehicleDocumentView(Guid Id, VehicleDocumentType Type, string? DocumentNumber, string OriginalFileName,
     string ContentType, long SizeBytes, DateOnly? IssuedOn, DateOnly? ExpiresOn);
