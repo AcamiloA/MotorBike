@@ -116,14 +116,15 @@ public sealed class VehicleCardView : Border
 }
 public sealed class UserHomePage : UserPage<UserHomeViewModel>
 {
+    private static Button NewsTitle(object vm) { var button = UserViews.Button("", "OpenNewsCommand", vm, "."); button.SetBinding(Button.TextProperty, "Title"); return button; }
     public UserHomePage(UserHomeViewModel vm) : base(vm, "Inicio", () => vm.LoadCommand.ExecuteAsync(null))
     {
-        var vehicles = new VerticalStackLayout(); vehicles.SetBinding(BindableLayout.ItemsSourceProperty, "Vehicles"); BindableLayout.SetItemTemplate(vehicles, new DataTemplate(() => new VehicleCardView(vm, "OpenVehicleCommand")));
-        var news = new VerticalStackLayout { Spacing = 12 }; news.SetBinding(BindableLayout.ItemsSourceProperty, "RecentNews"); BindableLayout.SetItemTemplate(news, UserViews.NewsTemplate(vm, "OpenNewsCommand"));
-        var history = new VerticalStackLayout { Spacing = 12 }; history.SetBinding(BindableLayout.ItemsSourceProperty, "RecentMovements"); BindableLayout.SetItemTemplate(history, UserViews.MovementTemplate());
-        Form(UserViews.Bound("Greeting"), UserViews.Text("Tus accesos y vehículos universitarios", true), UserViews.Card(UserViews.Stack(UserViews.Text("Vehículos activos"), UserViews.Bound("ActiveCount"))),
-            UserViews.Button("REGISTRAR VEHÍCULO", "RegisterCommand"), UserViews.Button("MIS VEHÍCULOS", "VehiclesCommand"), vehicles,
-            UserViews.Button("VER HISTORIAL", "HistoryCommand"), history, UserViews.Button("NOTICIAS", "NewsCommand"), news, UserViews.Button("MI PERFIL", "ProfileCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
+        var news = new VerticalStackLayout { Spacing = 12 }; news.SetBinding(BindableLayout.ItemsSourceProperty, "RecentNews");
+        BindableLayout.SetItemTemplate(news, new DataTemplate(() => UserViews.Card(UserViews.Stack(
+            NewsTitle(vm), UserViews.Bound("Published", true), UserViews.Bound("Item.Content")))));
+        var empty = UserViews.Text("No hay noticias o comunicados publicados.", true); empty.SetBinding(IsVisibleProperty, "IsNewsEmpty");
+        var retry = UserViews.Button("REINTENTAR", "LoadCommand"); retry.SetBinding(IsVisibleProperty, "CanRetry");
+        Form(news, empty, retry);
     }
 }
 public sealed class MyVehiclesPage : UserPage<MyVehiclesViewModel>

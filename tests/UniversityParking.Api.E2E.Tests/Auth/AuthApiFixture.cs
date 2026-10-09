@@ -104,7 +104,9 @@ public sealed class AuthApiFixture : IAsyncLifetime
                 ["Jwt:Key"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
                 ["Jwt:Issuer"] = "UniversityParking.Api",
                 ["Jwt:Audience"] = "UniversityParking.Mobile",
-                ["Jwt:ExpirationMinutes"] = "480"
+                ["Jwt:ExpirationMinutes"] = "480",
+                // Existing OCR tests explicitly exercise Enabled=true; OFF cases override this value.
+                ["DocumentOcr:Enabled"] = "true"
             };
             if (settings is not null)
                 foreach (var pair in settings) values[pair.Key] = pair.Value;

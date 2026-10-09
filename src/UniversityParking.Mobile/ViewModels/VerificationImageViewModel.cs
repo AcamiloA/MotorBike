@@ -36,7 +36,7 @@ public partial class VerificationImageViewModel(UserApiService api, IAttachmentP
     {
         if (!CanEdit || WriteUncertain) return;
         var version = lifecycle;
-        var image = await picker.PhotoAsync(camera);
+        var image = camera && VehicleType != "BICYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
         if (image is not null && version == lifecycle && loadedUserId == session.User?.Id)
             VerificationImage = AttachmentValidation.Validate(image.FileName, image.ContentType, image.Bytes, true);
     });
@@ -49,7 +49,7 @@ public partial class VerificationImageViewModel(UserApiService api, IAttachmentP
         var roles = session.User?.Roles ?? [];
         if (version != lifecycle || loadedUserId is null || loadedUserId != session.User?.Id || roles.Contains("GUARD") && !roles.Contains("ADMIN"))
         { Leave(); throw new UserInputException("La sesión cambió. Vuelve a consultar el vehículo."); }
-        ProcessingMessage = VehicleType == "BICYCLE" ? "Guardando imagen..." : "Validando Licencia de Tránsito...";
+        ProcessingMessage = VehicleType == "BICYCLE" ? "Guardando imagen..." : "Guardando evidencia...";
         try
         {
         var result = await api.UpdateVerificationImageAsync(VehicleId, VerificationImage);

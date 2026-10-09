@@ -63,14 +63,14 @@ public sealed class TransitLicenseTests
     public async Task ServiceMapsTechnicalFailureWithoutDocumentClassification()
     {
         var ocr = new TestOcr { Unavailable = true };
-        var result = await new TransitLicenseValidationService(ocr, validator).ValidateAsync(new("file.png", "image/png", ".png", [1]), default);
+        var result = await new TransitLicenseValidationService(ocr, validator, Microsoft.Extensions.Options.Options.Create(new DocumentOcrOptions { Enabled = true })).ValidateAsync(new("file.png", "image/png", ".png", [1]), default);
         Assert.Equal("DOCUMENT_OCR_UNAVAILABLE", result.Error!.Code);
     }
     [Fact]
     public async Task ServicePropagatesCallerCancellation()
     {
         using var source = new CancellationTokenSource(); source.Cancel(); var ocr = new TestOcr();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new TransitLicenseValidationService(ocr, validator).ValidateAsync(new("file.png", "image/png", ".png", [1]), source.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new TransitLicenseValidationService(ocr, validator, Microsoft.Extensions.Options.Options.Create(new DocumentOcrOptions { Enabled = true })).ValidateAsync(new("file.png", "image/png", ".png", [1]), source.Token));
         Assert.Equal(0, ocr.Calls);
     }
 }

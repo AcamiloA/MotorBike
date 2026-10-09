@@ -8,31 +8,42 @@ public partial class BusyViewModel : ObservableObject
     [ObservableProperty] private string errorMessage = "";
     public bool IsNotBusy => !IsBusy;
 }
-public partial class LoginViewModel(AuthService auth, IPublicAuthNavigation? publicNavigation = null) : BusyViewModel
+public partial class LoginViewModel(AuthService auth, IPublicAuthNavigation? publicNavigation = null, ILoginInputLifecycle? inputs = null) : BusyViewModel
 {
+    private int claimed;
+    public bool CanStart => !IsBusy && Volatile.Read(ref claimed) == 0;
     [RelayCommand] private async Task CreateStudentAccountAsync()
     {
-        if(IsBusy)return;IsBusy=true;ErrorMessage="";Password="";
+        if (IsBusy || Interlocked.CompareExchange(ref claimed, 1, 0) != 0) return;
+        OnPropertyChanged(nameof(CanStart)); ErrorMessage="";
         try
         {
+            if (inputs is not null) await inputs.PrepareAsync();
+            IsBusy=true; Password="";
             if(publicNavigation is null)throw new InvalidOperationException();
             await publicNavigation.ShowStudentRegistrationAsync();
         }
         catch(Exception){ErrorMessage="No fue posible abrir el registro. Intenta nuevamente.";}
-        finally{IsBusy=false;}
+        finally { IsBusy=false; Interlocked.Exchange(ref claimed,0); OnPropertyChanged(nameof(CanStart)); }
     }
     [ObservableProperty] private string identificationNumber = "";
     [ObservableProperty] private string password = "";
     [RelayCommand]
     private async Task SignInAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || Interlocked.CompareExchange(ref claimed, 1, 0) != 0) return;
+        OnPropertyChanged(nameof(CanStart));
         if (string.IsNullOrWhiteSpace(IdentificationNumber) || string.IsNullOrWhiteSpace(Password))
-        { ErrorMessage = "Ingresa tu identificación y contraseña."; return; }
-        IsBusy = true; ErrorMessage = "";
-        try { var result = await auth.LoginAsync(IdentificationNumber, Password); if (!result.IsSuccess) ErrorMessage = result.Error!.Message; }
+        { ErrorMessage = "Ingresa tu identificación y contraseña."; Interlocked.Exchange(ref claimed,0); OnPropertyChanged(nameof(CanStart)); return; }
+        var identification = IdentificationNumber; var password = Password; ErrorMessage = "";
+        try
+        {
+            if (inputs is not null) await inputs.PrepareAsync();
+            IsBusy = true;
+            var result = await auth.LoginAsync(identification, password); if (!result.IsSuccess) ErrorMessage = result.Error!.Message;
+        }
         catch (Exception) { ErrorMessage = "No fue posible iniciar sesión. Intenta nuevamente."; }
-        finally { Password = ""; IsBusy = false; }
+        finally { Password = ""; IsBusy = false; Interlocked.Exchange(ref claimed,0); OnPropertyChanged(nameof(CanStart)); }
     }
 }
 public partial class StartupViewModel(AuthService auth) : BusyViewModel

@@ -4,7 +4,7 @@
 
 AWS Textract DetectDocumentText extrae texto temporal desde los bytes JPEG/PNG de VerificationImage, máximo 5MB. Un validador determinístico local busca señales del formato y legibilidad. **Esto no determina autenticidad, falsedad, originalidad ni adulteración.** No hay consulta RUNT, hologramas, reverso, comparación definitiva de placa, scanner/zoomGUARD o endpointOCR público.
 
-Solo registros y reemplazos de CAR/MOTORCYCLE ejecutan OCR; bicicleta conserva su fotografía sin OCR. Imágenes existentes no se modifican ni analizan en lote; startup, lectura y renovación no ejecutan OCR. No se introduce migración.
+Solo registros y reemplazos de CAR/MOTORCYCLE ejecutan OCR cuando DocumentOcr.Enabled=true; el default es false. Bicicleta conserva su fotografía sin OCR, independientemente de la flag. Imágenes existentes no se modifican ni analizan en lote; startup, lectura y renovación no ejecutan OCR. No se introduce migración.
 
 ## Arquitectura y orden
 
@@ -14,9 +14,9 @@ Application declara IDocumentTextExtractor, ITransitLicenseFormatValidator e ITr
 Escritura autenticada y autorizada
   -> FileUploadValidator
   -> solo carro/moto: ValidationService
-       -> IDocumentTextExtractor (Textract, Document.Bytes)
-       -> FormatValidator (local)
-  -> solo VALID: upload + entidades/metadata + commit
+       -> Enabled=false: no extracción ni clasificación
+       -> Enabled=true: IDocumentTextExtractor -> FormatValidator -> solo VALID
+  -> upload + entidades/metadata + commit
   -> reemplazo: cleanup anterior después de commit confirmado
 ~~~
 
@@ -59,7 +59,7 @@ Mensajes exactos:
 
 Errores documentales no crean vehículo/ownership/registration/imagen ni suben archivos. Un reemplazo rechazado mantiene DB y archivo anteriores. No hay cola de revisión humana: REVIEW_REQUIRED no acepta la imagen.
 
-Mobile mantiene la misma pantalla y los campos. Muestra “Validando Licencia de Tránsito...” con IsBusy; para bicicleta muestra guardado normal. Error documental limpia solo la imagen; OCR_UNAVAILABLE la conserva y permite reintentar porque se rechazó antes de escribir. Otros resultados inciertos conservan controles existentes.
+Mobile mantiene la misma pantalla y los campos. Muestra “Guardando evidencia...” para carro/moto con IsBusy, sin afirmar que el documento ya fue validado; para bicicleta muestra guardado normal. Error documental limpia solo la imagen; OCR_UNAVAILABLE la conserva y permite reintentar porque se rechazó antes de escribir. Otros resultados inciertos conservan controles existentes.
 
 ## Configuración y despliegue pendiente del usuario
 
@@ -89,7 +89,7 @@ El permiso mínimo es textract:DetectDocumentText; no requiere AmazonTextractFul
 }
 ~~~
 
-Referencia oficial: [permisos para operaciones síncronas y menor privilegio](https://docs.aws.amazon.com/textract/latest/dg/security_iam_id-based-policy-examples.html). La región debe soportar Textract y el runtime tener permisos/credenciales; falta de servicio o configuración de credenciales retorna503durante escritura, no acepta la evidencia.
+Referencia oficial: [permisos para operaciones síncronas y menor privilegio](https://docs.aws.amazon.com/textract/latest/dg/security_iam_id-based-policy-examples.html). La región debe soportar Textract y el runtime tener permisos/credenciales; con Enabled=true, la falta de servicio o configuración de credenciales retorna503durante escritura y no acepta la evidencia. Enabled=false no intenta OCR y no devuelve DOCUMENT_OCR_UNAVAILABLE por falta de Textract.
 
 ## Privacidad, pruebas y límites
 
@@ -100,3 +100,29 @@ Las suites reemplazan IDocumentTextExtractor por fakes de texto sintético exclu
 Codex no llamó AWS real, cambió IAM/AWS/bucket/Railway, instaló APK o realizó pruebas manuales. El usuario acumula las pruebas manuales para después. Producción requiere su configuración externa de credenciales/permiso; no se acredita una validación real con Textract.
 
 No hubo commit, push, merge o PR. Las signed URLs, privacidad S3 y VehicleVerificationImage no se modifican.
+
+## Bandera DocumentOcr
+
+`Application/Documents/DocumentOcrOptions.cs` contiene Enabled=false por defecto. Infrastructure enlaza la sección DocumentOcr mediante opciones tipadas y valida su configuración. `TransitLicenseValidationService.ValidateAsync` decide antes de invocar IDocumentTextExtractor; el adaptador AWS no conoce la flag.
+
+~~~json
+"DocumentOcr": { "Enabled": false }
+~~~
+
+En Railway y cualquier host .NET: `DocumentOcr__Enabled=false` omite deliberadamente extracción y validación documental. CAR/MOTO siguen exigiendo una imagen compatible, JPEG/PNG, máximo 5 MB, con validación de firma/extensión/MIME, almacenamiento privado y VehicleVerificationImage. **OCR OFF no significa “documento validado”: solo se almacenó la evidencia requerida.** No se llama IDocumentTextExtractor, AWS Textract ni el validador de formato.
+
+`DocumentOcr__Enabled=true` mantiene todas las reglas, umbrales, estados y mensajes anteriores. Un fallo técnico conserva DOCUMENT_OCR_UNAVAILABLE/HTTP 503: no existe fallback que acepte una imagen por error de Textract. BICYCLE nunca usa OCR en ninguno de los modos. La configuración se toma al iniciar el host; cambiar la variable requiere reiniciarlo. Una flag inválida falla la configuración, sin asumir false silenciosamente. `.env.example` y Docker Compose incluyen el default apagado; no se modificaron variables reales, credenciales ni IAM.
+
+## Captura horizontal y recorte
+
+La cámara de CAR/MOTO abre una Activity Android dedicada en landscape con CameraX, ya disponible a través de las dependencias existentes. Usa cámara trasera, preview compatible y guía central con proporción aproximada de tarjeta. Preview e ImageCapture comparten ViewPort para representar el mismo campo de visión. Al capturar se fija la orientación durante esa exposición y se toman CropRect y RotationDegrees de ImageProxy.
+
+El procesamiento en memoria decodifica el buffer sin aplicar EXIF por separado, recorta primero el viewport compartido y rota según los metadatos CameraX. DocumentCaptureGeometry transforma el rectángulo visible al bitmap derecho: escala AspectFill/AspectFit, offsets de imagen/letterboxing, coordenadas en unidades iguales y límites de píxeles. Android mide preview y overlay en píxeles nativos, por lo que la densidad no introduce una segunda escala. El crop final conserva únicamente la región de la guía. La salida es JPEG regenerado sin EXIF de orientación, calidad 90, lado máximo 2048 sin ampliar imágenes pequeñas, y mantiene el límite de 5 MB.
+
+Se muestra el resultado recortado, con USAR FOTO y REPETIR. Solo USAR FOTO entrega el archivo al ViewModel. Repetir/cancelar libera preview y cámara; todos los ImageProxy y bitmaps se cierran/disponen. No se escribe la foto original ni se crean archivos temporales de captura: no hay duplicados persistentes que limpiar. La Activity tiene su propia política horizontal; al cerrarla vuelve la Activity MAUI con su política normal. El picker de galería y BICYCLE_PHOTO conservan el flujo existente, sin crop de licencia.
+
+Los bytes de ese crop confirmado son los enviados por el multipart existente, almacenados como evidencia y, si Enabled=true, entregados a OCR antes del upload. No se analiza una foto original distinta de la evidencia final. Los endpoints, privacidad S3, autorización y esquema no cambian.
+
+Las pruebas automatizadas cubren geometría, AspectFill/AspectFit, densidad, rotaciones, bounds, dimensiones, confirmación/repetición/cancelación, selección del picker por tipo y ambos modos OCR. El encuadre real y la orientación en cada dispositivo requieren las pruebas manuales del usuario; Codex no utilizó cámara ni instaló APK.
+
+Referencias: [transformaciones CameraX](https://developer.android.com/media/camera/camerax/transform-output) y [ViewPort compartido](https://developer.android.com/reference/androidx/camera/core/ViewPort).

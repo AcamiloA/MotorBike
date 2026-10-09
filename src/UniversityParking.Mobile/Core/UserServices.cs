@@ -24,6 +24,7 @@ public sealed record PickedAttachment(string FileName, string ContentType, byte[
 public interface IAttachmentPicker
 {
     Task<PickedAttachment?> PhotoAsync(bool camera);
+    Task<PickedAttachment?> TransitLicenseAsync();
     Task<PickedAttachment?> DocumentAsync();
 }
 public interface IFileViewer { Task OpenAsync(string fileName, string contentType, byte[] bytes); void ClearCache(); }
