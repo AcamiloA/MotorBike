@@ -92,3 +92,7 @@ PostgreSQL real mediante Testcontainers. Mobile.Tests verifica Core/ViewModels,
 no renderiza Android. La Fase 21 aprobó 745 casos; sus TRX se conservan.
 Instalación, cámara, permisos, lectores externos de documentos y revisión visual
 permanecen a cargo del usuario. No se acredita distribución Android ni cloud.
+
+## Integraciones universitarias futuras
+
+Application dispone de contratos y un orquestador por UniversityId; Options valida referencias y proveedores al inicio. No hay proveedores institucionales reales. El handler de registro conserva su flujo y AutoApprove; la política externa se incorporará posteriormente. Consulte [contratos, diagrama y configuración](university-integrations.md).

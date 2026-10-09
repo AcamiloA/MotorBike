@@ -26,6 +26,7 @@ var app = builder.Build();
 
 await app.ApplyStartupMigrationsAsync();
 await app.ApplyStartupSeedAsync();
+await app.ValidateUniversityIntegrationsAsync();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages(context => ProblemResponses.WriteStatusAsync(context.HttpContext));

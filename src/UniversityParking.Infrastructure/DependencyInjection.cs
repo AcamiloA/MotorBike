@@ -20,6 +20,9 @@ public static class DependencyInjection
 
         services.AddOptions<UniversityParking.Application.Auth.Registration.StudentRegistrationOptions>()
             .Bind(configuration.GetSection(UniversityParking.Application.Auth.Registration.StudentRegistrationOptions.SectionName)).ValidateOnStart();
+        services.AddOptions<UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions>()
+            .Bind(configuration.GetSection(UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions.SectionName),
+                options => options.ErrorOnUnknownConfiguration = true).ValidateOnStart();
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<UniversityParking.Infrastructure.Persistence.Seeding.DemoSeed>();
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(UserPersistenceBehavior<,>));

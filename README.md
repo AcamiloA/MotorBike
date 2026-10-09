@@ -25,6 +25,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 - [Manual USER, GUARD y ADMIN](docs/user-manual.md).
 - [Catálogo de universidades, UniversityId y revisión de migración](docs/university-catalog.md).
 - [Registro público de estudiantes, aprobación y configuración](docs/student-registration.md).
+- [Arquitectura para futuras integraciones institucionales; ninguna integración real](docs/university-integrations.md).
 - [Docker local y configuración Railway](docs/deployment.md).
 - [Seed, cuentas y APK demo](docs/demo.md).
 - [Respaldos PostgreSQL y archivos privados](docs/backups.md).
@@ -204,4 +205,3 @@ El parqueo opera con `Parking__TimeZone=America/Bogota` y persiste instantes UTC
 Las noticias publicadas están disponibles para usuarios autenticados; su administración es exclusiva de ADMIN. Consulta [la documentación de noticias](docs/news.md) para rutas, filtros y reglas de estado.
 
 Consulta [auditoría, dashboards y reportes](docs/reporting.md) para permisos, conteos por día de Bogotá e historiales paginados.
-
