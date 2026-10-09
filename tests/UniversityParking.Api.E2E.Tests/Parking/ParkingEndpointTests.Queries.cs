@@ -88,7 +88,7 @@ public sealed partial class ParkingEndpointTests
             await context.SaveChangesAsync();
         }
         clock.UtcNow = new(2026, 10, 8, 4, 0, 0, TimeSpan.Zero);
-        var lookup = (await (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
+        var lookup = (await (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
         Assert.Equal(vehicle.Id, Assert.Single(lookup.EligibleVehicles).Id);
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-in", Entry()), HttpStatusCode.Conflict, "PARKING_LOT_CLOSED");
     }
@@ -101,11 +101,11 @@ public sealed partial class ParkingEndpointTests
             (await context.Users.FindAsync(target.Id))!.Deactivate(clock.UtcNow);
             await context.SaveChangesAsync();
         }
-        var lookup = (await (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
+        var lookup = (await (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
         Assert.Equal("INACTIVE", lookup.User.Status);
         Assert.NotNull(lookup.CurrentMovement);
         Assert.Empty(lookup.EligibleVehicles);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id))).StatusCode);
     }
     [Fact]
     public async Task ExpiredDocumentsDoNotBlockEntryOrExit()
@@ -117,7 +117,7 @@ public sealed partial class ParkingEndpointTests
             await context.SaveChangesAsync();
         }
         await EnterAsync();
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id))).StatusCode);
     }
     [Fact]
     public async Task DifferentGuardsCompetingForSameUserDoNotDeadlock()
@@ -168,7 +168,7 @@ public sealed partial class ParkingEndpointTests
         using var failingClient = failingFactory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
         await LoginAsync(guard, failingClient);
         var response = command == "entry" ? await failingClient.PostAsJsonAsync("/api/v1/parking/check-in", Entry()) :
-            await failingClient.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id));
+            await failingClient.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id));
         await ErrorAsync(response, HttpStatusCode.InternalServerError, "INTERNAL_SERVER_ERROR");
         await using var context = fixture.CreateContext();
         if (command == "entry") Assert.Empty(await context.ParkingMovements.ToArrayAsync());
@@ -190,10 +190,10 @@ public sealed partial class ParkingEndpointTests
     public async Task LookupAndSharedCommandRateLimitsAreApplied()
     {
         for (var i = 0; i < 60; i++)
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value))).StatusCode);
-        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: target.CardCode.Value)), HttpStatusCode.TooManyRequests, "RATE_LIMIT_EXCEEDED");
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))))).StatusCode);
+        await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(QrPayload: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value)))), HttpStatusCode.TooManyRequests, "RATE_LIMIT_EXCEEDED");
         for (var i = 0; i < 15; i++)
-            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(vehicle.Id))).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(await MovementIdAsync(), vehicle.Id))).StatusCode);
         for (var i = 0; i < 15; i++)
             Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/v1/parking/check-in", Entry() with { ParkingLotId = Guid.NewGuid() })).StatusCode);
         await ErrorAsync(await client.PostAsJsonAsync("/api/v1/parking/check-in", Entry()), HttpStatusCode.TooManyRequests, "RATE_LIMIT_EXCEEDED");

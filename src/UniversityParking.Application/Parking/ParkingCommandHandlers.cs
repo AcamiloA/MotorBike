@@ -12,7 +12,7 @@ namespace UniversityParking.Application.Parking;
 public sealed class CheckInVehicleCommandHandler(AdministrationOperationContext operation, ICurrentUser actor,
     IUserRepository users, IVehicleRepository vehicles, IVehicleOwnershipRepository ownerships, IAcademicPeriodRepository periods,
     IVehicleRegistrationRepository registrations, IParkingLotRepository lots, IParkingMovementRepository movements,
-    IParkingMovementReadRepository reads, IParkingTimeZone timeZone, IClock clock, IUnitOfWork unitOfWork)
+    IParkingMovementReadRepository reads, IParkingTimeZone timeZone, IClock clock, IUnitOfWork unitOfWork, IVehicleEvidenceRepository evidence)
     : IRequestHandler<CheckInVehicleCommand, Result<ParkingMovementView>>
 {
     public async Task<Result<ParkingMovementView>> Handle(CheckInVehicleCommand request, CancellationToken cancellationToken)
@@ -50,7 +50,12 @@ public sealed class CheckInVehicleCommandHandler(AdministrationOperationContext 
         if (!lot.AllowsEntryAt(timeZone.GetLocalTime(now))) return Result<ParkingMovementView>.Failure(ParkingErrors.LotClosed);
         if (await movements.ExistsOpenByVehicleIdAsync(vehicle.Id, cancellationToken)) return Result<ParkingMovementView>.Failure(ParkingErrors.VehicleAlreadyInside);
         if (await movements.ExistsOpenByUserIdAsync(user.Id, cancellationToken)) return Result<ParkingMovementView>.Failure(ParkingErrors.UserAlreadyHasVehicleInside);
-        var movement = new ParkingMovement(user.Id, vehicle.Id, lot.Id, zone.Id, now, actor.UserId!.Value);
+        var image = await evidence.GetVerificationImageAsync(vehicle.Id, cancellationToken);
+        if (image is null || image.Type != VehicleVerificationImage.ForVehicle(vehicle.Type))
+            return Result<ParkingMovementView>.Failure(new("VEHICLE_VERIFICATION_REQUIRED", "El vehículo no tiene evidencia de verificación registrada.", ErrorType.Conflict));
+        if (request.MovementId is { } expectedId && await movements.GetByIdAsync(expectedId, cancellationToken) is not null)
+            return Result<ParkingMovementView>.Failure(new("PARKING_MOVEMENT_ID_ALREADY_USED", "El identificador de este intento ya fue utilizado. Consulta el estado actual.", ErrorType.Conflict));
+        var movement = new ParkingMovement(user.Id, vehicle.Id, lot.Id, zone.Id, now, actor.UserId!.Value, request.MovementId);
         await movements.AddAsync(movement, cancellationToken);
         await operation.AuditAsync("PARKING_CHECK_IN", "ParkingMovement", movement.Id, null,
             new { movement.UserId, movement.VehicleId, movement.ParkingLotId, movement.ParkingZoneId, movement.CheckInAt, movement.CheckInGuardId }, cancellationToken);
@@ -70,14 +75,16 @@ public sealed class CheckOutVehicleCommandHandler(AdministrationOperationContext
         if (await operation.CheckAccessAsync([RoleCodes.Guard], cancellationToken) is { } permission) return Result<ParkingMovementView>.Failure(permission);
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         if (await vehicles.GetByIdAsync(request.VehicleId, cancellationToken) is null) return Result<ParkingMovementView>.Failure(VehicleErrors.NotFound);
-        var observed = await movements.GetOpenByVehicleIdAsync(request.VehicleId, cancellationToken);
-        if (observed is null) return Result<ParkingMovementView>.Failure(ParkingErrors.VehicleNotInside);
+        var observed = await movements.GetByIdAsync(request.MovementId, cancellationToken);
+        if (observed is null || observed.Status != ParkingMovementStatus.OPEN || observed.VehicleId != request.VehicleId)
+            return Result<ParkingMovementView>.Failure(ParkingErrors.VehicleNotInside);
         foreach (var id in new[] { actor.UserId!.Value, observed.UserId }.Distinct().Order())
             await users.GetByIdForUpdateAsync(id, cancellationToken);
         if (await operation.CheckAccessAsync([RoleCodes.Guard], cancellationToken) is { } currentPermission) return Result<ParkingMovementView>.Failure(currentPermission);
         if (await vehicles.GetByIdForUpdateAsync(request.VehicleId, cancellationToken) is null) return Result<ParkingMovementView>.Failure(VehicleErrors.NotFound);
-        var movement = await movements.GetOpenByVehicleIdAsync(request.VehicleId, cancellationToken);
-        if (movement is null || movement.Id != observed.Id) return Result<ParkingMovementView>.Failure(ParkingErrors.VehicleNotInside);
+        var movement = await movements.GetByIdForUpdateAsync(request.MovementId, cancellationToken);
+        if (movement is null || movement.Status != ParkingMovementStatus.OPEN || movement.VehicleId != request.VehicleId)
+            return Result<ParkingMovementView>.Failure(ParkingErrors.VehicleNotInside);
         var now = clock.UtcNow;
         movement.Close(now, actor.UserId!.Value);
         await operation.AuditAsync("PARKING_CHECK_OUT", "ParkingMovement", movement.Id, new { Status = "OPEN" },
@@ -89,4 +96,3 @@ public sealed class CheckOutVehicleCommandHandler(AdministrationOperationContext
         return Result<ParkingMovementView>.Success(view);
     }
 }
-

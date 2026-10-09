@@ -35,73 +35,9 @@ public sealed class GuardHomePage : UserPage<GuardHomeViewModel>
         var lot = GuardViews.Picker("Lots.Lots", "Lots.Selected", "Name", "Parqueadero activo");
         lot.SelectedIndexChanged += async (_, _) => { if (!vm.IsBusy) await vm.UpdateCommand.ExecuteAsync(null); };
         Form(UserViews.Input(lot), UserViews.Button("CONSULTAR ESTADO", "UpdateCommand"), UserViews.Bound("Summary"),
-        UserViews.Button("ESCANEAR CARNÉ", "ScanCommand"), UserViews.Button("BUSCAR POR IDENTIFICACIÓN", "ManualCommand"), UserViews.Button("VER VEHÍCULOS DENTRO", "InsideCommand"),
+        UserViews.Button("REGISTRO DE ACCESO", "ScanCommand"), UserViews.Button("VER VEHÍCULOS DENTRO", "InsideCommand"),
         UserViews.Button("REGISTRAR INCIDENTE", "CreateIncidentCommand"), UserViews.Button("INCIDENTES", "IncidentsCommand"), UserViews.Button("HISTORIAL", "HistoryCommand"), UserViews.Button("ACTUALIZAR PARQUEADEROS", "LoadCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"));
     }
-}
-public sealed class ScanCardPage : UserPage<GuardLookupViewModel>
-{
-    private CameraBarcodeReaderView? camera; private readonly VerticalStackLayout holder = new(); private bool active;
-    public ScanCardPage(GuardLookupViewModel vm) : base(vm, "Escanear carné")
-    {
-        holder.HeightRequest = 300;
-        Form(UserViews.Text("Apunta al código del carné. Su contenido se utiliza únicamente para consultar acceso."), holder,
-            UserViews.Button("ACTIVAR / REINTENTAR CÁMARA", "StartCommand"), UserViews.Button("BUSCAR POR IDENTIFICACIÓN", "ManualCommand"));
-        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.IsScanning)) MainThread.BeginInvokeOnMainThread(UpdateCamera); };
-    }
-    private void UpdateCamera()
-    {
-        if (!active || !ViewModel.IsScanning) { Release(); return; }
-        if (camera is null)
-        {
-            camera = new CameraBarcodeReaderView { Options = new BarcodeReaderOptions { Formats = BarcodeFormats.All, AutoRotate = true, Multiple = false }, CameraLocation = CameraLocation.Rear, IsDetecting = true };
-            camera.BarcodesDetected += Detected; holder.Children.Add(camera);
-        }
-        camera.IsDetecting = true;
-    }
-    private void Detected(object? sender, BarcodeDetectionEventArgs e)
-    {
-        var code = e.Results.FirstOrDefault()?.Value;
-        MainThread.BeginInvokeOnMainThread(async () => { if (active) await ViewModel.ScanAsync(code); });
-    }
-    private void Release() { if (camera is null) return; camera.IsDetecting = false; camera.IsTorchOn = false; camera.BarcodesDetected -= Detected; holder.Children.Remove(camera); camera.Handler?.DisconnectHandler(); camera = null; }
-    protected override async void OnAppearing() { base.OnAppearing(); active = true; if (Window is { } window) { window.Stopped += Stopped; } await ViewModel.StartCommand.ExecuteAsync(null); }
-    private void Stopped(object? sender, EventArgs e) { ViewModel.Stop(); Release(); }
-    protected override void OnDisappearing() { active = false; ViewModel.Stop(); Release(); if (Window is { } window) { window.Stopped -= Stopped; } base.OnDisappearing(); }
-}
-public sealed class ManualSearchPage : UserPage<GuardLookupViewModel>
-{
-    public ManualSearchPage(GuardLookupViewModel vm) : base(vm, "Buscar por identificación") => Form(UserViews.Input(UserViews.Entry("IdentificationNumber", "Número de identificación")), UserViews.Button("BUSCAR", "SearchCommand"));
-    protected override void OnDisappearing() { ViewModel.Stop(); base.OnDisappearing(); }
-}
-public sealed class AccessResultPage : UserPage<AccessResultViewModel>
-{
-    public AccessResultPage(AccessResultViewModel vm) : base(vm, "Resultado de acceso")
-    {
-        var enter = UserViews.Button("REGISTRAR INGRESO", "EnterCommand"); enter.SetBinding(IsVisibleProperty, "CanEnter");
-        var exit = UserViews.Button("REGISTRAR SALIDA", "ExitCommand"); exit.SetBinding(IsVisibleProperty, "CanExit");
-        var vehicles = GuardViews.Picker("Vehicles", "SelectedVehicle", "Identifier", "Vehículo habilitado"); vehicles.SetBinding(IsVisibleProperty,"ShowVehicles");
-        Form(UserViews.Bound("UserSummary"), UserViews.Bound("MovementSummary"), vehicles, UserViews.Bound("EmptyMessage"), enter, exit);
-    }
-    public override void ApplyQueryAttributes(IDictionary<string, object> query) { if (query.TryGetValue("access", out var value) && value is AccessContext access) ViewModel.Access = access; }
-}
-public sealed class CheckInPage : UserPage<CheckInViewModel>
-{
-    public CheckInPage(CheckInViewModel vm) : base(vm, "Registrar ingreso", () => vm.LoadCommand.ExecuteAsync(null), once: true)
-    {
-        var confirm = UserViews.Button("CONFIRMAR INGRESO", "ConfirmCommand"); confirm.SetBinding(IsEnabledProperty, "CanSubmit");
-        Form(UserViews.Bound("Summary"), GuardViews.Lot(), confirm, UserViews.Bound("ResultMessage"), UserViews.Button("VERIFICAR ESTADO", "VerifyCommand"), UserViews.Button("FINALIZAR", "FinishCommand"));
-    }
-    public override void ApplyQueryAttributes(IDictionary<string, object> query) { if (query.TryGetValue("entry", out var value) && value is EntryContext entry) ViewModel.Entry = entry; }
-}
-public sealed class CheckOutPage : UserPage<CheckOutViewModel>
-{
-    public CheckOutPage(CheckOutViewModel vm) : base(vm, "Registrar salida")
-    {
-        var confirm = UserViews.Button("CONFIRMAR SALIDA", "ConfirmCommand"); confirm.SetBinding(IsEnabledProperty, "CanSubmit");
-        Form(UserViews.Bound("Summary"), confirm, UserViews.Bound("ResultMessage"), UserViews.Button("VERIFICAR ESTADO", "VerifyCommand"), UserViews.Button("FINALIZAR", "FinishCommand"));
-    }
-    public override void ApplyQueryAttributes(IDictionary<string, object> query) { if (query.TryGetValue("movement", out var value) && value is ParkingMovementResponse movement) ViewModel.Movement = movement; }
 }
 public sealed class VehiclesInsidePage : UserPage<VehiclesInsideViewModel>
 {
@@ -153,7 +89,7 @@ public static class GuardRoutes
 {
     public static void Register(IServiceProvider services)
     {
-        foreach (var route in new[] { ("guard-scan",typeof(ScanCardPage)),("guard-manual",typeof(ManualSearchPage)),("guard-access",typeof(AccessResultPage)),("guard-check-in",typeof(CheckInPage)),("guard-check-out",typeof(CheckOutPage)),("guard-inside",typeof(VehiclesInsidePage)),("guard-incidents",typeof(IncidentsPage)),("guard-create-incident",typeof(CreateIncidentPage)),("guard-incident-detail",typeof(IncidentDetailPage)),("guard-history",typeof(ParkingHistoryPage)) }) Routing.RegisterRoute(route.Item1,new Factory(services,route.Item2));
+        foreach (var route in new[] { ("guard-access-control",typeof(GuardAccessControlPage)),("guard-inside",typeof(VehiclesInsidePage)),("guard-incidents",typeof(IncidentsPage)),("guard-create-incident",typeof(CreateIncidentPage)),("guard-incident-detail",typeof(IncidentDetailPage)),("guard-history",typeof(ParkingHistoryPage)) }) Routing.RegisterRoute(route.Item1,new Factory(services,route.Item2));
     }
     private sealed class Factory(IServiceProvider services,Type type) : RouteFactory
     { public override Element GetOrCreate() => (Element)services.GetRequiredService(type); public override Element GetOrCreate(IServiceProvider provider) => (Element)provider.GetRequiredService(type); }

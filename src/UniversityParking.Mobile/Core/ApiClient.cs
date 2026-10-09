@@ -34,6 +34,11 @@ public sealed class AuthHttpHandler(IAuthSession session, IAppNavigation navigat
         var login = uri.AbsolutePath.EndsWith("/api/v1/auth/login", StringComparison.Ordinal)
             || uri.AbsolutePath.EndsWith("/api/v1/auth/register/student", StringComparison.Ordinal);
         var token = login ? null : await session.GetTokenAsync();
+        if (request.Options.TryGetValue(ApiClient.ExpectedSessionOption, out var expected))
+        {
+            if (expected != token)
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = JsonContent.Create(new ApiProblemDetails { Code = "SESSION_CHANGED", Detail = "La sesión cambió. Consulta nuevamente el acceso." }) };
+        }
         if (!string.IsNullOrWhiteSpace(token)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var response = await base.SendAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized && token is not null && await session.InvalidateAsync(token))
@@ -43,10 +48,12 @@ public sealed class AuthHttpHandler(IAuthSession session, IAppNavigation navigat
 }
 public sealed class ApiClient(HttpClient client)
 {
+    internal static readonly HttpRequestOptionsKey<string> ExpectedSessionOption = new("Motobike.ExpectedSession");
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     { Converters = { new JsonStringEnumConverter(allowIntegerValues: false) } };
     public Task<ApiResult<T>> GetAsync<T>(string path, CancellationToken token = default) => SendAsync<T>(HttpMethod.Get, path, null, token);
     public Task<ApiResult<T>> PostAsync<T>(string path, object body, CancellationToken token = default) => SendAsync<T>(HttpMethod.Post, path, body, token);
+    public Task<ApiResult<T>> PostForSessionAsync<T>(string path, object body, string expectedSession, CancellationToken token = default) => SendAsync<T>(HttpMethod.Post, path, body, token, expectedSession);
     public Task<ApiResult<bool>> PutAsync(string path, object body, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Put, path, body, token);
     public Task<ApiResult<bool>> PatchAsync(string path, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Patch, path, null, token);
     public Task<ApiResult<bool>> PatchAsync(string path, object body, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Patch, path, body, token);
@@ -55,13 +62,14 @@ public sealed class ApiClient(HttpClient client)
     public Task<ApiResult<bool>> PostCommandAsync(string path, object body, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Post, path, body, token);
     public Task<ApiResult<T>> MultipartAsync<T>(string path, HttpContent content, CancellationToken token = default) => SendAsync<T>(HttpMethod.Post, path, content, token);
     public Task<ApiResult<bool>> PutMultipartAsync(string path, HttpContent content, CancellationToken token = default) => SendAsync<bool>(HttpMethod.Put, path, content, token);
-    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, CancellationToken token)
+    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, CancellationToken token, string? expectedSession = null)
     {
         for (var attempt = 0; ; attempt++)
         {
             try
             {
                 using var request = new HttpRequestMessage(method, path);
+                if (expectedSession is not null) request.Options.Set(ExpectedSessionOption, expectedSession);
                 if (body is HttpContent content) request.Content = content;
                 else if (body is not null) request.Content = JsonContent.Create(body, options: Json);
                 using var response = await client.SendAsync(request, token);

@@ -44,144 +44,13 @@ public partial class GuardHomeViewModel(GuardApiService api, GuardLotSession lot
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () => { Dashboard = null; await lots.RefreshAsync(); if (lots.Selected is not null) await DashboardAsync(); else if (lots.Lots.Count == 0) ErrorMessage = "No hay parqueaderos activos."; });
     [RelayCommand] private Task UpdateAsync() => WorkAsync(DashboardAsync);
     private async Task DashboardAsync() { Dashboard = null; var result = await api.DashboardAsync(lots.RequireLot()); if (Accepted(result)) Dashboard = result.Value; }
-    [RelayCommand] private Task ScanAsync() => navigation.GoAsync("guard-scan");
-    [RelayCommand] private Task ManualAsync() => navigation.GoAsync("guard-manual");
+    [RelayCommand] private Task ScanAsync() => navigation.GoAsync("guard-access-control");
+    [RelayCommand] private Task ManualAsync() => navigation.GoAsync("guard-access-control");
     [RelayCommand] private Task InsideAsync() => navigation.GoAsync("guard-inside");
     [RelayCommand] private Task IncidentsAsync() => navigation.GoAsync("guard-incidents");
     [RelayCommand] private Task HistoryAsync() => navigation.GoAsync("guard-history");
     [RelayCommand] private Task CreateIncidentAsync() => WorkAsync(() => navigation.GoAsync("guard-create-incident", new Dictionary<string, object> { ["context"] = new IncidentContext(lots.RequireLot()) }));
     [RelayCommand] private Task LogoutAsync() => WorkAsync(auth.LogoutAsync);
-}
-public partial class GuardLookupViewModel(GuardApiService api, GuardLotSession lots, IUserNavigation navigation, IScannerPermission permission) : UserFeatureViewModel
-{
-    [ObservableProperty] private string identificationNumber = "";
-    [ObservableProperty] private bool isScanning;
-    private int scanClaimed; private int generation;
-    public void Stop() { generation++; IsScanning = false; Interlocked.Exchange(ref scanClaimed, 1); }
-    [RelayCommand] private Task StartAsync() => WorkAsync(async () =>
-    {
-        Stop(); var epoch = generation; lots.RequireGuard();
-        if (!await permission.RequestAsync()) { ErrorMessage = "No se concedió permiso para usar la cámara. Usa la búsqueda manual por identificación."; return; }
-        if (epoch != generation) return; Interlocked.Exchange(ref scanClaimed, 0); IsScanning = true;
-    });
-    public async Task ScanAsync(string? code)
-    {
-        if (!IsScanning || string.IsNullOrWhiteSpace(code) || Interlocked.CompareExchange(ref scanClaimed, 1, 0) != 0) return;
-        IsScanning = false; await LookupAsync(new(code, null));
-    }
-    [RelayCommand] private Task SearchAsync() => WorkAsync(async () =>
-    { lots.RequireGuard(); Required(IdentificationNumber, "La identificación", 50); await LookupCoreAsync(new(null, IdentificationNumber.Trim())); });
-    private Task LookupAsync(ParkingAccessRequest request) => WorkAsync(async () => { lots.RequireGuard(); Required(request.CardCode!, "El código de carné", 100); await LookupCoreAsync(request); });
-    private async Task LookupCoreAsync(ParkingAccessRequest request)
-    {
-        var epoch = generation; var result = await api.LookupAsync(request);
-        if (Accepted(result) && epoch == generation && lots.IsGuard) await navigation.GoAsync("guard-access", new Dictionary<string, object> { ["access"] = new AccessContext(request, result.Value!) });
-    }
-    [RelayCommand] private Task ManualAsync() { Stop(); return navigation.GoAsync("guard-manual"); }
-}
-public partial class AccessResultViewModel(GuardLotSession lots, IUserNavigation navigation) : UserFeatureViewModel
-{
-    [ObservableProperty] private AccessContext? access;
-    [ObservableProperty] private EligibleVehicleResponse? selectedVehicle;
-    public ObservableCollection<EligibleVehicleResponse> Vehicles { get; } = [];
-    public string UserSummary => Access is null ? "" : $"{Access.Result.User.FullName}\n{Access.Result.User.MemberType}\n{AdminPresentation.Status(Access.Result.User.Status)}";
-    public string MovementSummary => Access?.Result.CurrentMovement is { } movement ? $"Vehículo dentro: {movement.VehicleIdentifier}\n{movement.ParkingLotName}\nIngreso: {MobileDates.Display(movement.CheckInAtUtc)}" : "No hay vehículo dentro.";
-    public bool CanEnter => Access is { Result.User.Status: "ACTIVE", Result.CurrentMovement: null } && SelectedVehicle is not null && lots.IsGuard;
-    public bool CanExit => Access?.Result.CurrentMovement is not null && lots.IsGuard;
-    public bool ShowVehicles => Access is { Result.User.Status: "ACTIVE", Result.CurrentMovement: null };
-    public string EmptyMessage => Access?.Result.CurrentMovement is null && Vehicles.Count == 0 ? "No hay vehículos habilitados para ingreso." : "";
-    partial void OnAccessChanged(AccessContext? value)
-    {
-        Vehicles.Clear(); foreach (var vehicle in value?.Result.EligibleVehicles ?? []) Vehicles.Add(vehicle); SelectedVehicle = Vehicles.Count == 1 ? Vehicles[0] : null;
-        foreach (var property in new[] { nameof(UserSummary), nameof(MovementSummary), nameof(CanEnter), nameof(CanExit), nameof(EmptyMessage), nameof(ShowVehicles) }) OnPropertyChanged(property);
-    }
-    partial void OnSelectedVehicleChanged(EligibleVehicleResponse? value) => OnPropertyChanged(nameof(CanEnter));
-    [RelayCommand] private Task EnterAsync() => WorkAsync(async () => { lots.RequireGuard(); if (!CanEnter) throw new UserInputException("Selecciona un vehículo habilitado de un usuario activo."); await navigation.GoAsync("guard-check-in", new Dictionary<string, object> { ["entry"] = new EntryContext(Access!, SelectedVehicle!) }); });
-    [RelayCommand] private Task ExitAsync() => WorkAsync(async () => { lots.RequireGuard(); if (!CanExit) return; await navigation.GoAsync("guard-check-out", new Dictionary<string, object> { ["movement"] = Access!.Result.CurrentMovement! }); });
-}
-public partial class CheckInViewModel(GuardApiService api, GuardLotSession lots, IUserNavigation navigation) : UserFeatureViewModel
-{
-    [ObservableProperty] private EntryContext? entry;
-    [ObservableProperty] private bool completed;
-    [ObservableProperty] private bool needsVerification;
-    [ObservableProperty] private string resultMessage = "";
-    private Guid? attemptedLot; private int verificationGeneration;
-    public GuardLotSession Lots => lots;
-    public bool CanSubmit => !IsBusy && !Completed && !NeedsVerification && Entry is not null;
-    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e) { base.OnPropertyChanged(e); if (e.PropertyName is nameof(IsBusy) or nameof(Entry)) base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanSubmit))); }
-    public string Summary => Entry is null ? "" : $"{Entry.Access.Result.User.FullName} · {Entry.Access.Result.User.MemberType}\n{VehiclePresentation.TypeName(Entry.Vehicle.Type)} · {Entry.Vehicle.Identifier}\n{Entry.Vehicle.Brand} {Entry.Vehicle.Model}\nHora actual: {MobileDates.Display(DateTimeOffset.UtcNow)}";
-    partial void OnEntryChanged(EntryContext? value) => OnPropertyChanged(nameof(Summary));
-    partial void OnCompletedChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
-    partial void OnNeedsVerificationChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
-    [RelayCommand] private Task LoadAsync() => WorkAsync(lots.RefreshAsync);
-    [RelayCommand] private Task ConfirmAsync() => WorkAsync(async () =>
-    {
-        if (Completed || NeedsVerification || Entry is null) return; lots.RequireGuard(); await lots.RefreshAsync(); var lot = lots.RequireLot();
-        var fresh = await api.LookupAsync(Entry.Access.Request); if (!Accepted(fresh)) return;
-        if (fresh.Value!.User.Status != "ACTIVE" || fresh.Value.CurrentMovement is not null || !fresh.Value.EligibleVehicles.Any(x => x.Id == Entry.Vehicle.Id))
-        { ErrorMessage = "El estado cambió. Consulta nuevamente el carné antes de registrar el ingreso."; NeedsVerification = true; return; }
-        if (!await navigation.ConfirmAsync("Confirmar ingreso", "¿Confirmar el ingreso de este vehículo?")) return;
-        lots.RequireGuard(); attemptedLot = lot; var result = await api.CheckInAsync(fresh.Value.User.Id, Entry.Vehicle.Id, lot);
-        if (result.IsSuccess) { Completed = true; ResultMessage = $"Entrada registrada correctamente.\n{result.Value!.VehicleIdentifier} · {result.Value.ParkingLotName}\n{MobileDates.Display(result.Value.CheckInAtUtc)}"; }
-        else { ErrorMessage = GuardPresentation.AccessError(result.Error!); if (GuardPresentation.Uncertain(result.Error)) { NeedsVerification = true; await VerifyCoreAsync(); } }
-    });
-    [RelayCommand] private Task VerifyAsync() => WorkAsync(VerifyCoreAsync);
-    private async Task VerifyCoreAsync()
-    {
-        if (Entry is null) return; lots.RequireGuard(); var sequence = ++verificationGeneration;
-        var result = await api.LookupAsync(Entry.Access.Request);
-        if (!Accepted(result)) { NeedsVerification = true; return; }
-        if (sequence != verificationGeneration) return;
-        var movement = result.Value!.CurrentMovement;
-        if (movement?.VehicleId == Entry.Vehicle.Id && (attemptedLot is null || movement.ParkingLotId == attemptedLot))
-        { Completed = true; NeedsVerification = false; ErrorMessage = ""; ResultMessage = $"Estado verificado: el vehículo está dentro de {movement.ParkingLotName}.\nIngreso: {MobileDates.Display(movement.CheckInAtUtc)}"; }
-        else if (movement is not null || result.Value.User.Status != "ACTIVE" || !result.Value.EligibleVehicles.Any(x => x.Id == Entry.Vehicle.Id))
-        { NeedsVerification = true; ErrorMessage = "El estado cambió. Finaliza y realiza una nueva búsqueda."; }
-        else { NeedsVerification = false; ErrorMessage = "No hay ingreso registrado. Puedes confirmar de nuevo explícitamente."; }
-    }
-    [RelayCommand] private Task FinishAsync() => navigation.GoAsync("guard-home");
-}
-public partial class CheckOutViewModel(GuardApiService api, GuardLotSession lots, IUserNavigation navigation) : UserFeatureViewModel
-{
-    [ObservableProperty] private ParkingMovementResponse? movement;
-    [ObservableProperty] private bool completed;
-    [ObservableProperty] private bool needsVerification;
-    [ObservableProperty] private string resultMessage = "";
-    public bool CanSubmit => !IsBusy && !Completed && !NeedsVerification && Movement is not null;
-    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e) { base.OnPropertyChanged(e); if (e.PropertyName is nameof(IsBusy) or nameof(Movement)) base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanSubmit))); }
-    public string Summary => Movement is null ? "" : $"{Movement.UserFullName}\n{VehiclePresentation.TypeName(Movement.VehicleType)} · {Movement.VehicleIdentifier}\n{Movement.ParkingLotName}\nEntrada: {MobileDates.Display(Movement.CheckInAtUtc)}\nHora actual: {MobileDates.Display(DateTimeOffset.UtcNow)}\nDuración aproximada: {(DateTimeOffset.UtcNow - Movement.CheckInAtUtc).TotalMinutes:N0} minutos";
-    partial void OnMovementChanged(ParkingMovementResponse? value) => OnPropertyChanged(nameof(Summary));
-    partial void OnCompletedChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
-    partial void OnNeedsVerificationChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
-    [RelayCommand] private Task ConfirmAsync() => WorkAsync(async () =>
-    {
-        if (Completed || NeedsVerification || Movement is null) return; lots.RequireGuard();
-        // Verify this exact movement; an old page must never close a subsequent entry of the same vehicle.
-        await VerifyCoreAsync(); if (NeedsVerification || Completed) return;
-        if (!await navigation.ConfirmAsync("Confirmar salida", "¿Confirmar la salida de este vehículo?")) return;
-        lots.RequireGuard(); var result = await api.CheckOutAsync(Movement.VehicleId);
-        if (result.IsSuccess) { Completed = true; ResultMessage = $"Salida registrada correctamente.\n{MobileDates.Display(result.Value!.CheckOutAtUtc!.Value)}\nDuración: {result.Value.Duration}"; }
-        else { ErrorMessage = GuardPresentation.AccessError(result.Error!); if (GuardPresentation.Uncertain(result.Error)) { NeedsVerification = true; await VerifyCoreAsync(); } }
-    });
-    [RelayCommand] private Task VerifyAsync() => WorkAsync(VerifyCoreAsync);
-    private async Task VerifyCoreAsync()
-    {
-        if (Movement is null) return; lots.RequireGuard();
-        for (var page = 1; ; page++)
-        {
-            var result = await api.HistoryAsync(Movement.ParkingLotId, null, null, null, Movement.VehicleType == "BICYCLE" ? null : Movement.VehicleIdentifier, Movement.VehicleType == "BICYCLE" ? Movement.VehicleIdentifier : null, null, null, page);
-            if (!Accepted(result)) { NeedsVerification = true; return; }
-            var exact = result.Value!.Items.FirstOrDefault(x => x.MovementId == Movement.MovementId);
-            if (exact is not null)
-            {
-                NeedsVerification = false; ErrorMessage = "";
-                if (exact.Status == "CLOSED") { Completed = true; ResultMessage = $"Estado verificado: salida registrada.\n{MobileDates.Display(exact.CheckOutAtUtc!.Value)}\nDuración: {exact.Duration}"; }
-                return;
-            }
-            if (page >= result.Value.TotalPages) { NeedsVerification = true; ErrorMessage = "No fue posible verificar el movimiento. Finaliza y consulta el estado actual."; return; }
-        }
-    }
-    [RelayCommand] private Task FinishAsync() => navigation.GoAsync("guard-home");
 }
 public sealed record GuardMovementCard(ParkingMovementResponse Movement)
 {
@@ -205,7 +74,7 @@ public partial class VehiclesInsideViewModel(GuardApiService api, GuardLotSessio
         var value = result.Value!; Apply(new(value.Items.Select(x => new GuardMovementCard(x)).ToArray(), value.Page, value.PageSize, value.TotalCount, value.TotalPages));
         Counts = $"Total: {value.Counts.Total} · Carros: {value.Counts.Cars} · Motos: {value.Counts.Motorcycles} · Bicicletas: {value.Counts.Bicycles}";
     });
-    [RelayCommand] private Task ExitAsync(GuardMovementCard? item) => item is null ? Task.CompletedTask : navigation.GoAsync("guard-check-out", new Dictionary<string, object> { ["movement"] = item.Movement });
+    [RelayCommand] private Task ExitAsync(GuardMovementCard? item) => item is null ? Task.CompletedTask : navigation.GoAsync("guard-access-control", new Dictionary<string, object> { ["movement"] = item.Movement });
     [RelayCommand] private Task IncidentAsync(GuardMovementCard? item) => item is null ? Task.CompletedTask : navigation.GoAsync("guard-create-incident", new Dictionary<string, object> { ["context"] = new IncidentContext(item.Movement.ParkingLotId, item.Movement.UserId, item.Movement.VehicleId, item.Movement.MovementId, item.Movement.UserFullName, item.Movement.VehicleIdentifier, item.Movement.ParkingLotName) });
 }
 public partial class ParkingHistoryViewModel(GuardApiService api, GuardLotSession lots) : PagedUserViewModel<GuardMovementCard>
@@ -317,5 +186,3 @@ public partial class IncidentDetailViewModel(GuardApiService api, GuardLotSessio
     [RelayCommand] private Task OpenAsync(IncidentAttachmentResponse? attachment) => WorkAsync(async () =>
     { if (attachment is null) return; lots.RequireGuard(); var token = await session.GetTokenAsync(); var result = await api.FileAsync(attachment.ContentUrl); if (Accepted(result) && session.User is not null && token == await session.GetTokenAsync()) await viewer.OpenAsync(attachment.OriginalFileName, attachment.ContentType, result.Value!); });
 }
-
-

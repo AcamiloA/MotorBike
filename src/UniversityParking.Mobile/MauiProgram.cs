@@ -65,10 +65,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IScannerPermission, ScannerPermission>();
         builder.Services.AddSingleton<GuardLotSession>();
         builder.Services.AddTransient<GuardHomeViewModel>(); builder.Services.AddTransient<GuardHomePage>();
-        builder.Services.AddTransient<GuardLookupViewModel>(); builder.Services.AddTransient<ScanCardPage>(); builder.Services.AddTransient<ManualSearchPage>();
-        builder.Services.AddTransient<AccessResultViewModel>(); builder.Services.AddTransient<AccessResultPage>();
-        builder.Services.AddTransient<CheckInViewModel>(); builder.Services.AddTransient<CheckInPage>();
-        builder.Services.AddTransient<CheckOutViewModel>(); builder.Services.AddTransient<CheckOutPage>();
+        builder.Services.AddTransient<GuardAccessControlViewModel>(); builder.Services.AddTransient<GuardAccessControlPage>();
+        builder.Services.AddSingleton<IEvidenceImageValidator, EvidenceImageValidator>();
         builder.Services.AddTransient<VehiclesInsideViewModel>(); builder.Services.AddTransient<VehiclesInsidePage>();
         builder.Services.AddTransient<ParkingHistoryViewModel>(); builder.Services.AddTransient<ParkingHistoryPage>();
         builder.Services.AddTransient<IncidentsViewModel>(); builder.Services.AddTransient<IncidentsPage>();

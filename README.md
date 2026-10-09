@@ -146,7 +146,7 @@ Fase 17 completada: doce pantallas USER en Android para inicio, vehículos, regi
 
 Validación de Fase 17: compilación completa sin errores ni advertencias y 655 pruebas aprobadas: 112 de dominio, 196 de aplicación, 54 de infraestructura, 247 de API integral y 46 móviles. Cero fallos y cero omisiones. APK y TRX en `.data/phase17`. Las pruebas manuales quedan a cargo del usuario.
 
-Fase 18 implementada: once pantallas GUARD con escáner de carné y búsqueda manual, selección de parqueadero, dashboard, ingreso/salida confirmados, verificación de estado tras respuestas inciertas, vehículos dentro, incidentes con adjuntos privados e historial. Consulta [la guía de portería y pruebas manuales](docs/mobile-guard.md).
+Portería ofrece Registro de acceso en una pantalla persistente: QR Base64 UTF-8 por identificación, búsqueda manual integrada, operación determinada por OPEN, selección visual, evidencia privada con zoom, salida exacta por MovementId y verificación de respuestas inciertas. Dashboard, vehículos dentro, incidentes e historial siguen disponibles. Consulta [la guía GUARD](docs/mobile-guard.md).
 
 Regresión completa de Fase 18: 687 pruebas aprobadas, cero fallos y cero omisiones (Domain 112, Application 196, Infrastructure 54, Api.E2E 250 y Mobile 75). Compilación completa sin errores ni advertencias. APK y TRX en `.data/phase18`. Las comprobaciones en dispositivo quedan a cargo del usuario.
 

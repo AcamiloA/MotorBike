@@ -110,9 +110,7 @@ dotnet build src/UniversityParking.Mobile -p:ApiBaseUrl=http://10.0.2.2:8086/ --
 ```
 
 En dispositivo físico sustituir 10.0.2.2 por la IP real del equipo. Usar las
-identificaciones de la tabla y la contraseña del `.env`. Escanear DEMO-STUDENT
-requiere un código de barras/QR cuyo contenido sea exactamente ese texto; también
-puede escribirse la identificación en la búsqueda manual de GUARD.
+identificaciones de la tabla y la contraseña del `.env`. El QR demo de Student debe contener Base64 UTF-8 de 900000003: OTAwMDAwMDAz. También puede escribirse 900000003 en la búsqueda manual integrada. Los vehículos legacy del seed conservan sus fotos/documentos históricos y requieren registrar evidencia autoritativa antes de nuevas entradas; no se relabelan automáticamente.
 
 Login limita intentos por IP. `validate-demo.ps1` inicia sesión una vez por cada
 actor y reutiliza los tokens. Si se repite inmediatamente o hay otros intentos

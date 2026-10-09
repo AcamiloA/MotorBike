@@ -6,9 +6,10 @@ public sealed class GetParkingAccessUserQueryValidator : AbstractValidator<GetPa
 {
     public GetParkingAccessUserQueryValidator()
     {
-        RuleFor(x => x).Must(x => string.IsNullOrWhiteSpace(x.CardCode) != string.IsNullOrWhiteSpace(x.IdentificationNumber))
-            .WithMessage("Envía exactamente uno: código de carné o identificación.");
-        RuleFor(x => x.CardCode).MaximumLength(150).WithMessage("El código de carné admite hasta 150 caracteres.");
+        RuleFor(x => x).Must(x => (x.QrPayload is null) != (x.IdentificationNumber is null))
+            .WithMessage("Envía exactamente uno: QrPayload o identificación.");
+
+        RuleFor(x => x.IdentificationNumber).NotEmpty().When(x => x.IdentificationNumber is not null).WithMessage("La identificación es obligatoria.");
         RuleFor(x => x.IdentificationNumber).MaximumLength(50).WithMessage("La identificación admite hasta 50 caracteres.");
     }
 }
@@ -18,11 +19,12 @@ public sealed class CheckInVehicleCommandValidator : AbstractValidator<CheckInVe
     {
         RuleFor(x => x.UserId).NotEmpty().WithMessage("El usuario es obligatorio.");
         RuleFor(x => x.VehicleId).NotEmpty().WithMessage("El vehículo es obligatorio.");
+        RuleFor(x => x.MovementId).NotEqual(Guid.Empty).When(x => x.MovementId.HasValue).WithMessage("El movimiento no es válido.");
         RuleFor(x => x.ParkingLotId).NotEmpty().WithMessage("El parqueadero es obligatorio.");
     }
 }
 public sealed class CheckOutVehicleCommandValidator : AbstractValidator<CheckOutVehicleCommand>
-{ public CheckOutVehicleCommandValidator() => RuleFor(x => x.VehicleId).NotEmpty().WithMessage("El vehículo es obligatorio."); }
+{ public CheckOutVehicleCommandValidator() { RuleFor(x => x.MovementId).NotEmpty().WithMessage("El movimiento es obligatorio."); RuleFor(x => x.VehicleId).NotEmpty().WithMessage("El vehículo es obligatorio."); } }
 public abstract class ParkingPageValidator<T> : AbstractValidator<T> where T : IParkingPage
 {
     protected ParkingPageValidator()
@@ -47,6 +49,7 @@ public sealed class GetParkingMovementsQueryValidator : ParkingPageValidator<Get
         RuleFor(x => x.ParkingLotId).NotEqual(Guid.Empty).When(x => x.ParkingLotId.HasValue).WithMessage("El parqueadero no es válido.");
         RuleFor(x => x.VehicleType).IsInEnum().When(x => x.VehicleType.HasValue).WithMessage("El tipo de vehículo no es válido.");
         RuleFor(x => x.Status).IsInEnum().When(x => x.Status.HasValue).WithMessage("El estado no es válido.");
+        RuleFor(x => x.IdentificationNumber).NotEmpty().When(x => x.IdentificationNumber is not null).WithMessage("La identificación es obligatoria.");
         RuleFor(x => x.IdentificationNumber).MaximumLength(50).WithMessage("La identificación admite hasta 50 caracteres.");
         RuleFor(x => x.Plate).MaximumLength(100).WithMessage("La placa admite hasta 100 caracteres.");
         RuleFor(x => x.FrameNumber).MaximumLength(150).WithMessage("El número de marco admite hasta 150 caracteres.");

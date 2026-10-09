@@ -9,6 +9,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddLogging();
+        services.AddSingleton<UniversityParking.Application.Parking.IQrIdentityParser, UniversityParking.Application.Parking.QrIdentityParser>();
         services.AddSingleton<UniversityParking.Application.Documents.ITransitLicenseFormatValidator, UniversityParking.Application.Documents.TransitLicenseFormatValidator>();
         services.AddScoped<UniversityParking.Application.Documents.ITransitLicenseValidationService, UniversityParking.Application.Documents.TransitLicenseValidationService>();
         services.AddOptions<UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions>();

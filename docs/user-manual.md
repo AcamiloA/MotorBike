@@ -30,16 +30,9 @@ Entre a Portería y seleccione parqueadero activo; uno solo se selecciona
 automáticamente. El inicio muestra vehículos dentro, entradas/salidas del día e
 incidentes abiertos. No muestra capacidad ni espacios disponibles.
 
-Escanee el código de carné o use búsqueda manual por identificación. Denegar cámara
-no bloquea la búsqueda manual. El contenido escaneado se envía como código, sin
-abrir enlaces. El resultado identifica usuario y estado, movimiento abierto o
-vehículos habilitados. Un usuario inactivo no puede ingresar.
+Abra REGISTRO DE ACCESO: escanee el QR institucional Base64 UTF-8 o use REGISTRAR MANUALMENTE por identificación en la misma pantalla. Si existe un movimiento abierto, solo puede registrar la salida de ese vehículo. Sin movimiento abierto, elija un vehículo habilitado; uno se selecciona automáticamente y varios requieren elección. Revise placa/marco, marca/modelo y evidencia; toque la imagen para ampliar con los dedos y desplazarla. La comparación física es responsabilidad del guarda.
 
-Seleccione un solo vehículo para ingreso, revise parqueadero y confirme. Si el
-usuario está dentro, revise el movimiento concreto y confirme salida. La API
-devuelve la duración. Ante timeout se verifica estado; evite repetir la operación
-sin comprobar si quedó registrada. Salir del escáner o suspender la app detiene la
-cámara; reactivarla requiere acción explícita.
+Pulse el único botón REGISTRAR INGRESO o REGISTRAR SALIDA. CONTINUAR vuelve al scanner sin desmontar la cámara. Una entrada exige evidencia visible; una salida histórica sigue disponible aunque falte imagen o el usuario/vehículo esté inactivo. Ante respuesta incierta, use VERIFICAR ESTADO y no repita a ciegas. Salir o suspender la ventana libera la cámara; al volver se inicia un contexto nuevo.
 
 Vehículos dentro ofrece filtros y conteos por tipo. Historial permite fechas,
 vehículo, usuario y estados. Incidentes permite lista/detalle y registro con tipo,

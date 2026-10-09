@@ -32,12 +32,12 @@ public sealed class ParkingController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ParkingAccessResponse), 200)]
     public async Task<IActionResult> Lookup(ParkingAccessRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new GetParkingAccessUserQuery(request.CardCode, request.IdentificationNumber), cancellationToken);
+        var result = await sender.Send(new GetParkingAccessUserQuery(request.QrPayload, request.IdentificationNumber), cancellationToken);
         if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
         var value = result.Value;
         return Ok(new ParkingAccessResponse(new(value.User.Id, value.User.FullName, value.User.MemberType.ToString(), value.User.Status.ToString()),
             value.CurrentMovement is null ? null : Map(value.CurrentMovement),
-            value.EligibleVehicles.Select(x => new EligibleVehicleResponse(x.Id, x.Type.ToString(), x.Identifier, x.Brand, x.Model, x.Color)).ToArray()));
+            value.EligibleVehicles.Select(MapVehicle).ToArray(), value.CurrentVehicle is null ? null : MapVehicle(value.CurrentVehicle), value.EntryBlockCode, value.EntryBlockMessage));
     }
     [HttpPost("check-in")]
     [Authorize(Policy = PolicyNames.Guard)]
@@ -45,7 +45,7 @@ public sealed class ParkingController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ParkingMovementResponse), 201)]
     public async Task<IActionResult> CheckIn(CheckInVehicleRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new CheckInVehicleCommand(request.UserId, request.VehicleId, request.ParkingLotId), cancellationToken);
+        var result = await sender.Send(new CheckInVehicleCommand(request.UserId, request.VehicleId, request.ParkingLotId, request.MovementId), cancellationToken);
         return result.IsSuccess ? Created("/api/v1/parking/movements", Map(result.Value)) : ProblemResponses.Map(HttpContext, result.Error!);
     }
     [HttpPost("check-out")]
@@ -54,9 +54,29 @@ public sealed class ParkingController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ParkingMovementResponse), 200)]
     public async Task<IActionResult> CheckOut(CheckOutVehicleRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new CheckOutVehicleCommand(request.VehicleId), cancellationToken);
+        var result = await sender.Send(new CheckOutVehicleCommand(request.MovementId, request.VehicleId), cancellationToken);
         return result.IsSuccess ? Ok(Map(result.Value)) : ProblemResponses.Map(HttpContext, result.Error!);
     }
+    [HttpGet("movements/{movementId:guid}")]
+    [Authorize(Policy = PolicyNames.GuardOrAdmin)]
+    [ProducesResponseType(typeof(ParkingMovementResponse), 200)]
+    public async Task<IActionResult> Movement(Guid movementId, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new GetParkingMovementQuery(movementId), cancellationToken);
+        return result.IsSuccess ? Ok(Map(result.Value)) : ProblemResponses.Map(HttpContext, result.Error!);
+    }
+    private static EligibleVehicleResponse MapVehicle(EligibleVehicleView x) => new(x.Id, x.Type.ToString(), x.Identifier, x.Brand, x.Model, x.Color,
+        x.VerificationImage is { } image ? new(image.Id, image.Type.ToString(), image.ContentUrl) : null);
+
+    [HttpGet("movements/{movementId:guid}/vehicle")]
+    [Authorize(Policy = PolicyNames.GuardOrAdmin)]
+    [ProducesResponseType(typeof(EligibleVehicleResponse), 200)]
+    public async Task<IActionResult> MovementVehicle(Guid movementId, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new GetParkingMovementVehicleQuery(movementId), cancellationToken);
+        return result.IsSuccess ? Ok(MapVehicle(result.Value)) : ProblemResponses.Map(HttpContext, result.Error!);
+    }
+
     [HttpGet("inside")]
     [Authorize(Policy = PolicyNames.GuardOrAdmin)]
     [ProducesResponseType(typeof(VehiclesInsideResponse), 200)]

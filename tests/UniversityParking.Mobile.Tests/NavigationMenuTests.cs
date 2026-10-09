@@ -86,7 +86,7 @@ public sealed class NavigationMenuTests
     [InlineData("//app/user/home/my-vehicles/vehicle-detail/vehicle-edit", "my-vehicles")]
     [InlineData("//app/guard/home/guard-incidents/guard-incident-detail", "guard-incidents")]
     [InlineData("//app/admin/home/admin-users/admin-user-detail", "admin-users")]
-    [InlineData("//app/guard/home/guard-scan/guard-access/guard-check-in", "guard-home")]
+    [InlineData("//app/guard/home/guard-access-control", "guard-home")]
     public void DetailAndBackStacksRetainTheirOwningMenuItem(string route, string key)
         => Assert.Equal(key, NavigationMenu.ActiveKey(route));
 

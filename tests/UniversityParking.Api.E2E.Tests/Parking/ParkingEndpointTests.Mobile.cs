@@ -18,7 +18,7 @@ public sealed partial class ParkingEndpointTests
         Assert.True((await new AuthService(transport,session,nav).LoginAsync(guard.IdentificationNumber.Value,AuthApiFixture.Password)).IsSuccess);
         var api = new GuardApiService(transport);
         Assert.Equal(lot.Id,Assert.Single((await api.LotsAsync()).Value!.Items).Id);
-        var request = scan ? new ParkingAccessRequest(target.CardCode.Value) : new ParkingAccessRequest(null,target.IdentificationNumber.Value);
+        var request = scan ? new ParkingAccessRequest(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))) : new ParkingAccessRequest(null,target.IdentificationNumber.Value);
         var access = await api.LookupAsync(request); Assert.True(access.IsSuccess); Assert.Null(access.Value!.CurrentMovement); Assert.Equal(vehicle.Id,Assert.Single(access.Value.EligibleVehicles).Id);
         var entry = await api.CheckInAsync(target.Id,vehicle.Id,lot.Id); Assert.True(entry.IsSuccess,entry.Error?.Message); var movement = entry.Value!;
         Assert.Equal(vehicle.Id,(await api.LookupAsync(request)).Value!.CurrentMovement!.VehicleId);
@@ -28,7 +28,7 @@ public sealed partial class ParkingEndpointTests
         var detail = (await api.IncidentAsync(incident.Value!.Id)).Value!; Assert.Equal(movement.MovementId,detail.Incident.ParkingMovementId); var attachment=Assert.Single(detail.Attachments);
         var file = await api.FileAsync(attachment.ContentUrl); Assert.True(file.IsSuccess); Assert.NotEmpty(file.Value!);
         Assert.Equal(1,(await api.DashboardAsync(lot.Id)).Value!.OpenIncidents);
-        clock.UtcNow = clock.UtcNow.AddMinutes(47); var exit = await api.CheckOutAsync(vehicle.Id); Assert.True(exit.IsSuccess); Assert.Equal(TimeSpan.FromMinutes(47),exit.Value!.Duration);
+        clock.UtcNow = clock.UtcNow.AddMinutes(47); var exit = await api.CheckOutAsync(await MovementIdAsync(), vehicle.Id); Assert.True(exit.IsSuccess); Assert.Equal(TimeSpan.FromMinutes(47),exit.Value!.Duration);
         Assert.Equal("CLOSED",exit.Value.Status); Assert.Empty((await api.InsideAsync(lot.Id,null,null,1)).Value!.Items);
         Assert.Null((await api.LookupAsync(request)).Value!.CurrentMovement);
         var history = await api.HistoryAsync(lot.Id,new(2026,10,7),new(2026,10,7),target.IdentificationNumber.Value,null,null,"MOTORCYCLE","CLOSED",1);
@@ -41,9 +41,9 @@ public sealed partial class ParkingEndpointTests
     {
         var admin=await UserAsync(UniversityParking.Domain.Users.MemberType.STAFF,"ADMIN");await LoginAsync(admin);
         var api=new GuardApiService(new ApiClient(client));
-        Assert.True((await api.LookupAsync(new(target.CardCode.Value))).IsSuccess);
+        Assert.True((await api.LookupAsync(new(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(target.IdentificationNumber.Value))))).IsSuccess);
         Assert.Equal(403,(await api.CheckInAsync(target.Id,vehicle.Id,lot.Id)).Error!.HttpStatus);
-        Assert.Equal(403,(await api.CheckOutAsync(vehicle.Id)).Error!.HttpStatus);
+        Assert.Equal(403,(await api.CheckOutAsync(await MovementIdAsync(), vehicle.Id)).Error!.HttpStatus);
         Assert.Equal(403,(await api.DashboardAsync(lot.Id)).Error!.HttpStatus);
     }
     private sealed class MobileStorage:ISecretStorage

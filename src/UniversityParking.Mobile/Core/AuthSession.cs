@@ -17,8 +17,10 @@ public interface IAuthSession
     Task ClearAsync();
     Task<bool> InvalidateAsync(string expectedToken);
 }
-public sealed class AuthSession(ISecretStorage storage) : IAuthSession
+public interface IAuthSessionNotifications { event EventHandler? Changed; }
+public sealed class AuthSession(ISecretStorage storage) : IAuthSession, IAuthSessionNotifications
 {
+    public event EventHandler? Changed;
     private const string Key = "motobike.access-token";
     private readonly SemaphoreSlim gate = new(1, 1);
     private string? token;
@@ -36,18 +38,22 @@ public sealed class AuthSession(ISecretStorage storage) : IAuthSession
         await gate.WaitAsync();
         try { await storage.SetAsync(Key, value); token = value; loaded = true; User = user; }
         finally { gate.Release(); }
+        Changed?.Invoke(this, EventArgs.Empty);
     }
     public async Task<bool> TrySetUserAsync(string expectedToken, UserProfileResponse user)
     {
         await gate.WaitAsync();
-        try { if (!loaded || token != expectedToken) return false; User = user; return true; }
+        try { if (!loaded || token != expectedToken) return false; User = user; }
         finally { gate.Release(); }
+        Changed?.Invoke(this, EventArgs.Empty);
+        return true;
     }
     public async Task ClearAsync()
     {
         await gate.WaitAsync();
         try { storage.Remove(Key); token = null; loaded = true; User = null; }
         finally { gate.Release(); }
+        Changed?.Invoke(this, EventArgs.Empty);
     }
     public async Task<bool> InvalidateAsync(string expectedToken)
     {
@@ -55,9 +61,11 @@ public sealed class AuthSession(ISecretStorage storage) : IAuthSession
         try
         {
             if (!loaded || token != expectedToken) return false;
-            storage.Remove(Key); token = null; User = null; loaded = true; return true;
+            storage.Remove(Key); token = null; User = null; loaded = true;
         }
         finally { gate.Release(); }
+        Changed?.Invoke(this, EventArgs.Empty);
+        return true;
     }
 }
 public interface IAppNavigation

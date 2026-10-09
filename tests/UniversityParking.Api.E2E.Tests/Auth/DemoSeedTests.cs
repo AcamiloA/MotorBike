@@ -150,7 +150,7 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
             Assert.Equal(account.Key == 3 ? 2 : account.Key == 4 ? 1 : 0, vehicles.Length);
             if (account.Key == 3) Assert.DoesNotContain(vehicles, x => x.Type == "CAR");
             if (account.Role is not ("GUARD" or "ADMIN"))
-                Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: "DEMO-STUDENT"))).StatusCode);
+                Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(IdentificationNumber: "900000003"))).StatusCode);
             if (account.Role != "GUARD")
                 Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/v1/parking/check-in",
                     new CheckInVehicleRequest(DemoSeedData.Id(3), DemoSeedData.Id(30), DemoSeedData.Id(20)))).StatusCode);
@@ -167,13 +167,20 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
         var before = (await student.GetFromJsonAsync<PagedResponse<ParkingMovementResponse>>("/api/v1/parking/history/me"))!;
         Assert.Equal("CLOSED", Assert.Single(before.Items).Status);
         var guard = actors[2];
-        var access = await guard.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(CardCode: "DEMO-STUDENT"));
-        Assert.Equal(2, (await access.Content.ReadFromJsonAsync<ParkingAccessResponse>())!.EligibleVehicles.Count);
+        var access = await guard.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(IdentificationNumber: "900000003"));
+        Assert.Empty((await access.Content.ReadFromJsonAsync<ParkingAccessResponse>())!.EligibleVehicles);
+        Assert.Equal(HttpStatusCode.Conflict, (await guard.PostAsJsonAsync("/api/v1/parking/check-in", new CheckInVehicleRequest(DemoSeedData.Id(3), DemoSeedData.Id(30), DemoSeedData.Id(20)))).StatusCode);
+        await using (var evidenceContext = fixture.CreateContext())
+        {
+            foreach (var demoVehicle in await evidenceContext.Vehicles.ToArrayAsync()) evidenceContext.VehicleVerificationImages.Add(new(demoVehicle, $"test/{demoVehicle.Id}/image.jpg", "test.jpg", "image/jpeg", 100, clock.UtcNow));
+            await evidenceContext.SaveChangesAsync();
+        }
+        Assert.Equal(2, (await (await guard.PostAsJsonAsync("/api/v1/parking/access/lookup", new ParkingAccessRequest(IdentificationNumber: "900000003"))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!.EligibleVehicles.Count);
         var entry = await guard.PostAsJsonAsync("/api/v1/parking/check-in", new CheckInVehicleRequest(DemoSeedData.Id(3), DemoSeedData.Id(30), DemoSeedData.Id(20)));
         Assert.Equal(HttpStatusCode.Created, entry.StatusCode);
         Assert.Single((await guard.GetFromJsonAsync<VehiclesInsideResponse>("/api/v1/parking/inside"))!.Items);
         clock.UtcNow = clock.UtcNow.AddHours(1);
-        var exit = await guard.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest(DemoSeedData.Id(30)));
+        var exit = await guard.PostAsJsonAsync("/api/v1/parking/check-out", new CheckOutVehicleRequest((await entry.Content.ReadFromJsonAsync<ParkingMovementResponse>())!.MovementId, DemoSeedData.Id(30)));
         Assert.Equal(HttpStatusCode.OK, exit.StatusCode);
         var movement = (await exit.Content.ReadFromJsonAsync<ParkingMovementResponse>())!;
         Assert.Equal("CLOSED", movement.Status);

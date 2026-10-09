@@ -55,12 +55,7 @@ acceso, pero solo GUARD registra ingreso/salida. El [registro público de estudi
 
 ## Flujo de portería
 
-GUARD selecciona un parqueadero activo y escanea un carné o busca identificación.
-El código se trata como texto opaco. Si existe movimiento abierto se ofrece salida;
-en otro caso se muestran vehículos elegibles. El servidor valida actores, vehículo,
-propiedad, registro del periodo, horario y ausencia de movimientos incompatibles.
-Ingreso y salida requieren confirmación; la salida cierra el movimiento existente
-y calcula duración. No hay reservas, puestos, cupos, mapas ni barreras físicas.
+GUARD usa Registro de acceso con cámara persistente y búsqueda manual integrada. El QR Base64 UTF-8 transporta IdentificationNumber, sin aportar autenticidad ni permisos. Un OPEN actual determina EXIT con su vehículo exacto; sin OPEN, ENTRY requiere reglas vigentes y evidencia. Las imágenes se leen privadamente y se amplían para comparación humana, sin OCR en portería. Check-out recibe MovementId y VehicleId, bloquea y reconsulta el mismo movimiento; los índices únicos OPEN por usuario/vehículo permanecen. La confirmación es un único botón. No hay reservas, puestos, cupos, mapas ni barreras físicas.
 
 Las escrituras móviles no se reintentan automáticamente. Ante respuesta incierta
 se consulta el estado antes de permitir otra acción. El escáner y los formularios

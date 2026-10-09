@@ -62,6 +62,7 @@ internal sealed class AdministrationTestContext : IAcademicPeriodRepository, IPa
     public Task<bool> ExistsOpenByVehicleIdAsync(Guid id, CancellationToken ct) => Task.FromResult(false);
     public Task<bool> ExistsOpenByUserIdAsync(Guid id, CancellationToken ct) => Task.FromResult(false);
     Task<ParkingMovement?> IParkingMovementRepository.GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult<ParkingMovement?>(null);
+    Task<ParkingMovement?> IParkingMovementRepository.GetByIdForUpdateAsync(Guid id, CancellationToken ct) => Task.FromResult<ParkingMovement?>(null);
     public Task<ParkingMovement?> GetOpenByVehicleIdAsync(Guid id, CancellationToken ct) => Task.FromResult<ParkingMovement?>(null);
     public Task<ParkingMovement?> GetOpenByUserIdAsync(Guid id, CancellationToken ct) => Task.FromResult<ParkingMovement?>(null);
     public Task AddAsync(ParkingMovement movement, CancellationToken ct) => Task.CompletedTask;

@@ -17,7 +17,7 @@ public sealed class ParkingMovement : Entity
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public ParkingMovement(Guid userId, Guid vehicleId, Guid parkingLotId, Guid parkingZoneId,
-        DateTimeOffset checkInAt, Guid checkInGuardId)
+        DateTimeOffset checkInAt, Guid checkInGuardId, Guid? movementId = null) : base(movementId ?? Guid.NewGuid())
     {
         UserId = Guard.Id(userId, "usuario");
         VehicleId = Guard.Id(vehicleId, "vehículo");
@@ -27,6 +27,8 @@ public sealed class ParkingMovement : Entity
         CheckInAt = CreatedAt = UpdatedAt = Guard.Utc(checkInAt);
         Status = ParkingMovementStatus.OPEN;
     }
+
+    private ParkingMovement() { }
 
     public void Close(DateTimeOffset checkOutAt, Guid guardId)
     {
