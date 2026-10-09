@@ -14,6 +14,7 @@ public sealed class ActivateUserCommandHandler(UserOperationContext operation, I
         if (await operation.CheckAccessAsync(true, cancellationToken) is { } error) return Result.Failure(error);
         var user = await users.GetByIdAsync(request.UserId, cancellationToken);
         if (user is null) return Result.Failure(UserErrors.NotFound);
+        if (user.Status is not (UserStatus.ACTIVE or UserStatus.INACTIVE)) return Result.Failure(UserErrors.InvalidStatusTransition);
         if (user.Status == UserStatus.ACTIVE) return Result.Success();
         user.Activate(operation.UtcNow);
         await operation.AuditAsync("USER_ACTIVATED", user.Id, new { Status = "INACTIVE" }, new { Status = "ACTIVE" }, cancellationToken);
@@ -29,6 +30,7 @@ public sealed class DeactivateUserCommandHandler(UserOperationContext operation,
         if (await operation.CheckAccessAsync(true, cancellationToken) is { } error) return Result.Failure(error);
         var user = await users.GetByIdAsync(request.UserId, cancellationToken);
         if (user is null) return Result.Failure(UserErrors.NotFound);
+        if (user.Status is not (UserStatus.ACTIVE or UserStatus.INACTIVE)) return Result.Failure(UserErrors.InvalidStatusTransition);
         if (user.Status == UserStatus.INACTIVE) return Result.Success();
         if (await movements.ExistsOpenByUserIdAsync(user.Id, cancellationToken)) return Result.Failure(UserErrors.HasOpenParkingMovement);
         user.Deactivate(operation.UtcNow);

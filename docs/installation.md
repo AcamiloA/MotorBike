@@ -111,7 +111,7 @@ correcto con el mismo directorio de artefactos.
 
 ## Preparación
 
-Requiere .NET 10 SDK, MAUI Android 10, Android SDK/JDK compatibles y una API ejecutándose con su configuración externa de PostgreSQL y JWT. Para las suites de integración se requiere Docker. Las cuentas y roles se crean por los mecanismos administrativos del backend; la aplicación no ofrece registro público.
+Requiere .NET 10 SDK, MAUI Android 10, Android SDK/JDK compatibles y una API ejecutándose con su configuración externa de PostgreSQL y JWT. Para las suites de integración se requiere Docker. Las cuentas y roles se crean por los mecanismos administrativos del backend; los estudiantes también disponen de [registro público con aprobación configurable](student-registration.md). Los APK históricos no contienen este feature; para revisarlo utilice un build actual.
 
 La API usa por defecto el puerto HTTP 5197 en su perfil local. El emulador Android accede al equipo anfitrión mediante 10.0.2.2, no localhost. Para el dispositivo físico utiliza la URL accesible de tu servidor y cambia solo ApiBaseUrl al compilar. La dirección no contiene claves ni credenciales.
 
@@ -175,5 +175,3 @@ configuración explícita. Su APK para emulador ya apunta a 8086 y está en
 12. Completar las comprobaciones ADMIN de Fase 19 descritas en [la guía de administración](mobile-admin.md).
 
 No se incluye validación TLS insegura ni bypass de certificados. Un servidor HTTPS de desarrollo debe utilizar un certificado confiable para el dispositivo, o usar HTTP únicamente con la compilación Debug.
-
-

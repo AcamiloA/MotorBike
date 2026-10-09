@@ -42,3 +42,7 @@ Compilación completa de UniversityParking.sln, incluido Android: cero errores y
 
 Las pruebas móviles compilan Core y ViewModels compartidos. Las nuevas pruebas integrales ejercitan el cliente móvil con JWT real y PostgreSQL real, incluyendo registro multipart, archivos privados, edición, estado, noticias, historial, perfil, contraseña y renovación sin reemplazos. No ejecutan la interfaz ni permisos nativos Android.
 
+
+## Registro público de estudiantes
+
+Login ofrece CREAR CUENTA DE ESTUDIANTE sin sesión. El formulario usa universidades remotas, confirmación local y evita dobles envíos. Vuelve a Login sin autenticar; por defecto requiere aprobación ADMIN. Consulte [configuración, estados y escenarios manuales](student-registration.md). Pruebas visuales y nativas pendientes del usuario.

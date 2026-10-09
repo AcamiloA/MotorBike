@@ -4,11 +4,11 @@ La aplicación Android muestra MOTOBIKE PARK y SMART PARKING SYSTEM. Usa OpenSan
 
 ## Sesión y navegación
 
-Login recibe identificación y contraseña; valida campos, evita doble envío, presenta loading y errores en español y limpia la contraseña del ViewModel al finalizar. No incluye registro público ni recuperación de contraseña.
+Login recibe identificación y contraseña; valida campos, evita doble envío, presenta loading y errores en español y limpia la contraseña del ViewModel al finalizar. Incluye la acción secundaria de [registro público de estudiantes](student-registration.md); no incluye recuperación de contraseña.
 
 El token se guarda únicamente mediante SecureStorage. No se guarda en Preferences, archivos ni SQLite. Los datos del usuario permanecen en memoria. Después del login se carga el perfil real desde `/api/v1/users/me` antes de construir la navegación; no se utilizan perfiles inventados. Al reiniciar, se lee el token seguro y se valida contra el mismo endpoint.
 
-Un 401 autenticado elimina token y perfil y vuelve al login. La invalidación usa el token de la solicitud: respuestas atrasadas no eliminan una sesión nueva y varios 401 concurrentes solo disparan una navegación. Una respuesta tardía de startup tampoco reconstruye el perfil después de logout. Un 401 del propio login se trata como credenciales inválidas. Un 403 mantiene la sesión y muestra el mensaje de permiso denegado.
+Un 401 autenticado elimina token y perfil y vuelve al login. La invalidación usa el token de la solicitud: respuestas atrasadas no eliminan una sesión nueva y varios 401 concurrentes solo disparan una navegación. Una respuesta tardía de startup tampoco reconstruye el perfil después de logout. Un 401 de login conserva credenciales inválidas salvo ACCOUNT_PENDING/ACCOUNT_REJECTED, cuyos mensajes se muestran después de verificar la contraseña en backend. Un 403 mantiene la sesión y muestra el mensaje de permiso denegado.
 
 Un error de red conserva el token y muestra el estado de conectividad con REINTENTAR. Logout elimina la sesión segura y reemplaza la raíz de navegación. El login vive fuera del Shell; no queda en la pila de navegación autenticada.
 
@@ -18,7 +18,7 @@ El Shell combina las áreas que correspondan a los roles reales USER, GUARD y AD
 
 ApiOptions centraliza BaseUrl y se inyecta junto con HttpClient, AuthService, AuthSession, navegación, páginas y ViewModels. El valor se compila mediante la propiedad MSBuild ApiBaseUrl. Debug utiliza por defecto `http://10.0.2.2:5197/`, correspondiente al perfil HTTP local de la API. Release exige una URL HTTPS explícita; no se incluye una dirección de despliegue inventada.
 
-El handler Bearer agrega el token solo a solicitudes del origen configurado y omite el login. Las redirecciones automáticas están deshabilitadas. El cliente interpreta ApiProblemDetails (Status, Title, Detail, Code, TraceId, Errors) y no muestra JSON, excepciones, SQL ni trazas técnicas. Los errores de red y respuesta inválida usan mensajes propios.
+El handler Bearer agrega el token solo a solicitudes del origen configurado y omite login y registro público de estudiantes. Las redirecciones automáticas están deshabilitadas. El cliente interpreta ApiProblemDetails (Status, Title, Detail, Code, TraceId, Errors) y no muestra JSON, excepciones, SQL ni trazas técnicas. Los errores de red y respuesta inválida usan mensajes propios.
 
 Timeout: 20 segundos por intento. Solo GET admite un reintento automático, ante fallo de red, timeout o HTTP 408/502/503/504. No se reintentan POST, 401, 403 ni 429. No hay refresh token ni cola offline.
 
@@ -40,4 +40,3 @@ El área USER ahora contiene las doce pantallas funcionales descritas en [la gu�
 ## Evolución en Fase 19
 
 El área ADMIN utiliza dashboard y navegación administrativa funcional, descritos en [la guía ADMIN](mobile-admin.md). Mi cuenta reutiliza perfil y contraseña. Los roles propios modificados exigen nueva autenticación. El APK incluye bibliotecas .NET para instalación directa; las cifras anteriores conservan el resultado histórico de Fase 16.
-

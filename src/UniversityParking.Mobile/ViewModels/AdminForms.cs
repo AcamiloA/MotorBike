@@ -95,7 +95,7 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
         var kind=Enum.Parse<UserMemberType>(Member.Code);var career=string.IsNullOrWhiteSpace(Career)?null:Career.Trim();
         if(IsNew)
         {
-            Required(Identification,"La identificación",50);if(InitialPassword.Length<8||!InitialPassword.Any(char.IsUpper)||!InitialPassword.Any(char.IsLower)||!InitialPassword.Any(char.IsDigit))throw new UserInputException("La contraseña inicial requiere 8 caracteres, mayúscula, minúscula y número.");
+            Required(Identification,"La identificación",50);if(!PasswordPresentation.IsValid(InitialPassword))throw new UserInputException("La contraseña inicial requiere 8 caracteres, mayúscula, minúscula y número.");
             var roles=new List<string>{"USER"};if(AddGuard)roles.Add("GUARD");if(AddAdmin)roles.Add("ADMIN");
             try {var result=await api.CreateUserAsync(new(Identification.Trim(),FullName.Trim(),UniversityId,career,kind,CardCode.Trim(),InitialPassword,roles));if(!Mutation(result))return;Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=result.Value!.Id});}
             finally{InitialPassword="";}
@@ -118,8 +118,11 @@ public partial class AdminUserDetailViewModel(AdminApiService api,IAuthSession s
     [ObservableProperty] private bool writeUncertain;
     public IReadOnlyList<TypeChoice> Roles {get;}=[new("GUARD","GUARD"),new("ADMIN","ADMIN")];
     public string Summary=>User is null?"":$"{User.FullName}\n{User.IdentificationNumber} · {AdminPresentation.Member(User.MemberType)}\n{User.UniversityName} · {User.Career}\nCarné: {User.CardCode}\n{AdminPresentation.Status(User.Status)}\nRoles: {string.Join(", ",User.Roles)}";
-    public string StatusAction=>User?.Status=="ACTIVE"?"DESACTIVAR USUARIO":"ACTIVAR USUARIO";
-    partial void OnUserChanged(UserProfileResponse? value){OnPropertyChanged(nameof(Summary));OnPropertyChanged(nameof(StatusAction));}
+    public string StatusAction=>User?.Status=="ACTIVE"?"DESACTIVAR USUARIO":User?.Status=="INACTIVE"?"ACTIVAR USUARIO":"";
+    public bool ShowOperationalStatus=>User?.Status is "ACTIVE" or "INACTIVE";
+    public bool IsPendingRegistration=>User is {Status:"PENDING",MemberType:"STUDENT"};
+    public bool CanReviewRegistration=>IsPendingRegistration&&!IsBusy&&!WriteUncertain;
+    partial void OnUserChanged(UserProfileResponse? value){OnPropertyChanged(nameof(Summary));OnPropertyChanged(nameof(StatusAction));OnPropertyChanged(nameof(ShowOperationalStatus));OnPropertyChanged(nameof(IsPendingRegistration));OnPropertyChanged(nameof(CanReviewRegistration));}
     public Task LoadAsync()=>LoadPageAsync();
     protected override Task LoadPageAsync()=>WorkAsync(ReadAsync);
     private async Task ReadAsync()
@@ -129,10 +132,29 @@ public partial class AdminUserDetailViewModel(AdminApiService api,IAuthSession s
     }
     [RelayCommand] private Task EditAsync()=>WorkAsync(async()=>{AdminPresentation.RequireAdmin(session);await navigation.GoAsync("admin-user-form",new Dictionary<string,object>{["userId"]=UserId});});
     [RelayCommand] private Task OpenVehicleAsync(AdminRow? row)=>row?.Value is VehicleResponse vehicle?navigation.GoAsync("admin-vehicle-detail",new Dictionary<string,object>{["vehicleId"]=vehicle.Id}):Task.CompletedTask;
+    [RelayCommand] private Task ApproveRegistrationAsync()=>ReviewAsync(true);
+    [RelayCommand] private Task RejectRegistrationAsync()=>ReviewAsync(false);
+    private Task ReviewAsync(bool approve)=>WorkAsync(async()=>
+    {
+        AdminPresentation.RequireAdmin(session);
+        if(!IsPendingRegistration||WriteUncertain)return;
+        var id=UserId;var accountId=session.User!.Id;
+        if(!await navigation.ConfirmAsync(approve?"Aprobar registro":"Rechazar registro",
+            $"{(approve?"¿Aprobar":"¿Rechazar")} el registro de {User!.FullName}?"))return;
+        AdminPresentation.RequireAdmin(session);
+        if(session.User?.Id!=accountId||UserId!=id)return;
+        if(Mutation(await api.ReviewStudentAsync(id,approve)))await ReadAsync();
+    });
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if(e.PropertyName is nameof(IsBusy) or nameof(WriteUncertain))
+            base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanReviewRegistration)));
+    }
     [RelayCommand] private Task HistoryAsync()=>navigation.GoAsync("admin-reports",new Dictionary<string,object>{["userId"]=UserId,["identification"]=User?.IdentificationNumber??""});
     private bool Mutation(ApiResult<bool> result){if(Accepted(result))return true;if(GuardPresentation.Uncertain(result.Error)){WriteUncertain=true;ErrorMessage="No se confirmó la operación. Actualiza el detalle antes de intentarlo de nuevo.";}return false;}
     [RelayCommand] private Task StatusAsync()=>WorkAsync(async()=>
-    {if(User is null||WriteUncertain)return;AdminPresentation.RequireAdmin(session);var active=User.Status!="ACTIVE";if(!active&&!await navigation.ConfirmAsync("Desactivar usuario",$"¿Desactivar a {User.FullName}?"))return;if(Mutation(await api.UserStatusAsync(UserId,active))){if(!active&&session.User?.Id==UserId){await session.ClearAsync();await appNavigation.ShowLoginAsync("Tu cuenta fue desactivada.");}else await ReadAsync();}});
+    {if(User is null||WriteUncertain||!ShowOperationalStatus)return;AdminPresentation.RequireAdmin(session);var active=User.Status=="INACTIVE";if(!active&&!await navigation.ConfirmAsync("Desactivar usuario",$"¿Desactivar a {User.FullName}?"))return;if(Mutation(await api.UserStatusAsync(UserId,active))){if(!active&&session.User?.Id==UserId){await session.ClearAsync();await appNavigation.ShowLoginAsync("Tu cuenta fue desactivada.");}else await ReadAsync();}});
     [RelayCommand] private Task AssignRoleAsync()=>RoleAsync(false);
     [RelayCommand] private Task RemoveRoleAsync()=>RoleAsync(true);
     private Task RoleAsync(bool remove)=>WorkAsync(async()=>

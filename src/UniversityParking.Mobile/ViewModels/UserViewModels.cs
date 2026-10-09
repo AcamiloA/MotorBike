@@ -323,8 +323,7 @@ public partial class ChangePasswordViewModel(UserApiService api, IUserNavigation
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(CurrentPassword) || NewPassword != Confirmation || NewPassword.Length < 8 ||
-                !NewPassword.Any(char.IsUpper) || !NewPassword.Any(char.IsLower) || !NewPassword.Any(char.IsDigit))
+            if (string.IsNullOrWhiteSpace(CurrentPassword) || NewPassword != Confirmation || !PasswordPresentation.IsValid(NewPassword))
                 throw new UserInputException("Completa la contraseña actual y confirma una nueva de al menos 8 caracteres con mayúscula, minúscula y número.");
             if (!Accepted(await api.ChangePasswordAsync(CurrentPassword, NewPassword))) return;
             await navigation.MessageAsync("Contraseña", "Contraseña actualizada correctamente."); await navigation.BackAsync();

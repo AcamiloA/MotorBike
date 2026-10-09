@@ -14,6 +14,8 @@ public static class RateLimitRegistration
             // The global limiter skips anonymous endpoints, so explicitly cover public reference data.
             options.AddPolicy(RateLimitPolicies.PublicCatalog, context => Window(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown", RateLimitPolicies.GeneralPermitLimit));
+            options.AddPolicy(RateLimitPolicies.StudentRegistration, context => Window(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown", RateLimitPolicies.StudentRegistrationPermitLimit));
             options.AddPolicy(RateLimitPolicies.Login, context => Window(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown", RateLimitPolicies.LoginPermitLimit));
             options.AddPolicy(RateLimitPolicies.Lookup, context => context.User.Identity?.IsAuthenticated == true

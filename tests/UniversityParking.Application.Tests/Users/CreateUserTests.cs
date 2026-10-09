@@ -25,7 +25,7 @@ public sealed class CreateUserTests
         users.Values.Add(admin.Id, admin);
         actor.UserId = admin.Id;
         handler = new(new UserOperationContext(actor, users, roles, audits, clock, new TestRequestContext()),
-            users, credentials, roles, new FakePasswordHasher(), unitOfWork, universities);
+            users, roles, unitOfWork, universities, new AccountProvisioner(users, credentials, roles, new FakePasswordHasher()));
     }
     private static CreateUserCommand Request() => new("000123", "Estudiante", new Guid("a1100000-0000-4000-8000-000000000001"), "Ingeniería",
         MemberType.STUDENT, "STUDENT-CARD", "TestPassword1");

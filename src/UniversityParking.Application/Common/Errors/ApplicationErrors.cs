@@ -4,6 +4,8 @@ namespace UniversityParking.Application.Common.Errors;
 
 public static class AuthErrors
 {
+    public static Error AccountPending { get; } = new("ACCOUNT_PENDING", "Tu registro está pendiente de aprobación.", ErrorType.Unauthorized);
+    public static Error AccountRejected { get; } = new("ACCOUNT_REJECTED", "Tu solicitud de registro no fue aprobada.", ErrorType.Unauthorized);
     public static Error InvalidCredentials { get; } = new("AUTH_INVALID_CREDENTIALS", "Credenciales inválidas.", ErrorType.Unauthorized);
     public static Error InvalidCurrentPassword { get; } = new("AUTH_INVALID_CREDENTIALS", "La contraseña actual no coincide.", ErrorType.Validation);
     public static Error UserInactive { get; } = new("AUTH_USER_INACTIVE", "El usuario está inactivo.", ErrorType.Unauthorized);
@@ -11,6 +13,7 @@ public static class AuthErrors
 
 public static class UserErrors
 {
+    public static Error InvalidStatusTransition { get; } = new("INVALID_USER_STATUS_TRANSITION", "La transición de estado del usuario no está permitida.", ErrorType.Conflict);
     public static Error NotFound { get; } = new("USER_NOT_FOUND", "El usuario no existe.", ErrorType.NotFound);
     public static Error Inactive { get; } = new("USER_INACTIVE", "El usuario está inactivo.", ErrorType.Conflict);
     public static Error AlreadyExists { get; } = new("USER_ALREADY_EXISTS", "La identificación ya está registrada.", ErrorType.Conflict);

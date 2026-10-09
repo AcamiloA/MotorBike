@@ -5,6 +5,8 @@ using UniversityParking.Application.Common.Pagination;
 namespace UniversityParking.Application.Users;
 
 public interface IUserWriteCommand;
+public sealed record ApproveStudentRegistrationCommand(Guid UserId) : ICommand, IUserWriteCommand;
+public sealed record RejectStudentRegistrationCommand(Guid UserId) : ICommand, IUserWriteCommand;
 public sealed record CreateUserCommand(string IdentificationNumber, string FullName, Guid UniversityId,
     string? Career, MemberType MemberType, string CardCode, string InitialPassword,
     IReadOnlyCollection<string>? Roles = null) : ICommand<Guid>, IUserWriteCommand;

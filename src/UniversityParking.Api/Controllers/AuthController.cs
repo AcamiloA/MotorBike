@@ -7,6 +7,7 @@ using UniversityParking.Api.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using UniversityParking.Application.Auth.ChangePassword;
 using UniversityParking.Application.Auth.Login;
+using UniversityParking.Application.Auth.Registration;
 using UniversityParking.Application.Common.Results;
 using UniversityParking.Contracts.Auth;
 using UniversityParking.Contracts.Common;
@@ -33,6 +34,21 @@ public sealed class AuthController(ISender sender) : ControllerBase
             new LoginUserResponse(value.User.Id, value.User.FullName, value.User.MemberType.ToString(), value.User.Roles)));
     }
 
+    [HttpPost("register/student")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.StudentRegistration)]
+    [ProducesResponseType(typeof(RegisterStudentResponse), 201)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 400)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 404)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 409)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 429)]
+    public async Task<IActionResult> RegisterStudent(RegisterStudentRequest request, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RegisterStudentCommand(request.IdentificationNumber, request.FullName,
+            request.UniversityId, request.Career, request.CardCode, request.Password), cancellationToken);
+        if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
+        return StatusCode(StatusCodes.Status201Created, new RegisterStudentResponse(result.Value.UserId, result.Value.Status.ToString()));
+    }
     [HttpPost("change-password")]
     [Authorize(Policy = PolicyNames.Authenticated)]
     [ProducesResponseType(204)]

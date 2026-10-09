@@ -84,7 +84,7 @@ public partial class AccessResultViewModel(GuardLotSession lots, IUserNavigation
     [ObservableProperty] private AccessContext? access;
     [ObservableProperty] private EligibleVehicleResponse? selectedVehicle;
     public ObservableCollection<EligibleVehicleResponse> Vehicles { get; } = [];
-    public string UserSummary => Access is null ? "" : $"{Access.Result.User.FullName}\n{Access.Result.User.MemberType}\n{(Access.Result.User.Status == "ACTIVE" ? "Activo" : "USUARIO INACTIVO")}";
+    public string UserSummary => Access is null ? "" : $"{Access.Result.User.FullName}\n{Access.Result.User.MemberType}\n{AdminPresentation.Status(Access.Result.User.Status)}";
     public string MovementSummary => Access?.Result.CurrentMovement is { } movement ? $"Vehículo dentro: {movement.VehicleIdentifier}\n{movement.ParkingLotName}\nIngreso: {MobileDates.Display(movement.CheckInAtUtc)}" : "No hay vehículo dentro.";
     public bool CanEnter => Access is { Result.User.Status: "ACTIVE", Result.CurrentMovement: null } && SelectedVehicle is not null && lots.IsGuard;
     public bool CanExit => Access?.Result.CurrentMovement is not null && lots.IsGuard;

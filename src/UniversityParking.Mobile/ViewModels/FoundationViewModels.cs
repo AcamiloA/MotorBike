@@ -8,8 +8,19 @@ public partial class BusyViewModel : ObservableObject
     [ObservableProperty] private string errorMessage = "";
     public bool IsNotBusy => !IsBusy;
 }
-public partial class LoginViewModel(AuthService auth) : BusyViewModel
+public partial class LoginViewModel(AuthService auth, IPublicAuthNavigation? publicNavigation = null) : BusyViewModel
 {
+    [RelayCommand] private async Task CreateStudentAccountAsync()
+    {
+        if(IsBusy)return;IsBusy=true;ErrorMessage="";Password="";
+        try
+        {
+            if(publicNavigation is null)throw new InvalidOperationException();
+            await publicNavigation.ShowStudentRegistrationAsync();
+        }
+        catch(Exception){ErrorMessage="No fue posible abrir el registro. Intenta nuevamente.";}
+        finally{IsBusy=false;}
+    }
     [ObservableProperty] private string identificationNumber = "";
     [ObservableProperty] private string password = "";
     [RelayCommand]

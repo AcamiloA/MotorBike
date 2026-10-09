@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace UniversityParking.Contracts.Users;
 
 public enum UserMemberType { STUDENT, TEACHER, STAFF }
-public enum UserAccountStatus { ACTIVE, INACTIVE }
+public enum UserAccountStatus { ACTIVE = 0, INACTIVE = 1, PENDING = 2, REJECTED = 3 }
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CreateUserRequest(string IdentificationNumber, string FullName, [property: JsonRequired] Guid UniversityId,
     string? Career, [property: JsonRequired] UserMemberType MemberType, string CardCode, string InitialPassword, IReadOnlyCollection<string>? Roles = null);
