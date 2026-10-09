@@ -25,7 +25,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_users_member_type", "member_type IN ('STUDENT', 'TEACHER', 'STAFF')");
-            table.HasCheckConstraint("ck_users_status", "status IN ('ACTIVE', 'INACTIVE')");
+            table.HasCheckConstraint("ck_users_status", "status IN ('ACTIVE', 'PENDING', 'INACTIVE', 'REJECTED')");
             table.HasCheckConstraint("ck_users_student_career", "member_type <> 'STUDENT' OR (career IS NOT NULL AND btrim(career) <> '')");
         });
     }

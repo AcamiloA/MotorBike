@@ -652,7 +652,7 @@ namespace UniversityParking.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_users_member_type", "member_type IN ('STUDENT', 'TEACHER', 'STAFF')");
 
-                            t.HasCheckConstraint("ck_users_status", "status IN ('ACTIVE', 'INACTIVE')");
+                            t.HasCheckConstraint("ck_users_status", "status IN ('ACTIVE', 'PENDING', 'INACTIVE', 'REJECTED')");
 
                             t.HasCheckConstraint("ck_users_student_career", "member_type <> 'STUDENT' OR (career IS NOT NULL AND btrim(career) <> '')");
                         });

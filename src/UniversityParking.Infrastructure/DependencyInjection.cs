@@ -18,6 +18,8 @@ public static class DependencyInjection
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("La configuración ConnectionStrings:DefaultConnection es obligatoria.");
 
+        services.AddOptions<UniversityParking.Application.Auth.Registration.StudentRegistrationOptions>()
+            .Bind(configuration.GetSection(UniversityParking.Application.Auth.Registration.StudentRegistrationOptions.SectionName)).ValidateOnStart();
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<UniversityParking.Infrastructure.Persistence.Seeding.DemoSeed>();
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(UserPersistenceBehavior<,>));

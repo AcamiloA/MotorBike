@@ -21,6 +21,8 @@ public sealed class UserPersistenceBehavior<TRequest, TResponse>(AppDbContext co
         {
             Guid? targetId = request switch
             {
+                ApproveStudentRegistrationCommand command => command.UserId,
+                RejectStudentRegistrationCommand command => command.UserId,
                 UpdateMyProfileCommand => actor.UserId,
                 UpdateUserCommand command => command.UserId,
                 ActivateUserCommand command => command.UserId,

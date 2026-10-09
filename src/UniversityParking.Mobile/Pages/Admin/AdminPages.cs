@@ -78,8 +78,10 @@ public sealed class AdminUserDetailPage:UserPage<AdminUserDetailViewModel>
 {
     public AdminUserDetailPage(AdminUserDetailViewModel vm):base(vm,"Detalle de usuario",vm.LoadAsync)
     {
-        var status=UserViews.Button("CAMBIAR ESTADO","StatusCommand");status.SetBinding(Button.TextProperty,"StatusAction");
-        var header=new ScrollView{HeightRequest=280,Content=UserViews.Stack(UserViews.Bound("Summary"),UserViews.Button("EDITAR","EditCommand"),status,GuardViews.Picker("Roles","SelectedRole"),UserViews.Button("ASIGNAR ROL","AssignRoleCommand"),UserViews.Button("RETIRAR ROL","RemoveRoleCommand"),UserViews.Text("USER es obligatorio y no se puede retirar."),UserViews.Button("HISTORIAL DEL USUARIO","HistoryCommand"),UserViews.Button("ACTUALIZAR","RefreshCommand"),UserViews.Heading("Vehículos actuales"))};
+        var status=UserViews.Button("CAMBIAR ESTADO","StatusCommand");status.SetBinding(Button.TextProperty,"StatusAction");status.SetBinding(IsVisibleProperty,"ShowOperationalStatus");
+        var approve=UserViews.Button("APROBAR REGISTRO","ApproveRegistrationCommand");approve.SetBinding(IsVisibleProperty,"IsPendingRegistration");approve.SetBinding(IsEnabledProperty,"CanReviewRegistration");
+        var reject=UserViews.Button("RECHAZAR REGISTRO","RejectRegistrationCommand");reject.SetBinding(IsVisibleProperty,"IsPendingRegistration");reject.SetBinding(IsEnabledProperty,"CanReviewRegistration");
+        var header=new ScrollView{HeightRequest=280,Content=UserViews.Stack(UserViews.Bound("Summary"),UserViews.Button("EDITAR","EditCommand"),status,approve,reject,GuardViews.Picker("Roles","SelectedRole"),UserViews.Button("ASIGNAR ROL","AssignRoleCommand"),UserViews.Button("RETIRAR ROL","RemoveRoleCommand"),UserViews.Text("USER es obligatorio y no se puede retirar."),UserViews.Button("HISTORIAL DEL USUARIO","HistoryCommand"),UserViews.Button("ACTUALIZAR","RefreshCommand"),UserViews.Heading("Vehículos actuales"))};
         Layout(GuardViews.ListLayout(header,AdminViews.Rows(vm,"OpenVehicleCommand"),vm));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");

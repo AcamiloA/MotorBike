@@ -4,8 +4,7 @@
 
 Instale el APK con el servidor correcto según [instalación](installation.md).
 En la demo de emulador, la API está en 8086 y las cuentas están en [demo](demo.md).
-Ingrese identificación y contraseña. Las cuentas son creadas por ADMIN; no hay
-registro público. Cada rol habilita su área. MemberType determina tipos de vehículo,
+Ingrese identificación y contraseña. ADMIN puede crear cuentas y los estudiantes pueden usar CREAR CUENTA DE ESTUDIANTE en Login. Consulte [registro y aprobación](student-registration.md): por defecto la cuenta queda Pendiente y requiere revisión ADMIN. Cada rol habilita su área. MemberType determina tipos de vehículo,
 no permisos administrativos. CERRAR SESIÓN elimina el token y vuelve al login.
 
 Si aparece 401, vuelva a autenticarse. Con 403 mantenga la sesión y revise los

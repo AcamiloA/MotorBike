@@ -51,7 +51,7 @@ El móvil guarda el token en SecureStorage, valida `/api/v1/users/me` al restaur
 sesión y presenta áreas según roles. Un 401 limpia la sesión; un 403 la conserva.
 Un cambio de roles propios desde ADMIN obliga a autenticarse de nuevo. USER no
 es retirable y se protege al último administrador activo. ADMIN puede consultar
-acceso, pero solo GUARD registra ingreso/salida. No hay registro público de cuentas.
+acceso, pero solo GUARD registra ingreso/salida. El [registro público de estudiantes](student-registration.md) fuerza STUDENT/USER y crea PENDING por defecto o ACTIVE con AutoApprove; ADMIN aprueba/rechaza solo PENDING. Login verifica contraseña antes del estado y no emite JWT para PENDING/REJECTED.
 
 ## Flujo de portería
 

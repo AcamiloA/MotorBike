@@ -30,6 +30,25 @@ public sealed class User : Entity
         CreatedAt = UpdatedAt = Guard.Utc(createdAt);
     }
 
+    public static User CreateStudentRegistration(IdentificationNumber identificationNumber, string fullName,
+        Guid universityId, string career, CardCode cardCode, bool autoApprove, DateTimeOffset createdAt)
+    {
+        var user = new User(identificationNumber, fullName, universityId, career, MemberType.STUDENT, cardCode, createdAt);
+        if (!autoApprove) user.Status = UserStatus.PENDING;
+        return user;
+    }
+
+    public void ApproveRegistration(DateTimeOffset now) => ReviewRegistration(UserStatus.ACTIVE, now);
+    public void RejectRegistration(DateTimeOffset now) => ReviewRegistration(UserStatus.REJECTED, now);
+
+    private void ReviewRegistration(UserStatus next, DateTimeOffset now)
+    {
+        if (Status != UserStatus.PENDING || MemberType != MemberType.STUDENT) InvalidTransition();
+        SetStatus(next, now);
+    }
+
+    private static void InvalidTransition() =>
+        throw new DomainException("INVALID_USER_STATUS_TRANSITION", "La transición de estado del usuario no está permitida.");
     public void UpdateProfile(string fullName, string? career, DateTimeOffset updatedAt) =>
         Update(fullName, UniversityId, career, MemberType, CardCode, updatedAt);
 
@@ -52,8 +71,10 @@ public sealed class User : Entity
         UpdatedAt = now;
     }
 
-    public void Activate(DateTimeOffset now) => SetStatus(UserStatus.ACTIVE, now);
-    public void Deactivate(DateTimeOffset now) => SetStatus(UserStatus.INACTIVE, now);
+    public void Activate(DateTimeOffset now) { RequireOperationalStatus(); SetStatus(UserStatus.ACTIVE, now); }
+    public void Deactivate(DateTimeOffset now) { RequireOperationalStatus(); SetStatus(UserStatus.INACTIVE, now); }
+
+    private void RequireOperationalStatus() { if (Status is not (UserStatus.ACTIVE or UserStatus.INACTIVE)) InvalidTransition(); }
 
     private void SetStatus(UserStatus status, DateTimeOffset now)
     {

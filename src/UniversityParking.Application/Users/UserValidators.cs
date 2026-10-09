@@ -1,4 +1,5 @@
 using FluentValidation;
+using UniversityParking.Application.Common.Validation;
 using UniversityParking.Domain.Users;
 
 namespace UniversityParking.Application.Users;
@@ -15,10 +16,7 @@ public sealed class CreateUserCommandValidator : AbstractValidator<CreateUserCom
             .WithMessage("La carrera es obligatoria para estudiantes.");
         RuleFor(x => x.MemberType).IsInEnum().WithMessage("El valor no es válido.");
         RuleFor(x => x.CardCode).NotEmpty().WithMessage("El código de carné es obligatorio.").MaximumLength(150).WithMessage("El código de carné admite hasta 150 caracteres.");
-        RuleFor(x => x.InitialPassword).Cascade(CascadeMode.Stop).NotEmpty().WithMessage("La contraseña es obligatoria.").MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres.")
-            .Must(x => x.Any(char.IsUpper)).WithMessage("La contraseña debe incluir una mayúscula.")
-            .Must(x => x.Any(char.IsLower)).WithMessage("La contraseña debe incluir una minúscula.")
-            .Must(x => x.Any(char.IsDigit)).WithMessage("La contraseña debe incluir un número.");
+        RuleFor(x => x.InitialPassword).Cascade(CascadeMode.Stop).ExistingPasswordPolicy();
         RuleForEach(x => x.Roles).Must(UserValidation.IsRole).WithMessage("El rol no es válido.");
     }
 }
@@ -89,3 +87,12 @@ internal static class UserValidation
     public static bool IsRole(string? code) => code is RoleCodes.User or RoleCodes.Guard or RoleCodes.Admin;
 }
 
+
+public sealed class ApproveStudentRegistrationCommandValidator : AbstractValidator<ApproveStudentRegistrationCommand>
+{
+    public ApproveStudentRegistrationCommandValidator() => RuleFor(x => x.UserId).NotEmpty();
+}
+public sealed class RejectStudentRegistrationCommandValidator : AbstractValidator<RejectStudentRegistrationCommand>
+{
+    public RejectStudentRegistrationCommandValidator() => RuleFor(x => x.UserId).NotEmpty();
+}

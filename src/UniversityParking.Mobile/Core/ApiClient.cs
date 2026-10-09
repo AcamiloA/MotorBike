@@ -31,7 +31,8 @@ public sealed class AuthHttpHandler(IAuthSession session, IAppNavigation navigat
     {
         if (request.RequestUri is not { } uri || uri.Scheme != options.BaseAddress.Scheme || uri.Authority != options.BaseAddress.Authority)
             throw new InvalidOperationException("La solicitud no pertenece al servidor configurado.");
-        var login = uri.AbsolutePath.EndsWith("/api/v1/auth/login", StringComparison.Ordinal);
+        var login = uri.AbsolutePath.EndsWith("/api/v1/auth/login", StringComparison.Ordinal)
+            || uri.AbsolutePath.EndsWith("/api/v1/auth/register/student", StringComparison.Ordinal);
         var token = login ? null : await session.GetTokenAsync();
         if (!string.IsNullOrWhiteSpace(token)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var response = await base.SendAsync(request, cancellationToken);
@@ -70,6 +71,9 @@ public sealed class ApiClient(HttpClient client)
                     try { problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(Json, token); } catch (JsonException) { }
                     var message = response.StatusCode switch
                     {
+                        HttpStatusCode.Unauthorized when path.EndsWith("auth/login", StringComparison.Ordinal)
+                            && problem?.Code is ("ACCOUNT_PENDING" or "ACCOUNT_REJECTED")
+                            && !string.IsNullOrWhiteSpace(problem.Detail) => problem.Detail,
                         HttpStatusCode.Forbidden => "No tienes permisos para realizar esta acción.",
                         HttpStatusCode.Unauthorized => path.EndsWith("auth/login", StringComparison.Ordinal) ? "Identificación o contraseña incorrectas." : "Tu sesión ha vencido. Inicia sesión nuevamente.",
                         _ when (int)response.StatusCode >= 500 => "El servidor no está disponible. Intenta nuevamente.",

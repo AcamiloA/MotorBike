@@ -76,6 +76,24 @@ public sealed class UsersController(ISender sender) : ControllerBase
             (MemberType)request.MemberType, request.CardCode), cancellationToken);
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
+    [HttpPatch("{id:guid}/registration/approve")]
+    [Authorize(Policy = PolicyNames.Admin)]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 409)]
+    public async Task<IActionResult> ApproveRegistration(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new ApproveStudentRegistrationCommand(id), cancellationToken);
+        return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
+    }
+    [HttpPatch("{id:guid}/registration/reject")]
+    [Authorize(Policy = PolicyNames.Admin)]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(ApiProblemDetails), 409)]
+    public async Task<IActionResult> RejectRegistration(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RejectStudentRegistrationCommand(id), cancellationToken);
+        return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
+    }
     [HttpPatch("{id:guid}/activate")]
     [Authorize(Policy = PolicyNames.Admin)]
     [ProducesResponseType(204)]

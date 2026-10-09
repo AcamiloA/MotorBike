@@ -14,6 +14,40 @@ public sealed class MobileFoundationTests
     private static ApiClient Client(AuthSession session, Navigation navigation, Handler transport) => new(new HttpClient(
         new AuthHttpHandler(session, navigation, new ApiOptions("https://test.example/")) { InnerHandler = transport }) { BaseAddress = new("https://test.example/") });
     private static HttpResponseMessage Ok(object value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
+    [Theory]
+    [InlineData("ACCOUNT_PENDING","Tu registro está pendiente de aprobación.","Tu registro está pendiente de aprobación.")]
+    [InlineData("ACCOUNT_REJECTED","Tu solicitud de registro no fue aprobada.","Tu solicitud de registro no fue aprobada.")]
+    [InlineData("AUTH_INVALID_CREDENTIALS","Información privada","Identificación o contraseña incorrectas.")]
+    [InlineData("AUTH_USER_INACTIVE","El usuario está inactivo.","Identificación o contraseña incorrectas.")]
+    public async Task LoginDisplaysTrustedRegistrationErrorWithoutCreatingSession(string code,string detail,string expected)
+    {
+        var storage=new Storage();var session=new AuthSession(storage);var nav=new Navigation();
+        var transport=new Handler((_,_)=>Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {Content=JsonContent.Create(new ApiProblemDetails{Status=401,Code=code,Detail=detail})}));
+        var vm=new UniversityParking.Mobile.ViewModels.LoginViewModel(new AuthService(Client(session,nav,transport),session,nav))
+        {IdentificationNumber="001",Password="Password1"};
+        await vm.SignInCommand.ExecuteAsync(null);
+        Assert.Equal(expected,vm.ErrorMessage);Assert.Equal("",vm.Password);Assert.Null(storage.Value);Assert.Null(session.User);
+        Assert.Equal(0,nav.HomeCount);Assert.Equal(1,transport.Count);
+    }
+    [Fact]
+    public async Task PublicRegistrationSendsNoBearerAndDoesNotCreateSession()
+    {
+        var storage=new Storage();var session=new AuthSession(storage);var nav=new Navigation();
+        var transport=new Handler((_,_)=>Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
+        {Content=JsonContent.Create(new RegisterStudentResponse(Guid.NewGuid(),"ACTIVE"))}));
+        var result=await new StudentRegistrationApiService(Client(session,nav,transport)).RegisterAsync(new("001","Nombre",Guid.NewGuid(),"Carrera","CARD","Password1"));
+        Assert.True(result.IsSuccess);Assert.Null(Assert.Single(transport.Headers));Assert.Null(storage.Value);Assert.Null(session.User);Assert.Equal(0,nav.HomeCount);
+    }
+    [Fact]
+    public async Task RegistrationNeverAttachesAnExistingBearerOrOverwritesIt()
+    {
+        var storage=new Storage();var session=new AuthSession(storage);await session.SaveAsync("existing",User());var nav=new Navigation();
+        var transport=new Handler((_,_)=>Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
+        {Content=JsonContent.Create(new RegisterStudentResponse(Guid.NewGuid(),"PENDING"))}));
+        var result=await new StudentRegistrationApiService(Client(session,nav,transport)).RegisterAsync(new("001","Nombre",Guid.NewGuid(),"Carrera","CARD","Password1"));
+        Assert.True(result.IsSuccess);Assert.Null(Assert.Single(transport.Headers));Assert.Equal("existing",storage.Value);Assert.Equal(0,nav.HomeCount);
+    }
     [Fact]
     public async Task LoginPersistsTokenValidatesMeAndNavigates_WithNoAuthorizationOnLogin()
     {

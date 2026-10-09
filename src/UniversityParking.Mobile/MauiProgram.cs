@@ -36,6 +36,9 @@ public static class MauiProgram
             { BaseAddress = options.BaseAddress, Timeout = TimeSpan.FromSeconds(20) });
         builder.Services.AddSingleton<ApiClient>();
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<IPublicAuthNavigation>(p => p.GetRequiredService<AppNavigation>());
+        builder.Services.AddSingleton<StudentRegistrationApiService>();
+        builder.Services.AddTransient<RegisterStudentViewModel>(); builder.Services.AddTransient<RegisterStudentPage>();
         builder.Services.AddTransient<LoginViewModel>(); builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<StartupViewModel>(); builder.Services.AddTransient<StartupPage>();
         builder.Services.AddTransient<SessionHomeViewModel>(); builder.Services.AddTransient<SessionHomePage>();

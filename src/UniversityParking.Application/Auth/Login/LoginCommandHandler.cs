@@ -21,7 +21,14 @@ public sealed class LoginCommandHandler(IUserRepository users, IUserCredentialRe
         var credential = await credentials.GetByUserIdAsync(user.Id, cancellationToken);
         var verified = passwordHasher.Verify(request.Password, credential?.PasswordHash ?? string.Empty);
         if (!verified || credential is null) return Result<LoginResult>.Failure(AuthErrors.InvalidCredentials);
-        if (user.Status != UserStatus.ACTIVE) return Result<LoginResult>.Failure(AuthErrors.UserInactive);
+        var statusError = user.Status switch
+        {
+            UserStatus.ACTIVE => null,
+            UserStatus.PENDING => AuthErrors.AccountPending,
+            UserStatus.REJECTED => AuthErrors.AccountRejected,
+            _ => AuthErrors.UserInactive
+        };
+        if (statusError is not null) return Result<LoginResult>.Failure(statusError);
         var roleCodes = await roles.GetCodesByUserIdAsync(user.Id, cancellationToken);
         var accessToken = tokens.CreateAccessToken(new TokenUser(user.Id, user.MemberType, roleCodes));
         return Result<LoginResult>.Success(new LoginResult(accessToken.Token, accessToken.ExpiresAtUtc,

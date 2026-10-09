@@ -11,6 +11,7 @@
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" SemanticProperties.Description="{Binding ErrorMessage}" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
   <Button Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding IsNotBusy}" Margin="0,8,0,24" />
+  <Button Text="CREAR CUENTA DE ESTUDIANTE" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding IsNotBusy}" />
   <Label Text="Control de acceso vehicular universitario" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
  </VerticalStackLayout></ScrollView>
 </ContentPage>

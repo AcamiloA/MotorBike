@@ -7,7 +7,7 @@ Sistema de control de acceso vehicular universitario. Solución técnica: Univer
 Gestiona usuarios/roles, vehículos y propietarios, registros por periodo académico,
 parqueaderos con zonas por tipo, ingreso/salida, incidentes, noticias, auditoría,
 dashboards y seis reportes. Android ofrece USER, GUARD y ADMIN. No incluye reservas,
-asignación de puestos, capacidad, mapas, barreras físicas, registro público ni
+asignación de puestos, capacidad, mapas, barreras físicas ni
 operaciones offline.
 
 C#/.NET 10, ASP.NET Core REST, PostgreSQL 17, EF Core/Npgsql, MediatR/CQRS,
@@ -24,6 +24,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 - [Instalación en máquina nueva, backend, migraciones, Android y tests](docs/installation.md).
 - [Manual USER, GUARD y ADMIN](docs/user-manual.md).
 - [Catálogo de universidades, UniversityId y revisión de migración](docs/university-catalog.md).
+- [Registro público de estudiantes, aprobación y configuración](docs/student-registration.md).
 - [Docker local y configuración Railway](docs/deployment.md).
 - [Seed, cuentas y APK demo](docs/demo.md).
 - [Respaldos PostgreSQL y archivos privados](docs/backups.md).
@@ -37,6 +38,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 | Jwt__Issuer / Jwt__Audience | UniversityParking.Api / UniversityParking.Mobile |
 | Jwt__ExpirationMinutes | 480; la configuración valida ocho horas |
 | Parking__TimeZone | America/Bogota |
+| StudentRegistration__AutoApprove | false: PENDING y aprobación ADMIN; true: ACTIVE inmediato |
 | Database__ApplyMigrationsOnStartup | false fuera de Compose; true en Compose |
 | Swagger__Enabled | false; habilitar explícitamente para diagnóstico |
 | HttpsRedirection__Enabled | true; false para HTTP local o TLS terminado en borde |
@@ -125,7 +127,7 @@ validez legal y no debe activarse en un servidor con usuarios reales.
 
 ## Estado
 
-Estado actual: Fase 23 completada en su verificación automática: compilación backend/Android sin errores ni advertencias, 745 pruebas aprobadas y Docker saludable con la imagen final. Consulta [el informe final y sus límites](docs/validation-phase23.md). Seed/demo local y APK de Fase 21 disponibles; Railway/S3 y pruebas nativas Android siguen pendientes del usuario. LISTO PARA REVISIÓN.
+Registro de estudiantes: R1–R7 completados técnicamente: build backend/Android con 0 errores/advertencias y 1028 pruebas aprobadas (0 fallidas/omitidas). Configuración, migración y revisión final en [student-registration](docs/student-registration.md). Las pruebas manuales del usuario siguen pendientes; no hubo despliegue ni migración a producción. Los APK históricos no incluyen este feature. Resultados históricos: Fase 23 completada en su verificación automática: compilación backend/Android sin errores ni advertencias, 745 pruebas aprobadas y Docker saludable con la imagen final. Consulta [el informe final y sus límites](docs/validation-phase23.md). Seed/demo local y APK de Fase 21 disponibles; Railway/S3 y pruebas nativas Android siguen pendientes del usuario. LISTO PARA REVISIÓN.
 
 ## Hitos anteriores
 

@@ -23,6 +23,7 @@ public sealed class AdminApiService(ApiClient api)
     public Task<ApiResult<UniversityResponse[]>> UniversitiesAsync() => api.GetAsync<UniversityResponse[]>("api/v1/universities");
     public Task<ApiResult<UserCreatedResponse>> CreateUserAsync(CreateUserRequest request) => api.PostAsync<UserCreatedResponse>("api/v1/users",request);
     public Task<ApiResult<bool>> EditUserAsync(Guid id, UpdateUserRequest request) => api.PutAsync($"api/v1/users/{id}",request);
+    public Task<ApiResult<bool>> ReviewStudentAsync(Guid id, bool approve) => api.PatchAsync($"api/v1/users/{id}/registration/{(approve ? "approve" : "reject")}");
     public Task<ApiResult<bool>> UserStatusAsync(Guid id, bool active) => api.PatchAsync($"api/v1/users/{id}/{(active ? "activate" : "deactivate")}");
     public Task<ApiResult<bool>> AssignRoleAsync(Guid id, string role) => api.PostCommandAsync($"api/v1/users/{id}/roles",new AssignRoleRequest(role));
     public Task<ApiResult<bool>> RemoveRoleAsync(Guid id, string role) => api.DeleteAsync($"api/v1/users/{id}/roles/{Uri.EscapeDataString(role)}");
@@ -73,11 +74,12 @@ public static class AdminPresentation
 {
     public static readonly TypeChoice[] Members = [new("STUDENT","Estudiante"),new("TEACHER","Docente"),new("STAFF","Personal")];
     public static readonly TypeChoice[] Statuses = [new("ACTIVE","Activo"),new("INACTIVE","Inactivo")];
+    public static readonly TypeChoice[] UserStatuses = [new("ACTIVE","Activo"),new("INACTIVE","Inactivo"),new("PENDING","Pendiente"),new("REJECTED","Rechazado")];
     public static readonly TypeChoice[] Roles = [new("USER","USER"),new("GUARD","GUARD"),new("ADMIN","ADMIN")];
     public static TypeChoice[] All(IEnumerable<TypeChoice> choices) => new[] { new TypeChoice("","Todos") }.Concat(choices).ToArray();
     public static string Identifier(VehicleResponse vehicle) => vehicle.Plate ?? vehicle.FrameNumber ?? "";
     public static string Member(string code) => Members.FirstOrDefault(x=>x.Code==code)?.Label ?? code;
-    public static string Status(string code) => Statuses.FirstOrDefault(x=>x.Code==code)?.Label ?? code;
+    public static string Status(string code) => UserStatuses.FirstOrDefault(x=>x.Code==code)?.Label ?? code;
     public static void RequireAdmin(IAuthSession session) { if(session.User?.Roles.Contains("ADMIN")!=true) throw new UserInputException("Se requiere el rol ADMIN para esta acción."); }
     public static string AuditValues(string? text)
     {

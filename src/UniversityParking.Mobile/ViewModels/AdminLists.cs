@@ -58,7 +58,7 @@ public partial class AdminDashboardViewModel(AdminApiService api,IAuthSession se
 public partial class AdminUsersViewModel(AdminApiService api,IAuthSession session,IUserNavigation navigation):AdminListViewModel(api,session,navigation)
 {
     public override IReadOnlyList<TypeChoice> Types=>AdminPresentation.All(AdminPresentation.Members);
-    public override IReadOnlyList<TypeChoice> States=>AdminPresentation.All(AdminPresentation.Statuses);
+    public override IReadOnlyList<TypeChoice> States=>AdminPresentation.All(AdminPresentation.UserStatuses);
     public IReadOnlyList<TypeChoice> Roles=>AdminPresentation.All(AdminPresentation.Roles);
     [ObservableProperty] private TypeChoice selectedRole=new("","Todos");
     protected override async Task ReadAsync()=>Rows(await Api.UsersAsync(Search,SelectedType?.Code,SelectedStatus?.Code,SelectedRole?.Code,Page),x=>new(x.FullName,$"{x.IdentificationNumber} · {AdminPresentation.Member(x.MemberType)} · {AdminPresentation.Status(x.Status)}\n{x.UniversityName}\nRoles: {string.Join(", ",x.Roles)}",x));
