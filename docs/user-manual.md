@@ -15,19 +15,9 @@ Los horarios visibles son de Bogotá. Una salida pendiente no indica una salida 
 ## USER
 
 Inicio presenta vehículos activos/propios, movimientos recientes y noticias.
-En Vehículos puede consultar detalles, foto y documentos privados. Registrar exige
-marca, modelo, color, placa para automotores o marco para bicicleta, fotografía y
-soportes. STUDENT admite moto/bicicleta; TEACHER/STAFF también carro. La foto admite
-JPEG/PNG hasta 5 MB; matrícula/seguro para automotores o soporte de propiedad para
-bicicleta admiten PDF/JPEG/PNG hasta 10 MB por archivo. Número y fechas de documentos
-son opcionales cuando el formulario lo permite. Cámara o galería solicitan los
-permisos correspondientes; puede cancelar la selección.
+En Vehículos puede consultar detalles, evidencia de verificación y documentos históricos. Registrar exige marca, modelo, color, placa para automotores o marco para bicicleta y una única imagen JPEG/PNG de máximo 5 MB. Carro/moto solicitan el frente completo de la Licencia de Tránsito; bicicleta solicita su fotografía completa. STUDENT admite moto/bicicleta; TEACHER/STAFF también carro. No se pide reverso, segunda imagen ni documentos adicionales como condición de creación.
 
-Editar vehículo cambia marca/modelo/color. Tipo e identificador no se cambian desde
-esa acción. Puede activar/desactivar con confirmación. Renovar registra el vehículo
-para el periodo activo, manteniendo el mismo vehículo; puede reutilizar soportes
-existentes o aportar reemplazos. Si fue transferido, debe renovar como nuevo dueño.
-
+Editar vehículo cambia marca/modelo/color. Puede activar/desactivar con confirmación. ACTUALIZAR EVIDENCIA permite al propietario o ADMIN cargar/reemplazar la imagen. Un vehículo legacy sin ella muestra pendiente y debe agregarla antes de renovar; la renovación reutiliza la imagen del vehículo. Los documentos anteriores se conservan y no se reclasifican. Si hubo transferencia, renueve como nuevo dueño. Consulte [evidencia única y revisión manual](vehicle-verification-image.md).
 Historial muestra solo sus movimientos, con filtros de fecha/vehículo y páginas.
 Noticias muestra publicaciones y detalle. Perfil permite editar nombre/carrera
 y cambiar contraseña indicando actual, nueva y confirmación. La nueva contraseña

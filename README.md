@@ -26,6 +26,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 - [Catálogo de universidades, UniversityId y revisión de migración](docs/university-catalog.md).
 - [Registro público de estudiantes, aprobación y configuración](docs/student-registration.md).
 - [Arquitectura para futuras integraciones institucionales; ninguna integración real](docs/university-integrations.md).
+- [Evidencia única por vehículo, reemplazo y transición legacy](docs/vehicle-verification-image.md).
 - [Docker local y configuración Railway](docs/deployment.md).
 - [Seed, cuentas y APK demo](docs/demo.md).
 - [Respaldos PostgreSQL y archivos privados](docs/backups.md).

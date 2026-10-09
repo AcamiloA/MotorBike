@@ -29,7 +29,7 @@ public interface IAttachmentPicker
 public interface IFileViewer { Task OpenAsync(string fileName, string contentType, byte[] bytes); void ClearCache(); }
 public sealed record DocumentAttachment(string Type, PickedAttachment File, string? Number = null, DateOnly? IssuedOn = null, DateOnly? ExpiresOn = null);
 public sealed record VehicleRegistrationInput(string Type, string Identifier, string Brand, string Model, string Color,
-    PickedAttachment Photo, IReadOnlyList<DocumentAttachment> Documents);
+    PickedAttachment VerificationImage);
 public static class VehiclePresentation
 {
     public static IReadOnlyList<string> AllowedTypes(string? memberType) => memberType == "STUDENT" ? ["MOTORCYCLE", "BICYCLE"] : ["MOTORCYCLE", "BICYCLE", "CAR"];
@@ -38,6 +38,10 @@ public static class VehiclePresentation
     public static string DocumentName(string type) => type switch { "INSURANCE" => "Seguro", "OWNERSHIP_SUPPORT" => "Soporte de propiedad", _ => "Documento del vehículo" };
     public static string RegistrationName(string state) => state switch { "ACTIVE" => "Registro vigente", "CANCELLED" => "Registro cancelado", "EXPIRED" => "Registro vencido", _ => "Sin registro vigente" };
     public static string Icon(string type) => type switch { "CAR" => "car.png", "BICYCLE" => "bicycle.png", _ => "motorcycle.png" };
+    public static string VerificationLabel(string? type) => type == "BICYCLE" ? "Foto de la bicicleta" : "Frente de la Licencia de Tránsito";
+    public static string VerificationHelp(string? type) => type == "BICYCLE"
+        ? "Toma una fotografía clara donde se vea la bicicleta completa."
+        : "Toma una fotografía clara del frente completo de la Licencia de Tránsito. Asegúrate de que el texto y la placa sean legibles.";
 }
 public static class MobileDates
 {
@@ -82,10 +86,11 @@ public sealed class UserApiService(ApiClient api)
     public Task<ApiResult<byte[]>> FileAsync(string url) => api.GetBytesAsync(url);
     public async Task<ApiResult<VehicleCreatedResponse>> RegisterAsync(VehicleRegistrationInput input)
     {
-        using var form = Multipart(input.Documents);
+        using var form = new MultipartFormDataContent();
         Add(form, "Type", input.Type); Add(form, input.Type == "BICYCLE" ? "FrameNumber" : "Plate", input.Identifier);
         Add(form, "Brand", input.Brand); Add(form, "Model", input.Model); Add(form, "Color", input.Color);
-        Add(form, "Photos[0].Type", "GENERAL"); AddFile(form, "Photos[0].File", input.Photo);
+        AddFile(form, "VerificationImage.File", AttachmentValidation.Validate(input.VerificationImage.FileName,
+            input.VerificationImage.ContentType, input.VerificationImage.Bytes, true));
         return await api.MultipartAsync<VehicleCreatedResponse>("api/v1/vehicles", form);
     }
     public async Task<ApiResult<VehicleRenewedResponse>> RenewAsync(Guid id, IReadOnlyList<DocumentAttachment> documents)
@@ -111,6 +116,12 @@ public sealed class UserApiService(ApiClient api)
             if (item.ExpiresOn.HasValue) Add(form, prefix + ".ExpiresOn", item.ExpiresOn.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         }
         return form;
+    }
+    public async Task<ApiResult<bool>> UpdateVerificationImageAsync(Guid id, PickedAttachment image)
+    {
+        using var form = new MultipartFormDataContent();
+        AddFile(form, "VerificationImage.File", AttachmentValidation.Validate(image.FileName, image.ContentType, image.Bytes, true));
+        return await api.PutMultipartAsync($"api/v1/vehicles/{id}/verification-image", form);
     }
     private static void Add(MultipartFormDataContent form, string name, string value) => form.Add(new StringContent(value.Trim()), name);
     private static void AddFile(MultipartFormDataContent form, string name, PickedAttachment file)

@@ -60,8 +60,8 @@ public sealed partial class VehicleRepository
             select new VehicleRow { Vehicle = vehicle, OwnerId = owner == null ? null : owner.Id, OwnerName = owner == null ? null : owner.FullName, State =
                 registration == null ? RegistrationState.NONE : registration.Status == VehicleRegistrationStatus.CANCELLED ? RegistrationState.CANCELLED :
                     registration.AcademicPeriodId == activeId ? RegistrationState.ACTIVE : RegistrationState.EXPIRED, IsInside =
-                context.ParkingMovements.Any(x => x.VehicleId == vehicle.Id && x.Status == ParkingMovementStatus.OPEN), PhotoId =
-                context.VehiclePhotos.Where(x => x.VehicleId == vehicle.Id && x.Type == VehiclePhotoType.GENERAL)
+                context.ParkingMovements.Any(x => x.VehicleId == vehicle.Id && x.Status == ParkingMovementStatus.OPEN), VerificationImageId =
+                context.VehicleVerificationImages.Where(x => x.VehicleId == vehicle.Id)
                     .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).Select(x => (Guid?)x.Id).FirstOrDefault() };
     }
     private sealed class VehicleRow
@@ -71,10 +71,9 @@ public sealed partial class VehicleRepository
         public string? OwnerName { get; init; }
         public RegistrationState State { get; init; }
         public bool IsInside { get; init; }
-        public Guid? PhotoId { get; init; }
+        public Guid? VerificationImageId { get; init; }
     }
     private static VehicleView Map(VehicleRow row) => new(row.Vehicle.Id, row.Vehicle.Type, row.Vehicle.Plate?.Value,
         row.Vehicle.FrameNumber?.Value, row.Vehicle.Brand, row.Vehicle.Model, row.Vehicle.Color, row.Vehicle.Status,
-        row.OwnerId, row.OwnerName, row.State, row.IsInside, row.PhotoId);
+        row.OwnerId, row.OwnerName, row.State, row.IsInside, row.VerificationImageId);
 }
-

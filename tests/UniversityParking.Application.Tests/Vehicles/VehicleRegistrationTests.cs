@@ -12,7 +12,7 @@ using UniversityParking.Domain.Vehicles.ValueObjects;
 
 namespace UniversityParking.Application.Tests.Vehicles;
 
-public sealed class VehicleRegistrationTests
+public sealed partial class VehicleRegistrationTests
 {
     private readonly Store store = new();
     private RegisterVehicleCommandHandler Handler => new(Context, store, store, store, store, store, store,
@@ -20,8 +20,7 @@ public sealed class VehicleRegistrationTests
     private VehicleOperationContext Context => new(store, store, store, store, store, store, store, store);
     private static RegisterVehicleCommand Request(VehicleType type = VehicleType.MOTORCYCLE) => new(type,
         type == VehicleType.BICYCLE ? null : " abc-123 ", type == VehicleType.BICYCLE ? " frame 0001 " : null,
-        "Brand", "Model", "Black", [new(VehiclePhotoType.GENERAL, Source("image.png", "image/png", FileValidationTests.Png))],
-        VehicleOperationContext.RequiredDocuments(type).Select(x => new DocumentUpload(x, Source("document.pdf", "application/pdf", "%PDF-1.7"u8.ToArray()))).ToArray());
+        "Brand", "Model", "Black", Source("image.png", "image/png", FileValidationTests.Png));
     private static UploadSource Source(string name, string mime, byte[] content) => new(name, mime, content.Length, () => new MemoryStream(content));
     [Theory]
     [InlineData(MemberType.STUDENT, VehicleType.MOTORCYCLE)]
@@ -35,8 +34,8 @@ public sealed class VehicleRegistrationTests
         Assert.True(result.IsSuccess);
         Assert.Equal(store.User.Id, Assert.Single(store.Ownerships).UserId);
         Assert.Equal(store.Period!.Id, Assert.Single(store.Registrations).AcademicPeriodId);
-        Assert.Single(store.Photos);
-        Assert.Equal(type == VehicleType.BICYCLE ? 1 : 2, store.Documents.Count);
+        Assert.Single(store.VerificationImages); Assert.Empty(store.Photos);
+        Assert.Empty(store.Documents); Assert.Equal(VehicleVerificationImage.ForVehicle(type), store.VerificationImages.Single().Type);
         Assert.Equal(1, store.Commits);
         Assert.Single(store.Audits, x => x.Action == "VEHICLE_REGISTERED");
         Assert.Single(store.Audits, x => x.Action == "VEHICLE_REGISTRATION_CREATED");
@@ -68,17 +67,17 @@ public sealed class VehicleRegistrationTests
         Assert.Empty(store.Keys);
     }
     [Fact]
-    public async Task RegisterVehicle_RequiresGeneralPhoto()
+    public async Task RegisterVehicle_RequiresVerificationImage()
     {
-        Assert.Equal("VALIDATION_ERROR", (await Handler.Handle(Request() with { Photos = [] }, default)).Error!.Code);
+        Assert.Equal("VALIDATION_ERROR", (await Handler.Handle(Request() with { VerificationImage = null }, default)).Error!.Code);
         Assert.Empty(store.Keys);
     }
     [Theory]
     [InlineData(VehicleType.MOTORCYCLE)]
     [InlineData(VehicleType.BICYCLE)]
-    public async Task RegisterVehicle_RequiresDocumentsForType(VehicleType type)
+    public async Task RegisterVehicle_RejectsPdfAsVerificationForType(VehicleType type)
     {
-        Assert.Equal("VALIDATION_ERROR", (await Handler.Handle(Request(type) with { Documents = [] }, default)).Error!.Code);
+        Assert.Equal("FILE_TYPE_NOT_ALLOWED", (await Handler.Handle(Request(type) with { VerificationImage = Source("document.pdf", "application/pdf", "%PDF-1.7"u8.ToArray()) }, default)).Error!.Code);
         Assert.Empty(store.Keys);
     }
     [Fact]
@@ -106,7 +105,7 @@ public sealed class VehicleRegistrationTests
         Assert.Equal("VEHICLE_REGISTRATION_CANCELLED", (await renewal.Handle(new(id, []), default)).Error!.Code);
     }
     [Fact]
-    public async Task RenewVehicle_UsesExistingDocumentsForNewPeriod()
+    public async Task RenewVehicle_UsesExistingVerificationForNewPeriod()
     {
         var id = (await Handler.Handle(Request(), default)).Value;
         store.Period!.Close();
@@ -117,7 +116,7 @@ public sealed class VehicleRegistrationTests
         Assert.Equal(2, store.Registrations.Count);
         Assert.Single(store.Vehicles);
         Assert.Single(store.Ownerships);
-        Assert.Equal(3, store.Keys.Count);
+        Assert.Single(store.Keys);
     }
     [Fact]
     public async Task UnauthenticatedActorCannotRegister()
@@ -203,6 +202,9 @@ public sealed class VehicleRegistrationTests
         public List<VehicleOwnership> Ownerships { get; } = [];
         public List<VehicleRegistration> Registrations { get; } = [];
         public List<VehiclePhoto> Photos { get; } = [];
+        public List<VehicleVerificationImage> VerificationImages { get; } = [];
+        public Task<VehicleVerificationImage?> GetVerificationImageAsync(Guid id, CancellationToken ct) => Task.FromResult(VerificationImages.SingleOrDefault(x => x.VehicleId == id));
+        public Task AddVerificationImageAsync(VehicleVerificationImage image, CancellationToken ct) { VerificationImages.Add(image); return Task.CompletedTask; }
         public List<VehicleDocument> Documents { get; } = [];
         public List<AuditLog> Audits { get; } = [];
         public HashSet<string> Keys { get; } = [];
@@ -301,7 +303,3 @@ public sealed class VehicleRegistrationTests
         }
     }
 }
-
-
-
-

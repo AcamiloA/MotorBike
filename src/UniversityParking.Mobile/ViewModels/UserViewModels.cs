@@ -63,8 +63,8 @@ public partial class VehicleCardViewModel(VehicleResponse vehicle, UserApiServic
     [ObservableProperty] private byte[]? photo;
     [RelayCommand] private async Task LoadPhotoAsync()
     {
-        if (Photo is not null || vehicle.PhotoPreviewUrl is null) return;
-        await WorkAsync(async () => { var result = await api.FileAsync(vehicle.PhotoPreviewUrl); if (Accepted(result)) Photo = result.Value; });
+        if (Photo is not null || vehicle.VerificationImagePreviewUrl is null) return;
+        await WorkAsync(async () => { var result = await api.FileAsync(vehicle.VerificationImagePreviewUrl); if (Accepted(result)) Photo = result.Value; });
     }
 }
 public partial class MyVehiclesViewModel : UserFeatureViewModel
@@ -127,15 +127,20 @@ public partial class VehicleDetailViewModel(UserApiService api, IUserNavigation 
     public bool IsOwner => Detail?.Vehicle.CurrentOwnerId == session.User?.Id;
     public bool CanRenew => IsOwner && Detail?.Vehicle.Status == "ACTIVE" && Detail.Vehicle.RegistrationState is "NONE" or "EXPIRED";
     public string StatusAction => Detail?.Vehicle.Status == "ACTIVE" ? "DESACTIVAR" : "ACTIVAR";
+    public string VerificationLabel => VehiclePresentation.VerificationLabel(Detail?.Vehicle.Type);
+    public string VerificationPending => Detail?.VerificationImage is null ? "Evidencia de verificación pendiente." : "";
+    public bool CanUpdateVerification => Detail is not null && (IsOwner || session.User?.Roles.Contains("ADMIN") == true)
+        && !(session.User?.Roles.Contains("GUARD") == true && session.User?.Roles.Contains("ADMIN") != true);
+    [RelayCommand] private Task UpdateVerificationAsync() => navigation.GoAsync("vehicle-verification", new Dictionary<string, object> { ["vehicleId"] = VehicleId });
     public ObservableCollection<VehicleDocumentResponse> Documents { get; } = [];
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () =>
     {
         if (VehicleId == Guid.Empty) throw new UserInputException("Selecciona un vehículo.");
         var result = await api.VehicleAsync(VehicleId); if (!Accepted(result)) return;
         Detail = result.Value; Documents.Clear(); foreach (var document in Detail!.Documents) Documents.Add(document);
-        foreach (var name in new[] { nameof(Identifier), nameof(Heading), nameof(Summary), nameof(Registration), nameof(Location), nameof(CanRenew), nameof(IsOwner), nameof(StatusAction) }) OnPropertyChanged(name);
+        foreach (var name in new[] { nameof(Identifier), nameof(Heading), nameof(Summary), nameof(Registration), nameof(Location), nameof(CanRenew), nameof(IsOwner), nameof(StatusAction), nameof(VerificationLabel), nameof(VerificationPending), nameof(CanUpdateVerification) }) OnPropertyChanged(name);
         var current = await api.CurrentPeriodAsync(); Period = current.IsSuccess ? current.Value!.Name : current.Error!.HttpStatus == 404 ? "Sin periodo académico activo" : "No fue posible consultar el periodo";
-        var general = Detail.Photos.FirstOrDefault(x => x.Type == "GENERAL"); Photo = null;
+        var general = Detail.VerificationImage; Photo = null;
         if (general is not null) { var file = await api.FileAsync(general.ContentUrl); if (Accepted(file)) Photo = file.Value; }
     });
     [RelayCommand] private Task EditAsync() => navigation.GoAsync("vehicle-edit", new Dictionary<string, object> { ["vehicleId"] = VehicleId });
@@ -147,7 +152,7 @@ public partial class VehicleDetailViewModel(UserApiService api, IUserNavigation 
         if (!activate && !await navigation.ConfirmAsync("Desactivar vehículo", "¿Deseas desactivar este vehículo?")) return;
         if (!Accepted(await api.VehicleStatusAsync(VehicleId, activate))) return;
         await navigation.MessageAsync("Vehículo", activate ? "Vehículo activado correctamente." : "Vehículo desactivado correctamente.");
-        var refreshed = await api.VehicleAsync(VehicleId); if (Accepted(refreshed)) { Detail = refreshed.Value; foreach (var name in new[] { nameof(Summary), nameof(CanRenew), nameof(StatusAction) }) OnPropertyChanged(name); }
+        var refreshed = await api.VehicleAsync(VehicleId); if (Accepted(refreshed)) { Detail = refreshed.Value; foreach (var name in new[] { nameof(Summary), nameof(CanRenew), nameof(StatusAction), nameof(VerificationLabel), nameof(VerificationPending), nameof(CanUpdateVerification) }) OnPropertyChanged(name); }
     });
     [RelayCommand] private Task OpenDocumentAsync(VehicleDocumentResponse document) => WorkAsync(async () =>
     {
@@ -181,34 +186,33 @@ public partial class RegisterVehicleViewModel : UserFeatureViewModel
 {
     private readonly UserApiService api; private readonly IAuthSession session; private readonly IAttachmentPicker picker; private readonly IUserNavigation navigation;
     public ObservableCollection<TypeChoice> Types { get; } = [];
-    public ObservableCollection<DocumentInputViewModel> Documents { get; } = [];
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IdentifierLabel))] private TypeChoice? selectedType;
     [ObservableProperty] private string identifier = "";
     [ObservableProperty] private string brand = "";
     [ObservableProperty] private string model = "";
     [ObservableProperty] private string color = "";
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(PhotoName))] private PickedAttachment? photo;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(VerificationImageName))] private PickedAttachment? verificationImage;
     public string IdentifierLabel => SelectedType?.Code == "BICYCLE" ? "Número de marco" : "Placa";
-    public string PhotoName => Photo?.FileName ?? "Selecciona una foto GENERAL JPEG/PNG (máximo 5 MB).";
+    public string VerificationImageName => VerificationImage?.FileName ?? "Selecciona una imagen JPEG/PNG (máximo 5 MB).";
+    public string VerificationLabel => VehiclePresentation.VerificationLabel(SelectedType?.Code);
+    public string VerificationHelp => VehiclePresentation.VerificationHelp(SelectedType?.Code);
     public RegisterVehicleViewModel(UserApiService api, IAuthSession session, IAttachmentPicker picker, IUserNavigation navigation)
     { this.api = api; this.session = session; this.picker = picker; this.navigation = navigation; ApplyTypes(); }
     private void ApplyTypes()
     { Types.Clear(); foreach (var code in VehiclePresentation.AllowedTypes(session.User?.MemberType)) Types.Add(new(code, VehiclePresentation.TypeName(code))); SelectedType = Types[0]; }
     partial void OnSelectedTypeChanged(TypeChoice? value)
-    { Identifier = ""; Documents.Clear(); foreach (var type in VehiclePresentation.RequiredDocuments(value?.Code ?? "MOTORCYCLE")) Documents.Add(new(type, picker)); }
+    { Identifier = ""; VerificationImage = null; OnPropertyChanged(nameof(VerificationLabel)); OnPropertyChanged(nameof(VerificationHelp)); }
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () =>
     { var result = await api.ProfileAsync(); if (Accepted(result) && await session.GetTokenAsync() is { } token) { await session.TrySetUserAsync(token, result.Value!); ApplyTypes(); } });
-    [RelayCommand] private Task PickPhotoAsync(bool camera) => WorkAsync(async () => { var value = await picker.PhotoAsync(camera); if (value is not null) Photo = value; });
+    [RelayCommand] private Task PickPhotoAsync(bool camera) => WorkAsync(async () => { var value = await picker.PhotoAsync(camera); if (value is not null) VerificationImage = AttachmentValidation.Validate(value.FileName, value.ContentType, value.Bytes, true); });
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
     {
         var type = SelectedType?.Code ?? "";
         if (!VehiclePresentation.AllowedTypes(session.User?.MemberType).Contains(type)) throw new UserInputException("Selecciona un tipo de vehículo permitido.");
         Required(Identifier, IdentifierLabel, type == "BICYCLE" ? 150 : 100); Required(Brand, "Marca"); Required(Model, "Modelo"); Required(Color, "Color");
-        if (Photo is null) throw new UserInputException("Selecciona una foto GENERAL.");
-        if (Documents.Any(x => x.IsBusy)) throw new UserInputException("Espera a que finalice la selección de documentos.");
-        var files = Documents.Select(x => x.Build()).Where(x => x is not null).Cast<DocumentAttachment>().ToArray();
-        if (VehiclePresentation.RequiredDocuments(type).Except(files.Select(x => x.Type)).Any()) throw new UserInputException("Selecciona todos los documentos requeridos.");
-        var result = await api.RegisterAsync(new(type, Identifier, Brand, Model, Color, Photo, files)); if (!Accepted(result)) return;
+        if (VerificationImage is null) throw new UserInputException("Selecciona la evidencia de verificación.");
+        var result = await api.RegisterAsync(new(type, Identifier, Brand, Model, Color, VerificationImage)); if (!Accepted(result)) return;
+        VerificationImage = null;
         await navigation.MessageAsync("Vehículo", "Vehículo registrado correctamente.");
         await navigation.BackAsync(); await navigation.GoAsync("vehicle-detail", new Dictionary<string, object> { ["vehicleId"] = result.Value!.Id });
     });
@@ -229,7 +233,7 @@ public partial class EditVehicleViewModel(UserApiService api, IUserNavigation na
         await navigation.MessageAsync("Vehículo", "Información actualizada correctamente."); await navigation.BackAsync();
     });
 }
-public partial class RenewRegistrationViewModel(UserApiService api, IAttachmentPicker picker, IUserNavigation navigation) : UserFeatureViewModel
+public partial class RenewRegistrationViewModel(UserApiService api, IUserNavigation navigation) : UserFeatureViewModel
 {
     public Guid VehicleId { get; set; }
     public ObservableCollection<DocumentInputViewModel> Documents { get; } = [];
@@ -240,16 +244,13 @@ public partial class RenewRegistrationViewModel(UserApiService api, IAttachmentP
         Period = "";
         var result = await api.VehicleAsync(VehicleId); if (!Accepted(result)) return;
         Heading = result.Value!.Vehicle.Plate ?? result.Value.Vehicle.FrameNumber ?? ""; Documents.Clear();
-        foreach (var type in VehiclePresentation.RequiredDocuments(result.Value.Vehicle.Type)) Documents.Add(new(type, picker, result.Value.Documents.FirstOrDefault(x => x.Type == type)?.OriginalFileName));
+        if (result.Value.VerificationImage is null) { ErrorMessage = "Evidencia de verificación pendiente. Actualiza la imagen antes de renovar."; return; }
         var current = await api.CurrentPeriodAsync(); if (Accepted(current)) Period = current.Value!.Name;
     });
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
     {
-        if (Documents.Count == 0 || string.IsNullOrEmpty(Period)) throw new UserInputException("Carga el vehículo y el periodo actual antes de renovar.");
-        if (Documents.Any(x => x.IsBusy)) throw new UserInputException("Espera a que finalice la selección de documentos.");
-        if (Documents.Any(x => !x.HasExisting && x.File is null)) throw new UserInputException("Adjunta los documentos requeridos que faltan.");
-        var files = Documents.Select(x => x.Build()).Where(x => x is not null).Cast<DocumentAttachment>().ToArray();
-        if (!Accepted(await api.RenewAsync(VehicleId, files))) return;
+        if (string.IsNullOrEmpty(Period)) throw new UserInputException("Carga el vehículo con evidencia de verificación y el periodo actual antes de renovar.");
+        if (!Accepted(await api.RenewAsync(VehicleId, []))) return;
         await navigation.MessageAsync("Registro", "Registro renovado correctamente."); await navigation.BackAsync();
     });
 }

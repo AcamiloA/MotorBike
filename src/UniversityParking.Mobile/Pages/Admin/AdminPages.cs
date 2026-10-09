@@ -92,7 +92,7 @@ public sealed class AdminVehicleDetailPage:UserPage<AdminVehicleDetailViewModel>
     {
         var documents=new VerticalStackLayout();documents.SetBinding(BindableLayout.ItemsSourceProperty,"Detail.Documents");BindableLayout.SetItemTemplate(documents,new DataTemplate(()=>{var button=UserViews.Button("ABRIR DOCUMENTO","DocumentCommand",vm,".");button.SetBinding(Button.TextProperty,"OriginalFileName");return button;}));
         var status=AdminViews.Save("CAMBIAR ESTADO","StatusCommand");status.SetBinding(Button.TextProperty,"StatusAction");
-        Form(UserViews.Bound("Summary"),UserViews.Image("Photo",180),documents,UserViews.Button("EDITAR MARCA / MODELO / COLOR","EditCommand"),status,AdminViews.Save("CORREGIR IDENTIFICADOR","CorrectCommand"),AdminViews.Save("TRANSFERIR VEHÍCULO","TransferCommand"),UserViews.Button("PROPIEDADES, REGISTROS E HISTORIAL","HistoryCommand"),UserViews.Button("ACTUALIZAR","LoadCommand"));
+        Form(UserViews.Bound("Summary"),UserViews.Bound("VerificationLabel"),UserViews.Bound("VerificationPending",true),UserViews.Image("Photo",180),UserViews.Button("ACTUALIZAR EVIDENCIA","UpdateVerificationCommand"),documents,UserViews.Button("EDITAR MARCA / MODELO / COLOR","EditCommand"),status,AdminViews.Save("CORREGIR IDENTIFICADOR","CorrectCommand"),AdminViews.Save("TRANSFERIR VEHÍCULO","TransferCommand"),UserViews.Button("PROPIEDADES, REGISTROS E HISTORIAL","HistoryCommand"),UserViews.Button("ACTUALIZAR","LoadCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.VehicleId=AdminViews.Id(query,"vehicleId");
 }

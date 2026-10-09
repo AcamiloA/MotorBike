@@ -127,7 +127,7 @@ public sealed partial class VehicleEndpointTests
         Assert.Null(ownership.EndAt);
         Assert.Equal(owner.Id, ownership.UserId);
         Assert.Equal(VehicleRegistrationStatus.ACTIVE, (await context.VehicleRegistrations.SingleAsync()).Status);
-        Assert.Equal(3, FileCount());
+        Assert.Equal(1, FileCount());
     }
     [Fact]
     public async Task TransferCancelsOnlyRegistrationOfActivePeriod()
@@ -194,6 +194,7 @@ public sealed partial class VehicleEndpointTests
         await LoginAsync(await CreateUserAsync());
         var first = await RegisterAsync();
         var second = await RegisterAsync(identifier: "DEF456");
+        await AddLegacyAsync(second);
         var detail = (await client.GetFromJsonAsync<VehicleDetailResponse>($"/api/v1/vehicles/{second}"))!;
         await ErrorAsync(await client.GetAsync($"/api/v1/vehicles/{first}/photos/{detail.Photos[0].Id}/content"), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
         await ErrorAsync(await client.GetAsync($"/api/v1/vehicles/{first}/documents/{detail.Documents[0].Id}/content"), HttpStatusCode.NotFound, "VEHICLE_NOT_FOUND");
@@ -225,7 +226,7 @@ public sealed partial class VehicleEndpointTests
         Assert.Single(await context.Vehicles.ToArrayAsync());
         Assert.Single(await context.VehicleOwnerships.ToArrayAsync());
         Assert.Single(await context.VehicleRegistrations.ToArrayAsync());
-        Assert.Equal(3, FileCount());
+        Assert.Equal(1, FileCount());
     }
     [Fact]
     public async Task PartialStorageFailureRemovesPreviouslyUploadedFiles()
@@ -269,16 +270,18 @@ public sealed partial class VehicleEndpointTests
         var response = await client.PostAsync($"/api/v1/vehicles/{id}/renew", body);
         Assert.True(response.StatusCode == HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         await using var verification = fixture.CreateContext();
-        Assert.Equal(3, await verification.VehicleDocuments.CountAsync());
-        Assert.Equal(4, FileCount());
+        Assert.Equal(1, await verification.VehicleDocuments.CountAsync());
+        Assert.Equal(2, FileCount());
         var document = await verification.VehicleDocuments.SingleAsync(x => x.DocumentNumber == "NEW-POLICY");
         Assert.Equal(new DateOnly(2021, 1, 1), document.ExpiresOn);
     }
     private sealed class FailingStorage(IFileStorage actual) : IFileStorage
     {
-        private int uploads;
-        public Task<StoredFile> UploadAsync(FileUpload upload, CancellationToken ct) =>
-            ++uploads == 2 ? throw new IOException("Storage test failure") : actual.UploadAsync(upload, ct);
+        public async Task<StoredFile> UploadAsync(FileUpload upload, CancellationToken ct)
+        {
+            await actual.UploadAsync(upload, ct);
+            throw new IOException("Storage test failure after accepting bytes");
+        }
         public Task<Stream> OpenReadAsync(string key, CancellationToken ct) => actual.OpenReadAsync(key, ct);
         public Task DeleteAsync(string key, CancellationToken ct) => actual.DeleteAsync(key, ct);
         public Task<Uri?> GetReadUrlAsync(string key, CancellationToken ct) => actual.GetReadUrlAsync(key, ct);

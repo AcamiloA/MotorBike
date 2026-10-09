@@ -141,9 +141,10 @@ public sealed class VehicleDetailPage : UserPage<VehicleDetailViewModel>
         var edit = UserViews.Button("EDITAR INFORMACIÓN", "EditCommand"); edit.SetBinding(IsVisibleProperty, "IsOwner");
         var renew = UserViews.Button("RENOVAR REGISTRO", "RenewCommand"); renew.SetBinding(IsVisibleProperty, "CanRenew");
         var status = UserViews.Button("", "ChangeStatusCommand"); status.SetBinding(Button.TextProperty, "StatusAction"); status.SetBinding(IsVisibleProperty, "IsOwner");
-        Form(UserViews.Image("Photo", 220), UserViews.Bound("Identifier"), UserViews.Bound("Heading"), UserViews.Bound("Summary", true), UserViews.Bound("Period", true),
-            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, UserViews.Button("REINTENTAR", "LoadCommand"));
+        Form(UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationPending", true), UserViews.Image("Photo", 220), UserViews.Bound("Identifier"), UserViews.Bound("Heading"), UserViews.Bound("Summary", true), UserViews.Bound("Period", true),
+            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(), UserViews.Button("REINTENTAR", "LoadCommand"));
     }
+    private static Button VerificationButton() { var b = UserViews.Button("ACTUALIZAR EVIDENCIA", "UpdateVerificationCommand"); b.SetBinding(IsVisibleProperty, "CanUpdateVerification"); return b; }
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
 }
 public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
@@ -151,12 +152,12 @@ public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
     public RegisterVehiclePage(RegisterVehicleViewModel vm) : base(vm, "Registrar vehículo", () => vm.LoadCommand.ExecuteAsync(null), once: true)
     {
         var types = new Picker { Title = "Tipo de vehículo", ItemDisplayBinding = new Binding("Label") }; types.SetBinding(Picker.ItemsSourceProperty, "Types"); types.SetBinding(Picker.SelectedItemProperty, "SelectedType"); types.SetBinding(IsEnabledProperty, "IsNotBusy");
-        var gallery = UserViews.Button("SELECCIONAR FOTO", "PickPhotoCommand"); gallery.CommandParameter = false;
+        var gallery = UserViews.Button("SELECCIONAR IMAGEN", "PickPhotoCommand"); gallery.CommandParameter = false;
         var camera = UserViews.Button("TOMAR FOTO", "PickPhotoCommand"); camera.CommandParameter = true;
         Form(UserViews.Input(types), UserViews.Bound("IdentifierLabel"), UserViews.Input(UserViews.Entry("Identifier", "Identificador del vehículo")),
             UserViews.Input(UserViews.Entry("Brand", "Marca")), UserViews.Input(UserViews.Entry("Model", "Modelo")), UserViews.Input(UserViews.Entry("Color", "Color")),
-            UserViews.Heading("Fotografía GENERAL"), UserViews.Bound("PhotoName", true), UserViews.Image("Photo", 180), camera, gallery,
-            UserViews.Heading("Documentos"), UserViews.Documents(vm), UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
+            UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationHelp", true), UserViews.Bound("VerificationImageName", true), UserViews.Image("VerificationImage", 180), camera, gallery,
+            UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
     }
 }
 public sealed class EditVehiclePage : UserPage<EditVehicleViewModel>
@@ -168,7 +169,7 @@ public sealed class EditVehiclePage : UserPage<EditVehicleViewModel>
 public sealed class RenewRegistrationPage : UserPage<RenewRegistrationViewModel>
 {
     public RenewRegistrationPage(RenewRegistrationViewModel vm) : base(vm, "Renovar registro", () => vm.LoadCommand.ExecuteAsync(null), once: true) =>
-        Form(UserViews.Bound("Heading"), UserViews.Bound("Period", true), UserViews.Text("Puedes conservar los soportes actuales o adjuntar sus reemplazos.", true), UserViews.Documents(vm), UserViews.Button("RENOVAR REGISTRO", "SaveCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
+        Form(UserViews.Bound("Heading"), UserViews.Bound("Period", true), UserViews.Text("Se reutiliza la evidencia de verificación del vehículo. Si está pendiente, actualízala desde el detalle.", true), UserViews.Button("RENOVAR REGISTRO", "SaveCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
 }
 public sealed class MyHistoryPage : UserPage<MyHistoryViewModel>
@@ -215,7 +216,7 @@ public static class UserRoutes
 {
     public static void Register(IServiceProvider services)
     {
-        var routes = new Dictionary<string, Type> { ["my-vehicles"] = typeof(MyVehiclesPage), ["vehicle-detail"] = typeof(VehicleDetailPage), ["vehicle-register"] = typeof(RegisterVehiclePage),
+        var routes = new Dictionary<string, Type> { ["my-vehicles"] = typeof(MyVehiclesPage), ["vehicle-detail"] = typeof(VehicleDetailPage), ["vehicle-register"] = typeof(RegisterVehiclePage), ["vehicle-verification"] = typeof(VerificationImagePage),
             ["vehicle-edit"] = typeof(EditVehiclePage), ["vehicle-renew"] = typeof(RenewRegistrationPage), ["my-history"] = typeof(MyHistoryPage), ["user-news"] = typeof(NewsPage),
             ["news-detail"] = typeof(NewsDetailPage), ["user-profile"] = typeof(ProfilePage), ["profile-edit"] = typeof(EditProfilePage), ["password-change"] = typeof(ChangePasswordPage) };
         foreach (var route in routes) Routing.RegisterRoute(route.Key, new ServiceRouteFactory(services, route.Value));

@@ -6,6 +6,10 @@ namespace UniversityParking.Infrastructure.Persistence.Repositories;
 
 public sealed class VehicleEvidenceRepository(AppDbContext context) : IVehicleEvidenceRepository
 {
+    public Task<VehicleVerificationImage?> GetVerificationImageAsync(Guid vehicleId, CancellationToken cancellationToken) =>
+        context.VehicleVerificationImages.SingleOrDefaultAsync(x => x.VehicleId == vehicleId, cancellationToken);
+    public async Task AddVerificationImageAsync(VehicleVerificationImage image, CancellationToken cancellationToken) =>
+        await context.VehicleVerificationImages.AddAsync(image, cancellationToken);
     public async Task<IReadOnlyList<VehiclePhoto>> GetPhotosAsync(Guid vehicleId, CancellationToken cancellationToken) =>
         await context.VehiclePhotos.AsNoTracking().Where(x => x.VehicleId == vehicleId).OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync(cancellationToken);
     public async Task<IReadOnlyList<VehicleDocument>> GetDocumentsAsync(Guid vehicleId, CancellationToken cancellationToken) =>

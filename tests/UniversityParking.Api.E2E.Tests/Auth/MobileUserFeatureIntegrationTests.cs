@@ -38,8 +38,7 @@ public sealed class MobileUserFeatureIntegrationTests(AuthApiFixture fixture) : 
         Assert.True((await auth.LoginAsync(user.IdentificationNumber.Value, AuthApiFixture.Password)).IsSuccess); return (new(api), client, auth);
     }
     private static VehicleRegistrationInput Registration(string type) => new(type, type == "BICYCLE" ? "FRAME-001" : "ABC123", "Brand", "Model", "Black",
-        new("photo.png", "image/png", Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG6kAAAAASUVORK5CYII=")),
-        VehiclePresentation.RequiredDocuments(type).Select(x => new DocumentAttachment(x, new("support.pdf", "application/pdf", "%PDF-1.7\n%%EOF"u8.ToArray()))).ToArray());
+        new("photo.png", "image/png", Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG6kAAAAASUVORK5CYII=")));
     [Theory]
     [InlineData("STUDENT", "MOTORCYCLE", true)] [InlineData("STUDENT", "BICYCLE", true)]
     [InlineData("STUDENT", "CAR", false)] [InlineData("TEACHER", "CAR", true)]
@@ -51,7 +50,7 @@ public sealed class MobileUserFeatureIntegrationTests(AuthApiFixture fixture) : 
         if (!allowed) { Assert.Equal("STUDENT_CANNOT_REGISTER_CAR", result.Error!.Code); return; }
         var id = result.Value!.Id; var mine = await setup.Api.MyVehiclesAsync(); Assert.Equal(id, Assert.Single(mine.Value!).Id);
         var detail = await setup.Api.VehicleAsync(id); Assert.Equal(user.Id, detail.Value!.Vehicle.CurrentOwnerId);
-        var photo = await setup.Api.FileAsync(Assert.Single(detail.Value.Photos).ContentUrl); Assert.True(photo.IsSuccess); Assert.NotEmpty(photo.Value!);
+        var photo = await setup.Api.FileAsync(detail.Value.VerificationImage!.ContentUrl); Assert.True(photo.IsSuccess); Assert.NotEmpty(photo.Value!);
         var edited = await setup.Api.EditVehicleAsync(id, "Updated", "Model", "Red"); Assert.True(edited.IsSuccess);
         Assert.Equal("Updated", (await setup.Api.VehicleAsync(id)).Value!.Vehicle.Brand);
         Assert.True((await setup.Api.VehicleStatusAsync(id, false)).IsSuccess); Assert.True((await setup.Api.VehicleStatusAsync(id, true)).IsSuccess);
