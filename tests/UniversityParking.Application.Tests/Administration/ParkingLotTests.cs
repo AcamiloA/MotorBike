@@ -10,11 +10,11 @@ public sealed class ParkingLotTests
     private CreateParkingLotCommandHandler Create => new(context.Operation, context, context.Work);
     private static CreateParkingLotCommand Request(string campus = "Kennedy") => new("Principal", campus, new(6, 0), new(22, 0));
     [Fact]
-    public async Task CreateAddsExactlyThreeActiveStandardZonesInSameSave()
+    public async Task CreateAddsExactlyFourActiveStandardZonesInSameSave()
     {
         var id = (await Create.Handle(Request(), default)).Value;
-        Assert.Equal(3, context.Zones.Count);
-        Assert.Equal(new[] { VehicleType.CAR, VehicleType.MOTORCYCLE, VehicleType.BICYCLE }, context.Zones.Select(x => x.VehicleType));
+        Assert.Equal(4, context.Zones.Count);
+        Assert.Equal(new[] { VehicleType.CAR, VehicleType.MOTORCYCLE, VehicleType.BICYCLE,VehicleType.SCOOTER }, context.Zones.Select(x => x.VehicleType));
         Assert.All(context.Zones, x => { Assert.Equal(id, x.ParkingLotId); Assert.Equal(ParkingZoneStatus.ACTIVE, x.Status); Assert.Equal(context.Lots[0].CreatedAt, x.CreatedAt); });
         Assert.Equal(1, context.Work.SaveCount);
         Assert.Equal("PARKING_LOT_CREATED", Assert.Single(context.Audits).Action);

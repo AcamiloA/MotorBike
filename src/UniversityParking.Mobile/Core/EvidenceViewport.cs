@@ -1,29 +1,36 @@
 namespace UniversityParking.Mobile.Core;
 
-// Shared gesture mathematics; the page only applies these values to the original image.
+// Viewport coordinates are independent of Android density and image resolution.
 public sealed class EvidenceViewport
 {
     public double Scale { get; private set; } = 1;
     public double X { get; private set; }
     public double Y { get; private set; }
-    public void Reset() { Scale = 1; X = Y = 0; }
-    public void Zoom(double factor, double originX, double originY, double width, double height)
+    public const double InspectionScale = 2.5;
+    public bool Pressed { get; private set; }
+    public double LimitX { get; private set; }
+    public double LimitY { get; private set; }
+    private double startX, startY, offsetX, offsetY;
+    public void Reset() { Pressed = false; Scale = 1; X = Y = LimitX = LimitY = 0; }
+    public void TouchDown(double x, double y, double width, double height, double imageWidth, double imageHeight)
     {
-        if (!double.IsFinite(factor) || factor <= 0) return;
-        var previous = Scale; Scale = Math.Clamp(Scale * factor, 1, 8);
-        var ratio = Scale / previous;
-        X = X * ratio - (Math.Clamp(originX, 0, 1) - .5) * width * (ratio - 1);
-        Y = Y * ratio - (Math.Clamp(originY, 0, 1) - .5) * height * (ratio - 1);
-        Clamp(width, height);
+        Reset();
+        if (!Valid(x, y) || !Valid(width, height) || !Valid(imageWidth, imageHeight) || width <= 0 || height <= 0 || imageWidth <= 0 || imageHeight <= 0) return;
+        var fit = Math.Min(width / imageWidth, height / imageHeight);
+        Scale = InspectionScale; Pressed = true;
+        LimitX = Math.Max(0, (imageWidth * fit * Scale - width) / 2);
+        LimitY = Math.Max(0, (imageHeight * fit * Scale - height) / 2);
+        startX = Math.Clamp(x, 0, width); startY = Math.Clamp(y, 0, height);
+        offsetX = X = Math.Clamp(-(startX - width / 2) * (Scale - 1), -LimitX, LimitX);
+        offsetY = Y = Math.Clamp(-(startY - height / 2) * (Scale - 1), -LimitY, LimitY);
     }
-    public void Pan(double x, double y, double width, double height)
+    public void TouchMove(double x, double y)
     {
-        if (!double.IsFinite(x) || !double.IsFinite(y)) return;
-        X = x; Y = y; Clamp(width, height);
+        if (!Pressed || !Valid(x, y)) return;
+        X = Math.Clamp(offsetX + x - startX, -LimitX, LimitX);
+        Y = Math.Clamp(offsetY + y - startY, -LimitY, LimitY);
     }
-    private void Clamp(double width, double height)
-    {
-        X = Math.Clamp(X, -Math.Max(0, width * (Scale - 1) / 2), Math.Max(0, width * (Scale - 1) / 2));
-        Y = Math.Clamp(Y, -Math.Max(0, height * (Scale - 1) / 2), Math.Max(0, height * (Scale - 1) / 2));
-    }
+    public void TouchUp() => Reset();
+    public void TouchCancel() => Reset();
+    private static bool Valid(double x, double y) => double.IsFinite(x) && double.IsFinite(y);
 }

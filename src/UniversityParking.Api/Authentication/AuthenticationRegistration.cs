@@ -41,12 +41,22 @@ public static class AuthenticationRegistration
                 };
                 options.Events = new JwtBearerEvents
                 {
-                    OnTokenValidated = context =>
+                    OnTokenValidated = async context =>
                     {
                         var actor = context.Principal?.FindFirst("sub")?.Value;
                         if (!Guid.TryParse(actor, out var id) || id == Guid.Empty)
                             context.Fail("El token no contiene un usuario válido.");
-                        return Task.CompletedTask;
+                        else
+                        {
+                            var users=context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                            var credentials=context.HttpContext.RequestServices.GetRequiredService<IUserCredentialRepository>();
+                            var user=await users.GetByIdAsync(id,context.HttpContext.RequestAborted);
+                            var credential=await credentials.GetByUserIdAsync(id,context.HttpContext.RequestAborted);
+                            var stamp=context.Principal?.FindFirst("credential_version")?.Value;
+                            if(user?.MustChangePassword==true || credential is null ||
+                                (stamp is null ? credential.SecurityStamp!=Guid.Empty : !Guid.TryParse(stamp,out var changed) || changed!=credential.SecurityStamp))
+                                context.Fail("La sesión requiere autenticación nuevamente.");
+                        }
                     },
                     OnChallenge = async context =>
                     {

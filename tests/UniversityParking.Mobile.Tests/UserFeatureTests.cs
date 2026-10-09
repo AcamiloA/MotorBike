@@ -15,7 +15,7 @@ public sealed partial class UserFeatureTests
 {
     private static PickedAttachment Photo => new("photo.png", "image/png", [137,80,78,71,13,10,26,10]);
     private static PickedAttachment Pdf => new("support.pdf", "application/pdf", "%PDF-1.7"u8.ToArray());
-    private static UserProfileResponse Profile(string member = "STUDENT") => new(Guid.NewGuid(), "123", "Camilo", new Guid("a1100000-0000-4000-8000-000000000001"), "ETITC", "Ingeniería", member, "CARD", "ACTIVE", ["USER"]);
+    private static UserProfileResponse Profile(string member = "STUDENT") => new(Guid.NewGuid(), "123", "Camilo", new Guid("a1100000-0000-4000-8000-000000000001"), "ETITC", "Ingeniería", member, "CARD", "ACTIVE", ["USER"],UserType:member=="STAFF"?"ADMINISTRATIVE":member);
     private static VehicleResponse Vehicle(Guid owner, string type = "MOTORCYCLE") => new(Guid.NewGuid(), type, type == "BICYCLE" ? null : "ABC123", type == "BICYCLE" ? "FRAME123" : null,
         "Brand", "Model", "Black", "ACTIVE", owner, "Camilo", "EXPIRED", false, null);
     private static HttpResponseMessage Ok(object value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
@@ -96,14 +96,14 @@ public sealed partial class UserFeatureTests
         string? body = null; var service = Service(async request => { body = await request.Content!.ReadAsStringAsync(); return new(HttpStatusCode.NoContent); });
         var vm = new EditVehicleViewModel(service.Api, new Navigation()) { VehicleId = Guid.NewGuid(), Brand = "New", Model = "Model", Color = "Red", Identifier = "READONLY" };
         await vm.SaveCommand.ExecuteAsync(null); using var json = JsonDocument.Parse(body!);
-        Assert.Equal(new[] { "brand", "model", "color" }, json.RootElement.EnumerateObject().Select(x => x.Name)); Assert.DoesNotContain("READONLY", body);
+        Assert.Equal(new[] { "brand", "model", "color", "identifier" }, json.RootElement.EnumerateObject().Select(x => x.Name)); Assert.Contains("READONLY", body);
     }
     [Fact]
     public async Task ProfileUpdateSendsOnlyAllowedFields()
     {
         string? body = null; var service = Service(async request => { body = await request.Content!.ReadAsStringAsync(); return new(HttpStatusCode.NoContent); });
-        var vm = new EditProfileViewModel(service.Api, new Navigation()) { FullName = "Camilo actualizado", Career = "Ingeniería" }; await vm.SaveCommand.ExecuteAsync(null);
-        using var json = JsonDocument.Parse(body!); Assert.Equal(new[] { "fullName", "career" }, json.RootElement.EnumerateObject().Select(x => x.Name));
+        var vm = new EditProfileViewModel(service.Api, new Navigation()) { FullName = "Camilo actualizado", Career = "Ingeniería",Email="student@example.com",PhoneNumber="+573001234567" }; await vm.SaveCommand.ExecuteAsync(null);
+        using var json = JsonDocument.Parse(body!); Assert.Equal(new[] { "fullName", "career", "email", "phoneNumber" }, json.RootElement.EnumerateObject().Select(x => x.Name));
     }
     [Fact]
     public async Task PasswordConfirmationIsLocalAndAllPasswordFieldsAreCleared()

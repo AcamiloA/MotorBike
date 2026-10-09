@@ -19,9 +19,10 @@ public sealed class RegisterVehicleCommandHandler(VehicleOperationContext operat
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
         var actor = await operation.ActorAsync(cancellationToken, locked: true);
         if (actor.IsFailure) return Result<Guid>.Failure(actor.Error!);
+        if(!await operation.HasRoleAsync(UniversityParking.Domain.Users.RoleCodes.User,cancellationToken))return Result<Guid>.Failure(CommonErrors.Forbidden);
         if (VehicleOperationContext.Eligibility(actor.Value, request.Type) is { } eligibility) return Result<Guid>.Failure(eligibility);
-        var plate = request.Type == VehicleType.BICYCLE ? null : new VehiclePlate(request.Plate!);
-        var frame = request.Type == VehicleType.BICYCLE ? new FrameNumber(request.FrameNumber!) : null;
+        var plate = request.Type is VehicleType.BICYCLE or VehicleType.SCOOTER ? null : new VehiclePlate(request.Plate!);
+        var frame = request.Type is VehicleType.BICYCLE or VehicleType.SCOOTER ? new FrameNumber(request.FrameNumber!) : null;
         if (plate is not null && await vehicles.ExistsByPlateAsync(plate, cancellationToken) ||
             frame is not null && await vehicles.ExistsByFrameNumberAsync(frame, cancellationToken)) return Result<Guid>.Failure(VehicleErrors.IdentifierAlreadyExists);
         var period = await periods.GetActiveForShareAsync(cancellationToken);

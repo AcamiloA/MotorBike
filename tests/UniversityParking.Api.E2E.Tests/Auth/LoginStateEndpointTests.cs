@@ -42,7 +42,7 @@ public sealed class LoginStateEndpointTests(AuthApiFixture fixture):IAsyncLifeti
     [Theory][InlineData(UserStatus.PENDING)][InlineData(UserStatus.REJECTED)][InlineData(UserStatus.INACTIVE)]
     public async Task NonActiveAccountWithSimulatedStaleTokenCannotAccessProtectedProfile(UserStatus state)
     {
-        var user=await Account(state);await using var scope=fixture.Factory.Services.CreateAsyncScope();var token=scope.ServiceProvider.GetRequiredService<ITokenService>().CreateAccessToken(new TokenUser(user.Id,user.MemberType,["USER"]));
+        var user=await Account(state);await using var db=fixture.CreateContext();var stamp=(await db.UserCredentials.SingleAsync(x=>x.UserId==user.Id)).SecurityStamp;await using var scope=fixture.Factory.Services.CreateAsyncScope();var token=scope.ServiceProvider.GetRequiredService<ITokenService>().CreateAccessToken(new TokenUser(user.Id,user.MemberType,["USER"],SecurityStamp:stamp));
         fixture.Client.DefaultRequestHeaders.Authorization=new("Bearer",token.Token);
         var response=await fixture.Client.GetAsync("/api/v1/users/me");Assert.Equal(HttpStatusCode.Conflict,response.StatusCode);
         Assert.Equal("USER_INACTIVE",(await response.Content.ReadFromJsonAsync<ApiProblemDetails>())!.Code);

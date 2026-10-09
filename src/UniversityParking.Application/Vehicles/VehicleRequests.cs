@@ -14,7 +14,7 @@ public sealed record RegisterVehicleCommand(VehicleType Type, string? Plate, str
 public sealed record UpdateVehicleVerificationImageCommand(Guid VehicleId, UploadSource? VerificationImage) : ICommand;
 public sealed record GetVehicleVerificationImageContentQuery(Guid VehicleId) : IQuery<FileContent>;
 public sealed record RenewVehicleRegistrationCommand(Guid VehicleId, IReadOnlyList<DocumentUpload> Documents) : ICommand<Guid>;
-public sealed record UpdateVehicleCommand(Guid VehicleId, string Brand, string Model, string Color) : ICommand;
+public sealed record UpdateVehicleCommand(Guid VehicleId, string Brand, string Model, string Color,string? Identifier=null) : ICommand;
 public sealed record ActivateVehicleCommand(Guid VehicleId) : ICommand;
 public sealed record DeactivateVehicleCommand(Guid VehicleId) : ICommand;
 public sealed record CorrectVehicleIdentifierCommand(Guid VehicleId, string Identifier, string Reason) : ICommand;

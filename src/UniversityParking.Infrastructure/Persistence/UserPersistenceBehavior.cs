@@ -39,10 +39,10 @@ public sealed class UserPersistenceBehavior<TRequest, TResponse>(AppDbContext co
         }
         catch (DbUpdateException exception) when (exception.InnerException is
             PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres &&
-            postgres.ConstraintName is "ux_users_identification_number" or "ux_users_card_code")
+            postgres.ConstraintName is "ux_users_identification_number" or "ux_users_card_code" or "ux_users_normalized_email")
         {
             var constraint = ((PostgresException)exception.InnerException!).ConstraintName;
-            return TResponse.Failure(constraint == "ux_users_identification_number" ? UserErrors.AlreadyExists : UserErrors.CardCodeAlreadyExists);
+            if(constraint=="ux_users_normalized_email") return TResponse.Failure(new("EMAIL_ALREADY_EXISTS","El correo ya está registrado.",ErrorType.Conflict)); return TResponse.Failure(constraint == "ux_users_identification_number" ? UserErrors.AlreadyExists : UserErrors.CardCodeAlreadyExists);
         }
     }
 }

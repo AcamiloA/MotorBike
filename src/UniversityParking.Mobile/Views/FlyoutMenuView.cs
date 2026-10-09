@@ -7,7 +7,7 @@ namespace UniversityParking.Mobile.Views;
 public sealed class FlyoutMenuView : ContentView
 {
     private readonly FlyoutMenuViewModel model;
-    private readonly List<(NavigationItem Item, Button Button)> items = [];
+    private readonly List<(NavigationItem Item, Border Row, Label Text, Button Button)> items = [];
 
     public FlyoutMenuView(FlyoutMenuViewModel model)
     {
@@ -23,13 +23,13 @@ public sealed class FlyoutMenuView : ContentView
         if (model.Home is not null) body.Add(Item(model.Home));
         foreach (var section in model.Sections)
         {
-            var toggle = new Button { BindingContext = section, Style = (Style)resources["FlyoutSection"],
-                Command = model.ToggleCommand, CommandParameter = section, ImageSource = section.Icon,
-                ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left, 12) };
-            toggle.SetBinding(Button.TextProperty, nameof(NavigationSection.Heading));
+            var (row, heading, toggle) = Row(section.Icon, model.ToggleCommand, section);
+            heading.BindingContext = section;
+            heading.FontAttributes = FontAttributes.Bold;
+            heading.SetBinding(Label.TextProperty, nameof(NavigationSection.Heading));
             SemanticProperties.SetDescription(toggle, $"Expandir o contraer {section.Title}");
-            body.Add(toggle);
-            var children = new VerticalStackLayout { BindingContext = section, Spacing = 4, Padding = new Thickness(12, 0, 0, 4) };
+            body.Add(row);
+            var children = new VerticalStackLayout { BindingContext = section, Spacing = 4, Padding = new Thickness(0, 0, 0, 4) };
             children.SetBinding(IsVisibleProperty, nameof(NavigationSection.IsExpanded));
             foreach (var item in section.Items) children.Add(Item(item));
             body.Add(children);
@@ -46,14 +46,31 @@ public sealed class FlyoutMenuView : ContentView
         layout.Add(logout); Grid.SetRow(logout, 2); Content = layout;
     }
 
-    private Button Item(NavigationItem item)
+    private static (Border Row, Label Text, Button Button) Row(string icon, System.Windows.Input.ICommand command, object parameter)
     {
-        var button = new Button { Text = item.Title, ImageSource = item.Icon,
-            ContentLayout = new Button.ButtonContentLayout(Button.ButtonContentLayout.ImagePosition.Left, 12),
-            Command = model.NavigateCommand, CommandParameter = item,
-            Style = (Style)Application.Current!.Resources["FlyoutItem"] };
-        items.Add((item, button));
-        return button;
+        var grid = new Grid { Padding = new Thickness(12, 8), ColumnSpacing = 12,
+            ColumnDefinitions = { new ColumnDefinition(28), new ColumnDefinition(GridLength.Star) }, HeightRequest = 56 };
+        var image = new Image { Source = icon, WidthRequest = 24, HeightRequest = 24, Aspect = Aspect.AspectFit,
+            HorizontalOptions = LayoutOptions.Start, VerticalOptions = LayoutOptions.Center, InputTransparent = true };
+        var text = new Label { VerticalOptions = LayoutOptions.Center, HorizontalTextAlignment = TextAlignment.Start,
+            LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 2, InputTransparent = true };
+        text.SetDynamicResource(Label.TextColorProperty, "TextPrimary");
+        grid.Add(image); grid.Add(text, 1);
+        var row = new Border { StrokeThickness = 0, Content = grid };
+        row.SetDynamicResource(BackgroundColorProperty, "Surface");
+        // A transparent button preserves command/CanExecute and accessibility behavior.
+        var button = new Button { Text = "", Command = command, CommandParameter = parameter, BackgroundColor = Colors.Transparent,
+            BorderWidth = 0, Padding = 0, Margin = new Thickness(-12, -8) };
+        grid.Add(button); Grid.SetColumnSpan(button, 2);
+        return (row, text, button);
+    }
+    private Border Item(NavigationItem item)
+    {
+        var (row, text, button) = Row(item.Icon, model.NavigateCommand, item);
+        text.Text = item.Title;
+        SemanticProperties.SetDescription(button, item.Title);
+        items.Add((item, row, text, button));
+        return row;
     }
 
     protected override void OnHandlerChanged()
@@ -66,12 +83,11 @@ public sealed class FlyoutMenuView : ContentView
     { if (args.PropertyName == nameof(FlyoutMenuViewModel.ActiveKey)) Refresh(); }
     private void Refresh()
     {
-        foreach (var (item, button) in items)
+        foreach (var (item, row, text, button) in items)
         {
             var active = item.Key == model.ActiveKey;
-            button.Text = active ? $"› {item.Title}" : item.Title;
-            button.SetDynamicResource(Button.BackgroundColorProperty, active ? "PrimaryDark" : "Surface");
-            button.SetDynamicResource(Button.TextColorProperty, active ? "Primary" : "TextPrimary");
+            row.SetDynamicResource(BackgroundColorProperty, active ? "PrimaryDark" : "Surface");
+            text.SetDynamicResource(Label.TextColorProperty, active ? "Primary" : "TextPrimary");
             SemanticProperties.SetDescription(button, active ? $"{item.Title}, seleccionado" : item.Title);
         }
     }

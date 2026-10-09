@@ -20,6 +20,7 @@ internal sealed class FakeCurrentUser : ICurrentUser
 
 internal sealed class FakeUsers : IUserRepository
 {
+    public Task<User?> GetByEmailAsync(string email,CancellationToken token)=>Task.FromResult(Values.Values.FirstOrDefault(x=>x.NormalizedEmail==email));
     public Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken) => GetByIdAsync(id, cancellationToken);
     public Task<UniversityParking.Application.Common.Pagination.PagedResult<UniversityParking.Application.Users.UserProfile>> SearchAsync(
         UniversityParking.Application.Users.GetUsersQuery query, CancellationToken cancellationToken) =>

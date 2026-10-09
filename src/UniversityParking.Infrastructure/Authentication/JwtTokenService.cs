@@ -22,6 +22,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IClock clock) 
             new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64)
         };
         claims.AddRange(user.Roles.Distinct(StringComparer.Ordinal).Select(role => new Claim("role", role)));
+        if(user.SecurityStamp.HasValue) claims.Add(new Claim("credential_version",user.SecurityStamp.Value.ToString("D")));
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.Key)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(settings.Issuer, settings.Audience, claims, now.UtcDateTime, expiresAt.UtcDateTime, credentials);
         return new AccessToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);

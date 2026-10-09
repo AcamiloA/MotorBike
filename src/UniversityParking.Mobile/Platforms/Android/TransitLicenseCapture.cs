@@ -79,6 +79,7 @@ public sealed class TransitLicenseCaptureActivity : AppCompatActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+        SupportActionBar?.Hide();
         request = Intent?.GetStringExtra("request");
         if (savedInstanceState is not null || string.IsNullOrEmpty(request)) { Finish(); return; }
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };

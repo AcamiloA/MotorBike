@@ -29,6 +29,6 @@ public sealed class UserOperationContext(ICurrentUser actor, IUserRepository use
             newValues is null ? null : JsonSerializer.Serialize(newValues), requestContext.IpAddress, requestContext.TraceId), cancellationToken);
     public static object Snapshot(User user, string universityName) => new
     {
-        user.FullName, user.UniversityId, UniversityName = universityName, user.Career, user.MemberType, CardCode = user.CardCode.Value, user.Status
+        user.FullName, user.UniversityId, UniversityName = universityName, user.Career, user.MemberType, CardCode = user.CardCode.Value, user.Status,user.UserType,user.Email,user.PhoneNumber,user.IdentificationType
     };
 }

@@ -20,7 +20,7 @@ public sealed class ModelConfigurationTests
         using var context = CreateContext();
         var expected = new[] { "users", "user_credentials", "roles", "user_roles", "vehicles", "vehicle_ownerships",
             "vehicle_registrations", "vehicle_verification_images", "vehicle_photos", "vehicle_documents", "academic_periods", "parking_lots",
-            "parking_zones", "parking_movements", "incidents", "incident_attachments", "news", "audit_logs", "universities" };
+            "parking_zones", "parking_movements", "incidents", "incident_attachments", "news", "audit_logs", "universities","password_challenges","pending_file_deletions" };
         Assert.Equal(expected.Order(), context.Model.GetEntityTypes().Select(x => x.GetTableName()!).Order());
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName);
     }

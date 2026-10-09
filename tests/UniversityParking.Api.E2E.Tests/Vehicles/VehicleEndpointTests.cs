@@ -77,7 +77,7 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
     {
         var body = new MultipartFormDataContent();
         body.Add(new StringContent(type), "Type");
-        body.Add(new StringContent(identifier), type == "BICYCLE" ? "FrameNumber" : "Plate");
+        body.Add(new StringContent(identifier), type is "BICYCLE" or "SCOOTER" ? "FrameNumber" : "Plate");
         body.Add(new StringContent("Brand"), "Brand");
         body.Add(new StringContent("Model"), "Model");
         body.Add(new StringContent("Black"), "Color");

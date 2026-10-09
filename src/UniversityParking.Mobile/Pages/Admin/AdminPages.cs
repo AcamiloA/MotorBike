@@ -27,10 +27,7 @@ public sealed class AdminDashboardPage:UserPage<AdminDashboardViewModel>
 {
     public AdminDashboardPage(AdminDashboardViewModel vm):base(vm,"Administración",()=>vm.LoadCommand.ExecuteAsync(null))
     {
-        var controls=new List<View>{UserViews.Bound("Summary"),UserViews.Button("ACTUALIZAR","LoadCommand")};
-        foreach(var item in new[]{("USUARIOS","admin-users"),("VEHÍCULOS","admin-vehicles"),("PERIODOS ACADÉMICOS","admin-periods"),("PARQUEADEROS","admin-lots"),("INCIDENTES","admin-incidents"),("NOTICIAS","admin-news"),("HISTORIAL","admin-history"),("REPORTES","admin-reports"),("AUDITORÍA","admin-audit"),("MI CUENTA","admin-account")})
-        {var button=UserViews.Button(item.Item1,"OpenCommand");button.CommandParameter=item.Item2;controls.Add(button);}
-        var guard=UserViews.Button("CONTROL DE ACCESO GUARD","GuardCommand");guard.SetBinding(IsVisibleProperty,"HasGuard");controls.Add(guard);controls.Add(UserViews.Button("CERRAR SESIÓN","LogoutCommand"));Form(controls.ToArray());
+        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Card(UserViews.Bound("Summary"))},"LoadCommand"),UserViews.Button("REINTENTAR","LoadCommand"));
     }
 }
 public abstract class AdminListPage<T>:UserPage<T> where T:AdminListViewModel
@@ -64,10 +61,10 @@ public sealed class AdminUserFormPage:UserPage<AdminUserFormViewModel>
     {
         var identification=AdminViews.Field("Identification","Número de identificación");identification.SetBinding(IsVisibleProperty,"IsNew");
         var existing=UserViews.Bound("Identification");existing.SetBinding(IsVisibleProperty,new Binding("IsNew",converter:new InverseBooleanConverter()));
-        var newOnly=UserViews.Stack(AdminViews.Field("InitialPassword","Contraseña inicial",true),UserViews.Text("8 caracteres, mayúscula, minúscula y número. USER es obligatorio."),AdminViews.Check("AddGuard","Agregar GUARD"),AdminViews.Check("AddAdmin","Agregar ADMIN"));newOnly.SetBinding(IsVisibleProperty,"IsNew");
+        var names=UserViews.Stack(AdminViews.Field("FirstName","Nombres"),AdminViews.Field("LastName","Apellidos"),GuardViews.Picker("IdentificationTypes","IdentificationType"));names.SetBinding(IsVisibleProperty,"IsNew");var name=AdminViews.Field("FullName","Nombre completo");name.SetBinding(IsVisibleProperty,new Binding("IsNew",converter:new InverseBooleanConverter()));var newOnly=UserViews.Stack(AdminViews.Field("InitialPassword","Contraseña inicial",true),AdminViews.Field("ConfirmPassword","Confirmar contraseña",true),UserViews.Text("8 caracteres, mayúscula, minúscula y número. Se solicitará cambiarla al ingresar."));newOnly.SetBinding(IsVisibleProperty,"IsNew");
         var universities=GuardViews.Picker("Universities","SelectedUniversity","Name","Seleccionar universidad");
         universities.SetBinding(IsEnabledProperty,"CanSelectUniversity");SemanticProperties.SetDescription(universities,"Universidad");
-        Form(identification,existing,AdminViews.Field("FullName","Nombre completo"),UserViews.Text("Universidad",true),UserViews.Input(universities),UserViews.Bound("CurrentUniversityNotice",true),UserViews.Button("ACTUALIZAR / REINTENTAR UNIVERSIDADES","LoadCommand"),GuardViews.Picker("Members","Member"),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("CardCode","Código de carné"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
+        Form(GuardViews.Picker("Members","Member"),identification,existing,names,name,UserViews.Text("Universidad",true),UserViews.Input(universities),UserViews.Bound("CurrentUniversityNotice",true),UserViews.Button("REINTENTAR UNIVERSIDADES","LoadCommand"),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("Email","Correo"),AdminViews.Field("PhoneNumber","Teléfono"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");
     protected override void OnDisappearing(){ViewModel.InitialPassword="";base.OnDisappearing();}
@@ -81,8 +78,9 @@ public sealed class AdminUserDetailPage:UserPage<AdminUserDetailViewModel>
         var status=UserViews.Button("CAMBIAR ESTADO","StatusCommand");status.SetBinding(Button.TextProperty,"StatusAction");status.SetBinding(IsVisibleProperty,"ShowOperationalStatus");
         var approve=UserViews.Button("APROBAR REGISTRO","ApproveRegistrationCommand");approve.SetBinding(IsVisibleProperty,"IsPendingRegistration");approve.SetBinding(IsEnabledProperty,"CanReviewRegistration");
         var reject=UserViews.Button("RECHAZAR REGISTRO","RejectRegistrationCommand");reject.SetBinding(IsVisibleProperty,"IsPendingRegistration");reject.SetBinding(IsEnabledProperty,"CanReviewRegistration");
+        var reset=UserViews.Stack(AdminViews.Field("TemporaryPassword","Contraseña temporal",true),AdminViews.Field("ConfirmTemporaryPassword","Confirmar contraseña temporal",true),UserViews.Button("CONFIRMAR RESTABLECIMIENTO","ResetPasswordCommand"));reset.SetBinding(IsVisibleProperty,"ShowPasswordReset");
         var header=new ScrollView{HeightRequest=280,Content=UserViews.Stack(UserViews.Bound("Summary"),UserViews.Button("EDITAR","EditCommand"),status,approve,reject,GuardViews.Picker("Roles","SelectedRole"),UserViews.Button("ASIGNAR ROL","AssignRoleCommand"),UserViews.Button("RETIRAR ROL","RemoveRoleCommand"),UserViews.Text("USER es obligatorio y no se puede retirar."),UserViews.Button("HISTORIAL DEL USUARIO","HistoryCommand"),UserViews.Button("ACTUALIZAR","RefreshCommand"),UserViews.Heading("Vehículos actuales"))};
-        Layout(GuardViews.ListLayout(header,AdminViews.Rows(vm,"OpenVehicleCommand"),vm));
+        Layout(GuardViews.ListLayout(header,AdminViews.Rows(vm,"OpenVehicleCommand"),vm),UserViews.Stack(UserViews.Button("RESTABLECER CONTRASEÑA","OpenPasswordResetCommand"),reset));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");
 }
@@ -103,7 +101,7 @@ public sealed class AdminTransferPage:UserPage<AdminTransferViewModel>
 }
 public sealed class AdminCorrectPage:UserPage<AdminCorrectViewModel>
 {
-    public AdminCorrectPage(AdminCorrectViewModel vm):base(vm,"Corregir identificador")=>Form(UserViews.Bound("Summary"),AdminViews.Field("Identifier","Nuevo identificador"),UserViews.Input(AdminViews.Editor("Reason","Motivo de la corrección")),AdminViews.Save("CONFIRMAR CORRECCIÓN","SaveCommand"));
+    public AdminCorrectPage(AdminCorrectViewModel vm):base(vm,"Corregir identificador")=>Form(UserViews.Bound("Summary"),UserViews.Input(UserViews.VehicleEntry("Identifier","Nuevo identificador")),UserViews.Input(AdminViews.Editor("Reason","Motivo de la corrección")),AdminViews.Save("CONFIRMAR CORRECCIÓN","SaveCommand"));
     public override void ApplyQueryAttributes(IDictionary<string,object> query){if(query.TryGetValue("vehicle",out var value)&&value is VehicleResponse vehicle)ViewModel.Vehicle=vehicle;}
 }
 public sealed class AdminPeriodFormPage:UserPage<AdminPeriodFormViewModel>

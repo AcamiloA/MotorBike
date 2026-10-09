@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.104.1" />
+    <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="AWSSDK.Textract" Version="4.0.100.16" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">

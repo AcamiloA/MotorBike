@@ -10,7 +10,7 @@ public partial class LoginPage : ContentPage
     private async void PasswordCompleted(object? sender, EventArgs e) { if (ViewModel.CanStart) await ViewModel.SignInCommand.ExecuteAsync(null); }
     private Task ReleaseInputsAsync() => MainThread.InvokeOnMainThreadAsync(async () =>
     {
-        foreach (var entry in new[] { IdentificationEntry, PasswordEntry })
+        foreach (var entry in new[] { IdentificationEntry, PasswordEntry.InputEntry })
         {
             if (!entry.IsFocused) continue;
             try { if (entry.Handler is not null) await entry.HideSoftInputAsync(CancellationToken.None); }

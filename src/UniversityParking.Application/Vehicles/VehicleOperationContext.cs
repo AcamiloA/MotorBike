@@ -30,7 +30,7 @@ public sealed class VehicleOperationContext(ICurrentUser currentUser, IUserRepos
         var admin = !ownerOnly && await HasRoleAsync(RoleCodes.Admin, cancellationToken);
         if (adminOnly && !admin) return Result<Vehicle>.Failure(CommonErrors.Forbidden);
         var vehicle = locked ? await vehicles.GetByIdForUpdateAsync(id, cancellationToken) : await vehicles.GetByIdAsync(id, cancellationToken);
-        if (vehicle is null) return Result<Vehicle>.Failure(VehicleErrors.NotFound);
+        if (vehicle is null || vehicle.DeletedAt.HasValue) return Result<Vehicle>.Failure(VehicleErrors.NotFound);
         if (!admin && !(photoAccess && await HasRoleAsync(RoleCodes.Guard, cancellationToken)) &&
             await ownerships.GetCurrentByVehicleAndUserAsync(id, ActorId, cancellationToken) is null)
             return Result<Vehicle>.Failure(VehicleErrors.NotFound);
@@ -41,8 +41,8 @@ public sealed class VehicleOperationContext(ICurrentUser currentUser, IUserRepos
             oldValues is null ? null : JsonSerializer.Serialize(oldValues), newValues is null ? null : JsonSerializer.Serialize(newValues),
             context.IpAddress, context.TraceId), cancellationToken);
     public static Error? Eligibility(User owner, VehicleType type) => owner.Status != UserStatus.ACTIVE ? UserErrors.Inactive :
-        owner.MemberType == MemberType.STUDENT && type == VehicleType.CAR ? VehicleErrors.StudentCannotRegisterCar : null;
-    public static VehicleDocumentType[] RequiredDocuments(VehicleType type) => type == VehicleType.BICYCLE ?
+        owner.UserType == InstitutionalUserType.STUDENT && type == VehicleType.CAR ? VehicleErrors.StudentCannotRegisterCar : null;
+    public static VehicleDocumentType[] RequiredDocuments(VehicleType type) => type is VehicleType.BICYCLE or VehicleType.SCOOTER ?
         [VehicleDocumentType.OWNERSHIP_SUPPORT] : [VehicleDocumentType.VEHICLE_REGISTRATION, VehicleDocumentType.INSURANCE];
     public static Error MissingDocuments() => CommonErrors.Validation(new Dictionary<string, IReadOnlyList<string>>
         { ["Documents"] = ["Faltan documentos obligatorios para este tipo de vehículo."] });

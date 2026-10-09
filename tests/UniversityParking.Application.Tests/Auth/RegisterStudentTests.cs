@@ -17,7 +17,7 @@ public sealed class RegisterStudentTests
     private RegisterStudentCommandHandler Handler(bool auto=false)=>new(users,universities,roles,
         new AccountProvisioner(users,credentials,roles,new FakePasswordHasher()),audits,work,clock,new TestRequestContext(),
         Options.Create(new StudentRegistrationOptions{AutoApprove=auto}));
-    private static RegisterStudentCommand Request()=>new(" 000123 "," Nombre ",UniversityIds.Etitc," Carrera "," CARD ","Password1");
+    private static RegisterStudentCommand Request()=>new(" 000123 "," Nombre ",UniversityIds.Etitc," Carrera "," CARD ","Password1","student@example.com","+573001234567");
 
     [Theory][InlineData(true,UserStatus.ACTIVE)][InlineData(false,UserStatus.PENDING)]
     public async Task RegistrationForcesStudentAndOnlyUserRoleWithoutAuthenticatedActor(bool auto,UserStatus expected)
@@ -25,7 +25,7 @@ public sealed class RegisterStudentTests
         var result=await Handler(auto).Handle(Request(),default);Assert.True(result.IsSuccess);
         var user=Assert.Single(users.Values).Value;Assert.Equal(user.Id,result.Value.UserId);Assert.Equal(expected,result.Value.Status);
         Assert.Equal(expected,user.Status);Assert.Equal(MemberType.STUDENT,user.MemberType);Assert.Equal("000123",user.IdentificationNumber.Value);
-        Assert.Equal("CARD",user.CardCode.Value);Assert.Equal("Nombre",user.FullName);Assert.Equal("Carrera",user.Career);
+        Assert.NotEqual("CARD",user.CardCode.Value);Assert.Equal("student@example.com",user.Email);Assert.Equal("Nombre",user.FullName);Assert.Equal("Carrera",user.Career);
         Assert.Equal(UniversityIds.Etitc,user.UniversityId);Assert.Equal(clock.UtcNow,user.CreatedAt);
         Assert.Equal(user.Id,credentials.Value!.UserId);Assert.NotEqual(Request().Password,credentials.Value.PasswordHash);
         Assert.Equal(roles.Values[RoleCodes.User].Id,Assert.Single(roles.Assignments).RoleId);Assert.Equal(1,work.SaveCount);
@@ -44,13 +44,13 @@ public sealed class RegisterStudentTests
     }
 
     [Theory][InlineData(true)][InlineData(false)]
-    public async Task DuplicateRejectedAccountStillOccupiesIdentificationAndCard(bool identification)
+    public async Task DuplicateRejectedAccountStillOccupiesIdentificationAndEmail(bool identification)
     {
         var user=User.CreateStudentRegistration(new("000123"),"Anterior",UniversityIds.Etitc,"Carrera",new("CARD"),false,clock.UtcNow);
-        user.RejectRegistration(clock.UtcNow);users.Values.Add(user.Id,user);
-        var request=identification?Request() with{CardCode="OTHER"}:Request() with{IdentificationNumber="OTHER"};
+        user.SetContact("student@example.com","+573001234567");user.RejectRegistration(clock.UtcNow);users.Values.Add(user.Id,user);
+        var request=identification?Request() with{CardCode="OTHER",Email="other@example.com"}:Request() with{IdentificationNumber="OTHER"};
         var result=await Handler().Handle(request,default);
-        Assert.Equal(identification?"USER_ALREADY_EXISTS":"USER_CARD_CODE_ALREADY_EXISTS",result.Error!.Code);
+        Assert.Equal(identification?"USER_ALREADY_EXISTS":"EMAIL_ALREADY_EXISTS",result.Error!.Code);
         Assert.Single(users.Values);Assert.Null(credentials.Value);Assert.Empty(roles.Assignments);Assert.Empty(audits.Values);
     }
 
@@ -72,9 +72,9 @@ public sealed class RegisterStudentTests
     [Fact] public void RequiredFieldsAndExistingLimitsAreValidated()
     {
         var validator=new RegisterStudentCommandValidator();Assert.True(validator.Validate(Request()).IsValid);
-        var invalid=Request() with{IdentificationNumber="",FullName="",UniversityId=Guid.Empty,Career="",CardCode=""};
+        var invalid=Request() with{IdentificationNumber="",FullName="",UniversityId=Guid.Empty,Career="",Email=""};
         Assert.Equal(5,validator.Validate(invalid).Errors.Count);
-        Assert.Equal(4,validator.Validate(Request() with{IdentificationNumber=new('a',51),FullName=new('a',201),Career=new('a',201),CardCode=new('a',151)}).Errors.Count);
+        Assert.Equal(4,validator.Validate(Request() with{IdentificationNumber=new('a',51),FullName=new('a',201),Career=new('a',201),Email=new string('a',255)+"@example.com"}).Errors.Count);
     }
 
     [Fact] public async Task CancellationPreventsAccountWrites()

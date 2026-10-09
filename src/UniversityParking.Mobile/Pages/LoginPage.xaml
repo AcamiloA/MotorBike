@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" x:Class="UniversityParking.Mobile.Pages.LoginPage" x:DataType="vm:LoginViewModel" Title="Acceso" HideSoftInputOnTapped="True">
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:controls="clr-namespace:UniversityParking.Mobile.Controls" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" x:Class="UniversityParking.Mobile.Pages.LoginPage" x:DataType="vm:LoginViewModel" Title="Acceso" HideSoftInputOnTapped="True">
  <ScrollView><VerticalStackLayout Padding="28,48,28,28" Spacing="20" MaximumWidthRequest="480" HorizontalOptions="Fill">
   <Image Source="brandmark.png" HeightRequest="84" WidthRequest="84" SemanticProperties.Description="MOTOBIKE PARK" />
   <Label Text="MOTOBIKE PARK" Style="{StaticResource BrandTitle}" HorizontalTextAlignment="Center" />
@@ -7,10 +7,11 @@
   <Label Text="NÚMERO DE IDENTIFICACIÓN" Style="{StaticResource Caption}" />
   <Border Style="{StaticResource InputBorder}"><Entry x:Name="IdentificationEntry" Text="{Binding IdentificationNumber}" Placeholder="Ingresa tu identificación" IsEnabled="{Binding IsNotBusy}" ReturnType="Next" Completed="IdentificationCompleted" SemanticProperties.Description="Número de identificación" /></Border>
   <Label Text="CONTRASEÑA" Style="{StaticResource Caption}" />
-  <Border Style="{StaticResource InputBorder}"><Entry x:Name="PasswordEntry" Text="{Binding Password}" Placeholder="Ingresa tu contraseña" IsPassword="True" IsEnabled="{Binding IsNotBusy}" ReturnType="Go" Completed="PasswordCompleted" SemanticProperties.Description="Contraseña" /></Border>
+  <Border Style="{StaticResource InputBorder}"><controls:PasswordField  x:Name="PasswordEntry" Text="{Binding Password}" Placeholder="Ingresa tu contraseña"  IsEnabled="{Binding IsNotBusy}" ReturnType="Go" Completed="PasswordCompleted" SemanticProperties.Description="Contraseña" /></Border>
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" SemanticProperties.Description="{Binding ErrorMessage}" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
   <Button Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding CanStart}" Margin="0,8,0,24" />
+  <Button Text="¿Olvidaste tu contraseña?" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding CanStart}" />
   <Button Text="CREAR CUENTA DE ESTUDIANTE" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding CanStart}" />
   <Label Text="Control de acceso vehicular universitario" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
  </VerticalStackLayout></ScrollView>

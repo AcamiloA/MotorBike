@@ -41,7 +41,9 @@ public sealed class StudentRegistrationMigrationTests(PostgresFixture fixture):I
         try
         {
             var active=PersistenceTestData.User();var inactive=PersistenceTestData.User();inactive.Deactivate(PersistenceTestData.Now.AddMinutes(1));
-            var role=new Role(RoleCodes.User);db.AddRange(active,inactive,role,new UserRole(active.Id,role.Id),new UserCredential(active.Id,"PreservedTestHash",PersistenceTestData.Now));
+            await PersistenceTestData.InsertLegacyUser(db,active);await PersistenceTestData.InsertLegacyUser(db,inactive);
+            var role=new Role(RoleCodes.User);db.AddRange(role,new UserRole(active.Id,role.Id));
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO user_credentials(user_id,password_hash,password_changed_at) VALUES ({active.Id},{"PreservedTestHash"},{PersistenceTestData.Now})");
             await db.SaveChangesAsync();var before=await db.Users.AsNoTracking().OrderBy(x=>x.Id)
                 .Select(x=>new {x.Id,x.FullName,x.UniversityId,x.Status,x.CreatedAt,x.UpdatedAt}).ToArrayAsync();
             await migrator.MigrateAsync();
@@ -66,7 +68,7 @@ public sealed class StudentRegistrationMigrationTests(PostgresFixture fixture):I
         {
             var error=await Assert.ThrowsAsync<PostgresException>(()=>migrator.MigrateAsync(Previous));
             Assert.Equal("P0001",error.SqlState);Assert.Contains(Current,await db.Database.GetAppliedMigrationsAsync());
-            Assert.Equal(rejected?UserStatus.REJECTED:UserStatus.PENDING,(await db.Users.AsNoTracking().SingleAsync()).Status);
+            Assert.Equal(rejected?UserStatus.REJECTED:UserStatus.PENDING,await db.Users.AsNoTracking().Select(x=>x.Status).SingleAsync());
         }
         finally { await migrator.MigrateAsync(); }
     }

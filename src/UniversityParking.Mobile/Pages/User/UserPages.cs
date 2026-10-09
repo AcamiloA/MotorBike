@@ -39,7 +39,9 @@ internal static class UserViews
         entry.SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, path); if (busyBinding) entry.SetBinding(VisualElement.IsEnabledProperty, "IsNotBusy");
         SemanticProperties.SetDescription(entry, placeholder); return entry;
     }
-    public static Border Input(View control) { var border = new Border { Content = control }; border.SetDynamicResource(VisualElement.StyleProperty, "InputBorder"); return border; }
+    public static Border Input(View control) { if(control is Entry {IsPassword:true} entry) control=new UniversityParking.Mobile.Controls.PasswordField(entry);var border = new Border { Content = control }; border.SetDynamicResource(VisualElement.StyleProperty, "InputBorder"); return border; }
+    public static Entry VehicleEntry(string path,string label)
+    {var entry=Entry(path,label);entry.Behaviors.Add(new UniversityParking.Mobile.Controls.UppercaseBehavior());return entry;}
     public static Border Card(View content) { var border = new Border { Content = content }; border.SetDynamicResource(VisualElement.StyleProperty, "CardBorder"); return border; }
     public static Image Image(string path, double height)
     { var image = new Image { HeightRequest = height, Aspect = Aspect.AspectFit }; image.SetBinding(Microsoft.Maui.Controls.Image.SourceProperty, new Binding(path, converter: new BytesImageConverter())); return image; }
@@ -92,7 +94,10 @@ public abstract class UserPage<T> : ContentPage, IQueryAttributable where T : cl
         var grid = new Grid { Padding = 20, RowSpacing = 14, RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star }, new() { Height = GridLength.Auto } } };
         var error = UserViews.Bound("ErrorMessage"); error.SetDynamicResource(Label.TextColorProperty, "Danger");
         var busy = new ActivityIndicator(); busy.SetBinding(ActivityIndicator.IsRunningProperty, "IsBusy"); busy.SetBinding(IsVisibleProperty, "IsBusy");
-        grid.Add(UserViews.Stack(UserViews.Heading(Title), busy, error), 0, 0); grid.Add(body, 0, 1); if (footer is not null) grid.Add(footer, 0, 2); Content = grid;
+        var title=new Grid{ColumnDefinitions={new ColumnDefinition(GridLength.Star),new ColumnDefinition(GridLength.Auto)},ColumnSpacing=10};title.Add(UserViews.Heading(Title));
+        UniversityParking.Mobile.Controls.FilterPanelHost? FindFilter(View view)=>view is UniversityParking.Mobile.Controls.FilterPanelHost host?host:view is Microsoft.Maui.Controls.Layout layout?layout.Children.OfType<View>().Select(FindFilter).FirstOrDefault(x=>x is not null):null;
+        if(FindFilter(body)?.DetachFunnel() is { } funnel)title.Add(funnel,1);
+        grid.Add(UserViews.Stack(title, busy, error), 0, 0); grid.Add(body, 0, 1); if (footer is not null) grid.Add(footer, 0, 2); Content = grid;
     }
     protected void Form(params View[] children) => Layout(new ScrollView { Content = UserViews.Stack(children) });
     protected override async void OnAppearing() { base.OnAppearing(); if (load is null || once && loaded) return; loaded = true; await load(); }
@@ -142,8 +147,9 @@ public sealed class VehicleDetailPage : UserPage<VehicleDetailViewModel>
         var edit = UserViews.Button("EDITAR INFORMACIÓN", "EditCommand"); edit.SetBinding(IsVisibleProperty, "IsOwner");
         var renew = UserViews.Button("RENOVAR REGISTRO", "RenewCommand"); renew.SetBinding(IsVisibleProperty, "CanRenew");
         var status = UserViews.Button("", "ChangeStatusCommand"); status.SetBinding(Button.TextProperty, "StatusAction"); status.SetBinding(IsVisibleProperty, "IsOwner");
+        var archive=UserViews.Button("ELIMINAR VEHÍCULO","ArchiveCommand");archive.SetBinding(IsVisibleProperty,"IsOwner");
         Form(UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationPending", true), UserViews.Image("Photo", 220), UserViews.Bound("Identifier"), UserViews.Bound("Heading"), UserViews.Bound("Summary", true), UserViews.Bound("Period", true),
-            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(), UserViews.Button("REINTENTAR", "LoadCommand"));
+            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(),archive, UserViews.Button("REINTENTAR", "LoadCommand"));
     }
     private static Button VerificationButton() { var b = UserViews.Button("ACTUALIZAR EVIDENCIA", "UpdateVerificationCommand"); b.SetBinding(IsVisibleProperty, "CanUpdateVerification"); return b; }
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
@@ -155,8 +161,8 @@ public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
         var types = new Picker { Title = "Tipo de vehículo", ItemDisplayBinding = new Binding("Label") }; types.SetBinding(Picker.ItemsSourceProperty, "Types"); types.SetBinding(Picker.SelectedItemProperty, "SelectedType"); types.SetBinding(IsEnabledProperty, "IsNotBusy");
         var gallery = UserViews.Button("SELECCIONAR IMAGEN", "PickPhotoCommand"); gallery.CommandParameter = false;
         var camera = UserViews.Button("TOMAR FOTO", "PickPhotoCommand"); camera.CommandParameter = true;
-        Form(UserViews.Input(types), UserViews.Bound("IdentifierLabel"), UserViews.Input(UserViews.Entry("Identifier", "Identificador del vehículo")),
-            UserViews.Input(UserViews.Entry("Brand", "Marca")), UserViews.Input(UserViews.Entry("Model", "Modelo")), UserViews.Input(UserViews.Entry("Color", "Color")),
+        Form(UserViews.Input(types), UserViews.Bound("IdentifierLabel"), UserViews.Input(UserViews.VehicleEntry("Identifier", "Identificador del vehículo")),
+            UserViews.Input(UserViews.VehicleEntry("Brand", "Marca")), UserViews.Input(UserViews.VehicleEntry("Model", "Modelo")), UserViews.Input(UserViews.VehicleEntry("Color", "Color")),
             UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationHelp", true), UserViews.Bound("VerificationImageName", true), UserViews.Image("VerificationImage", 180), camera, gallery,
             UserViews.Bound("ProcessingMessage", true), UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
     }
@@ -164,7 +170,7 @@ public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
 public sealed class EditVehiclePage : UserPage<EditVehicleViewModel>
 {
     public EditVehiclePage(EditVehicleViewModel vm) : base(vm, "Editar vehículo", () => vm.LoadCommand.ExecuteAsync(null), once: true) =>
-        Form(UserViews.Bound("Identifier"), UserViews.Input(UserViews.Entry("Brand", "Marca")), UserViews.Input(UserViews.Entry("Model", "Modelo")), UserViews.Input(UserViews.Entry("Color", "Color")), UserViews.Button("GUARDAR CAMBIOS", "SaveCommand"));
+        Form(UserViews.Input(UserViews.VehicleEntry("Identifier","Identificador")), UserViews.Input(UserViews.VehicleEntry("Brand", "Marca")), UserViews.Input(UserViews.VehicleEntry("Model", "Modelo")), UserViews.Input(UserViews.VehicleEntry("Color", "Color")), UserViews.Button("GUARDAR CAMBIOS", "SaveCommand"));
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
 }
 public sealed class RenewRegistrationPage : UserPage<RenewRegistrationViewModel>
@@ -177,10 +183,10 @@ public sealed class MyHistoryPage : UserPage<MyHistoryViewModel>
 {
     public MyHistoryPage(MyHistoryViewModel vm) : base(vm, "Mi historial", () => vm.RefreshCommand.ExecuteAsync(null))
     {
-        var from = new DatePicker(); from.SetBinding(DatePicker.DateProperty, "DateFrom"); var to = new DatePicker(); to.SetBinding(DatePicker.DateProperty, "DateTo");
+        var datesEnabled=new CheckBox();datesEnabled.SetBinding(CheckBox.IsCheckedProperty,"DateFilterApplied");var datesToggle=new HorizontalStackLayout{Children={datesEnabled,UserViews.Text("Filtrar por fechas",true)}};var from = new DatePicker(); from.SetBinding(DatePicker.DateProperty, "DateFrom"); var to = new DatePicker(); to.SetBinding(DatePicker.DateProperty, "DateTo");
         var vehicle = new Picker { Title = "Vehículo", ItemDisplayBinding = new Binding("Label") }; vehicle.SetBinding(Picker.ItemsSourceProperty, "Filters"); vehicle.SetBinding(Picker.SelectedItemProperty, "SelectedVehicle");
         var grid = new Grid { RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star } }, RowSpacing = 12 };
-        grid.Add(UserViews.Stack(UserViews.Text("Fecha inicial / final (Bogotá)", true), new HorizontalStackLayout { Spacing = 16, Children = { from, to } }, vehicle, UserViews.Button("APLICAR FILTROS", "RefreshCommand")), 0, 0);
+        grid.Add(UniversityParking.Mobile.Controls.FilterPanel.Create(UserViews.Stack(datesToggle,UserViews.Text("Fecha inicial / final (Bogotá)", true), new HorizontalStackLayout { Spacing = 16, Children = { from, to } }, vehicle),vm), 0, 0);
         grid.Add(UserViews.EmptyList(UserViews.Refresh(UserViews.List("Items", UserViews.MovementTemplate()), "RefreshCommand"), "No hay movimientos para los filtros seleccionados."), 0, 1); Layout(grid, UserViews.Pager(vm));
     }
 }
@@ -200,12 +206,12 @@ public sealed class ProfilePage : UserPage<ProfileViewModel>
     public ProfilePage(ProfileViewModel vm) : base(vm, "Mi perfil", () => vm.LoadCommand.ExecuteAsync(null)) =>
         Form(UserViews.Text("Nombre", true), UserViews.Bound("Profile.FullName"), UserViews.Text("Identificación", true), UserViews.Bound("Profile.IdentificationNumber"),
             UserViews.Text("Universidad", true), UserViews.Bound("Profile.UniversityName"), UserViews.Text("Carrera", true), UserViews.Bound("Profile.Career"), UserViews.Bound("MemberType"), UserViews.Bound("Roles", true),
-            UserViews.Text("Código de carné", true), UserViews.Bound("Profile.CardCode"), UserViews.Button("EDITAR PERFIL", "EditCommand"), UserViews.Button("CAMBIAR CONTRASEÑA", "PasswordCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
+            UserViews.Text("Correo",true),UserViews.Bound("Profile.Email"),UserViews.Text("Teléfono",true),UserViews.Bound("Profile.PhoneNumber"), UserViews.Button("EDITAR PERFIL", "EditCommand"), UserViews.Button("CAMBIAR CONTRASEÑA", "PasswordCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
 }
 public sealed class EditProfilePage : UserPage<EditProfileViewModel>
 {
     public EditProfilePage(EditProfileViewModel vm) : base(vm, "Editar perfil", () => vm.LoadCommand.ExecuteAsync(null), once: true) =>
-        Form(UserViews.Input(UserViews.Entry("FullName", "Nombre completo")), UserViews.Input(UserViews.Entry("Career", "Carrera (opcional)")), UserViews.Button("GUARDAR PERFIL", "SaveCommand"));
+        Form(UserViews.Input(UserViews.Entry("FullName", "Nombre completo")), UserViews.Input(UserViews.Entry("Career", "Carrera (opcional)")),UserViews.Input(UserViews.Entry("Email","Correo")),UserViews.Input(UserViews.Entry("PhoneNumber","Teléfono")), UserViews.Button("GUARDAR PERFIL", "SaveCommand"));
 }
 public sealed class ChangePasswordPage : UserPage<ChangePasswordViewModel>
 {

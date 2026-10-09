@@ -1,5 +1,6 @@
 using UniversityParking.Contracts.Parking;
 using UniversityParking.Mobile.Core;
+using UniversityParking.Mobile.Controls;
 using UniversityParking.Mobile.Pages.User;
 using UniversityParking.Mobile.ViewModels;
 using ZXing.Net.Maui;
@@ -11,14 +12,12 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
 {
     private readonly GuardAccessControlViewModel vm;
     private readonly Grid cameraHolder = new();
-    private readonly Image zoomImage = new() { Aspect = Aspect.AspectFit, AnchorX = .5, AnchorY = .5 };
-    private readonly EvidenceViewport viewport = new();
+    private readonly EvidenceInspectionView inspection = new();
     private CameraBarcodeReaderView? camera;
     private Window? subscribedWindow;
     private ParkingMovementResponse? pendingMovement;
     private bool active, windowRunning;
     private int scanClaimed;
-    private double panX, panY;
 
     public GuardAccessControlPage(GuardAccessControlViewModel vm)
     {
@@ -72,25 +71,15 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
 
         var zoom = new Grid { BackgroundColor = Colors.Black, RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star) }, IsClippedToBounds = true };
         zoom.SetBinding(IsVisibleProperty, "ZoomOpen");
-        zoomImage.SetBinding(Image.SourceProperty, new Binding("Evidence", converter: new BytesImageConverter()));
-        var zoomArea = new Grid { IsClippedToBounds = true }; zoomArea.Add(zoomImage);
-        zoom.Add(UserViews.Button("CERRAR IMAGEN", "CloseZoomCommand"), 0, 0); zoom.Add(zoomArea, 0, 1);
-        var pinch = new PinchGestureRecognizer(); pinch.PinchUpdated += (_, e) =>
-        {
-            if (e.Status != GestureStatus.Running) return;
-            viewport.Zoom(e.Scale, e.ScaleOrigin.X, e.ScaleOrigin.Y, zoomImage.Width, zoomImage.Height); ApplyViewport();
-        };
-        var pan = new PanGestureRecognizer(); pan.PanUpdated += (_, e) =>
-        {
-            if (e.StatusType == GestureStatus.Started) { panX = viewport.X; panY = viewport.Y; }
-            if (e.StatusType == GestureStatus.Running) { viewport.Pan(panX + e.TotalX, panY + e.TotalY, zoomImage.Width, zoomImage.Height); ApplyViewport(); }
-        };
-        zoomImage.GestureRecognizers.Add(pinch); zoomImage.GestureRecognizers.Add(pan);
+        inspection.Image.SetBinding(Image.SourceProperty, new Binding("Evidence", converter: new BytesImageConverter()));
+        zoom.Add(UserViews.Stack(UserViews.Button("CERRAR IMAGEN", "CloseZoomCommand"),
+            UserViews.Text("Mantén presionada y arrastra. Suelta para volver a la imagen completa.", true)), 0, 0);
+        zoom.Add(inspection, 0, 1);
         root.Add(zoom, 0, 0); Grid.SetRowSpan(zoom, 3); Content = root;
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(vm.CameraMounted) or nameof(vm.IsDetecting)) MainThread.BeginInvokeOnMainThread(UpdateCamera);
-            if (e.PropertyName == nameof(vm.ZoomOpen)) { viewport.Reset(); ApplyViewport(); }
+            if (e.PropertyName == nameof(vm.ZoomOpen)) inspection.Reset();
         };
     }
     private static void Overlay(Grid body, View content, string visible)
@@ -98,7 +87,6 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
         var overlay = new ScrollView { Content = content, Padding = 16 }; overlay.SetDynamicResource(BackgroundColorProperty, "Background");
         overlay.SetBinding(IsVisibleProperty, visible); body.Add(overlay);
     }
-    private void ApplyViewport() { zoomImage.Scale = viewport.Scale; zoomImage.TranslationX = viewport.X; zoomImage.TranslationY = viewport.Y; }
     private void UpdateCamera()
     {
         if (!active || !vm.CameraMounted) { ReleaseCamera(); return; }
@@ -137,7 +125,7 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
         if (active && windowRunning && pendingMovement is { } movement) { pendingMovement = null; await vm.OpenMovementAsync(movement); }
         UpdateCamera();
     }
-    private void Stopped(object? sender, EventArgs e) { windowRunning = false; vm.Stop(); ReleaseCamera(); }
+    private void Stopped(object? sender, EventArgs e) { inspection.Reset(); windowRunning = false; vm.Stop(); ReleaseCamera(); }
     private async void Resumed(object? sender, EventArgs e)
     {
         windowRunning = true;
@@ -148,7 +136,7 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
     }
     protected override void OnDisappearing()
     {
-        active = windowRunning = false; vm.Stop(); ReleaseCamera();
+        inspection.Reset(); active = windowRunning = false; vm.Stop(); ReleaseCamera();
         if (subscribedWindow is { } window) { window.Stopped -= Stopped; window.Resumed -= Resumed; subscribedWindow = null; }
         base.OnDisappearing();
     }

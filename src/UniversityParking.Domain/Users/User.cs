@@ -5,6 +5,18 @@ namespace UniversityParking.Domain.Users;
 
 public sealed class User : Entity
 {
+    public InstitutionalUserType UserType { get; private set; }
+    public string? Email { get; private set; }
+    public string? NormalizedEmail { get; private set; }
+    public string? PhoneNumber { get; private set; }
+    public bool MustChangePassword { get; private set; }
+    public string? IdentificationType { get; private set; }
+    public void SetIdentificationType(string value)
+    {
+        var valid=Guard.Text(value,20,"tipo de identificación").ToUpperInvariant();
+        if(valid is not ("CC" or "CE" or "TI" or "PASSPORT"))throw new DomainException("VALIDATION_ERROR","El tipo de identificación no es válido.");
+        IdentificationType=valid;
+    }
     public IdentificationNumber IdentificationNumber { get; private set; }
     public string FullName { get; private set; }
     public Guid UniversityId { get; private set; }
@@ -24,6 +36,8 @@ public sealed class User : Entity
         FullName = Guard.Text(fullName, 200, "nombre");
         UniversityId = Guard.Id(universityId, "universidad");
         MemberType = Guard.Defined(memberType);
+        UserType = memberType == MemberType.TEACHER ? InstitutionalUserType.TEACHER :
+            memberType == MemberType.STAFF ? InstitutionalUserType.ADMINISTRATIVE : InstitutionalUserType.STUDENT;
         Career = ValidateCareer(career, memberType);
         CardCode = cardCode;
         Status = UserStatus.ACTIVE;
@@ -39,6 +53,24 @@ public sealed class User : Entity
     }
 
     public void ApproveRegistration(DateTimeOffset now) => ReviewRegistration(UserStatus.ACTIVE, now);
+    public void SetContact(string email, string phone)
+    {
+        var validEmail = ContactInformation.Email(email);
+        var validPhone = ContactInformation.Phone(phone);
+        Email = NormalizedEmail = validEmail;
+        PhoneNumber = validPhone;
+    }
+    public void SetInstitutionalType(InstitutionalUserType type)
+    {
+        var validType=Guard.Defined(type);
+        if(validType!=UserType && Status is UserStatus.PENDING or UserStatus.REJECTED)InvalidTransition();
+        var member=validType == InstitutionalUserType.STUDENT ? MemberType.STUDENT :
+            type == InstitutionalUserType.TEACHER ? MemberType.TEACHER : MemberType.STAFF;
+        ValidateCareer(Career,member);
+        UserType=validType;MemberType=member;
+    }
+    public void RequirePasswordChange() => MustChangePassword = true;
+    public void CompletePasswordChange() => MustChangePassword = false;
     public void RejectRegistration(DateTimeOffset now) => ReviewRegistration(UserStatus.REJECTED, now);
 
     private void ReviewRegistration(UserStatus next, DateTimeOffset now)

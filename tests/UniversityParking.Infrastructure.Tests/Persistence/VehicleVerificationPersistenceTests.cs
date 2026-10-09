@@ -55,7 +55,7 @@ public sealed class VehicleVerificationPersistenceTests(PostgresFixture fixture)
             var vehicle = PersistenceTestData.Vehicle(); var now = PersistenceTestData.Now;
             var photo = new VehiclePhoto(vehicle.Id, VehiclePhotoType.GENERAL, "vehicles/old/photo.png", "old.png", "image/png", 8, now);
             var doc = new VehicleDocument(vehicle.Id, VehicleDocumentType.VEHICLE_REGISTRATION, "vehicles/old/document.pdf", "old.pdf", "application/pdf", 8, now);
-            db.AddRange(vehicle, photo, doc); await db.SaveChangesAsync();
+            await PersistenceTestData.InsertLegacyVehicle(db,vehicle);db.AddRange(photo, doc); await db.SaveChangesAsync();
             await migrator.MigrateAsync(); db.ChangeTracker.Clear();
             Assert.Equal(vehicle.Id, (await db.Vehicles.SingleAsync()).Id);
             Assert.Equal(photo.StorageKey, (await db.VehiclePhotos.SingleAsync()).StorageKey);

@@ -196,6 +196,7 @@ public sealed partial class VehicleRegistrationTests
         IUnitOfWork, IFileStorage, ICurrentUser, IClock, IRequestContext, IParkingMovementRepository
     {
         public DateTimeOffset UtcNow { get; } = new(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        public Task<User?> GetByEmailAsync(string email,CancellationToken token)=>Task.FromResult(User.NormalizedEmail==email?User:OtherUsers.FirstOrDefault(x=>x.NormalizedEmail==email));
         public User User { get; private set; }
         public AcademicPeriod? Period { get; set; }
         public List<Vehicle> Vehicles { get; } = [];
@@ -227,7 +228,7 @@ public sealed partial class VehicleRegistrationTests
             Period = new("2026-2", new(2026, 7, 1), new(2026, 12, 31), UtcNow);
             Period.Activate();
         }
-        public void ChangeMember(MemberType member) => User.Update(User.FullName, User.UniversityId, "Ingeniería", member, User.CardCode, UtcNow);
+        public void ChangeMember(MemberType member) {User.Update(User.FullName, User.UniversityId, "Ingeniería", member, User.CardCode, UtcNow);User.SetInstitutionalType(member==UniversityParking.Domain.Users.MemberType.STUDENT?InstitutionalUserType.STUDENT:member==UniversityParking.Domain.Users.MemberType.TEACHER?InstitutionalUserType.TEACHER:InstitutionalUserType.ADMINISTRATIVE);}
         Task<User?> IUserRepository.GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult(id == User.Id ? User : OtherUsers.FirstOrDefault(x => x.Id == id));
         public Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken ct) => ((IUserRepository)this).GetByIdAsync(id, ct);
         public Task<User?> GetByIdentificationNumberAsync(IdentificationNumber number, CancellationToken ct) => Task.FromResult(number == User.IdentificationNumber ? User : OtherUsers.FirstOrDefault(x => x.IdentificationNumber == number));

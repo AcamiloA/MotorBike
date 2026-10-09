@@ -38,7 +38,7 @@ public partial class AppShell : Shell
             if (Shell.Current != this || session.User?.Id != user?.Id) return;
             FlyoutIsPresented = false;
             await auth.LogoutAsync();
-        });
+        },user?.UserType);
         FlyoutContent = new FlyoutMenuView(menu);
         Items.Add(root);
         var first = NavigationMenu.Catalog.FirstOrDefault(x => roles.Contains(x.Role));

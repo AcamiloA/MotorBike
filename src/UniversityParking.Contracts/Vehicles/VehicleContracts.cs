@@ -2,11 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace UniversityParking.Contracts.Vehicles;
 
-public enum VehicleKind { CAR, MOTORCYCLE, BICYCLE }
+public enum VehicleKind { CAR, MOTORCYCLE, BICYCLE, SCOOTER }
 public enum VehicleAccountStatus { ACTIVE, INACTIVE }
 public enum VehicleRegistrationState { NONE, ACTIVE, CANCELLED, EXPIRED }
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record UpdateVehicleRequest(string Brand, string Model, string Color);
+public sealed record UpdateVehicleRequest(string Brand, string Model, string Color,string? Identifier=null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorrectVehicleIdentifierRequest(string Identifier, string Reason);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

@@ -28,7 +28,7 @@ public sealed class CreateUserTests
             users, roles, unitOfWork, universities, new AccountProvisioner(users, credentials, roles, new FakePasswordHasher()));
     }
     private static CreateUserCommand Request() => new("000123", "Estudiante", new Guid("a1100000-0000-4000-8000-000000000001"), "Ingeniería",
-        MemberType.STUDENT, "STUDENT-CARD", "TestPassword1");
+        MemberType.STUDENT, "STUDENT-CARD", "TestPassword1", Email:"student@example.com",PhoneNumber:"+573001234567",IdentificationType:"CC");
     [Fact]
     public async Task CreateUser_ShouldCreateStudent_WithUserRole()
     {
@@ -58,11 +58,11 @@ public sealed class CreateUserTests
         Assert.Null(credentials.Value);
     }
     [Fact]
-    public async Task CreateUser_ShouldRejectDuplicateCardCode()
+    public async Task CreateUser_IgnoresLegacyCardCodeAndGeneratesUniqueCompatibilityValue()
     {
         var result = await handler.Handle(Request() with { CardCode = " admin-card " }, default);
-        Assert.Equal("USER_CARD_CODE_ALREADY_EXISTS", result.Error!.Code);
-        Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.True(result.IsSuccess);Assert.NotEqual("admin-card",users.Values[result.Value].CardCode.Value);
+        Assert.Equal(1, unitOfWork.SaveCount);
     }
     [Fact]
     public async Task CreateUser_ShouldHashPassword_AndExcludeItFromAudit()
@@ -95,7 +95,7 @@ public sealed class CreateUserTests
     public async Task CreateUser_ShouldAssignAdditionalRolesWithoutDuplicates()
     {
         Assert.True((await handler.Handle(Request() with { Roles = ["GUARD", "GUARD", "USER"] }, default)).IsSuccess);
-        Assert.Equal(2, roles.Assignments.Count);
+        Assert.Equal(roles.Values[RoleCodes.User].Id,Assert.Single(roles.Assignments).RoleId);
     }
     [Fact]
     public async Task CreateUser_ShouldRejectMissingRoleBeforeWriting()

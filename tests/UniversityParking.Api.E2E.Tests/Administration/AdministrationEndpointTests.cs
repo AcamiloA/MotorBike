@@ -121,7 +121,7 @@ public sealed class AdministrationEndpointTests(AuthApiFixture fixture) : IAsync
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.AcademicPeriods.CountAsync());
         Assert.Equal(2, await context.ParkingLots.CountAsync());
-        Assert.Equal(6, await context.ParkingZones.CountAsync());
+        Assert.Equal(8, await context.ParkingZones.CountAsync());
     }
     [Theory]
     [InlineData(0)]
@@ -161,8 +161,8 @@ public sealed class AdministrationEndpointTests(AuthApiFixture fixture) : IAsync
         var id = await CreateLotAsync();
         await using var context = fixture.CreateContext();
         var originalZones = await context.ParkingZones.AsNoTracking().OrderBy(x => x.Id).ToListAsync();
-        Assert.Equal(3, originalZones.Count);
-        Assert.Equal(3, originalZones.Select(x => x.VehicleType).Distinct().Count());
+        Assert.Equal(4, originalZones.Count);
+        Assert.Equal(4, originalZones.Select(x => x.VehicleType).Distinct().Count());
         Assert.All(originalZones, x => Assert.Equal(ParkingZoneStatus.ACTIVE, x.Status));
         var response = await Client.PutAsJsonAsync($"/api/v1/parking-lots/{id}", new UpdateParkingLotRequest("Nuevo nombre", "Nueva sede", new(7, 0), new(21, 0)));
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -170,7 +170,7 @@ public sealed class AdministrationEndpointTests(AuthApiFixture fixture) : IAsync
         Assert.Equal(originalZones.Select(x => (x.Id, x.VehicleType)), zones.Select(x => (x.Id, x.VehicleType)));
         var list = (await Client.GetFromJsonAsync<PagedResponse<ParkingLotResponse>>("/api/v1/parking-lots"))!;
         Assert.Equal("Nuevo nombre", Assert.Single(list.Items).Name);
-        Assert.Equal(3, list.Items[0].Zones.Count);
+        Assert.Equal(4, list.Items[0].Zones.Count);
         Assert.Equal(new TimeOnly(7, 0), list.Items[0].OpeningTime);
     }
     [Fact]
@@ -283,7 +283,7 @@ public sealed class AdministrationEndpointTests(AuthApiFixture fixture) : IAsync
         await ErrorAsync(Assert.Single(responses, x => x.StatusCode != HttpStatusCode.Created), HttpStatusCode.Conflict, "PARKING_LOT_ALREADY_EXISTS");
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.ParkingLots.CountAsync());
-        Assert.Equal(3, await context.ParkingZones.CountAsync());
+        Assert.Equal(4, await context.ParkingZones.CountAsync());
         Assert.Equal(1, await context.AuditLogs.CountAsync());
     }
     [Fact]

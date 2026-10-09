@@ -20,9 +20,9 @@ public sealed class FlyoutMenuViewModel : ObservableObject
     public string ErrorMessage { get => errorMessage; private set => SetProperty(ref errorMessage, value); }
 
     public FlyoutMenuViewModel(string name, IReadOnlyCollection<string> roles,
-        Func<NavigationItem, Task> navigate, Func<Task> logout)
+        Func<NavigationItem, Task> navigate, Func<Task> logout,string? userType=null)
     {
-        UserName = name; Roles = string.Join(" · ", RoleNavigation.Areas(roles));
+        UserName = name; Roles = userType switch {"STUDENT"=>"ESTUDIANTE","TEACHER"=>"DOCENTE","ADMINISTRATIVE"=>"ADMINISTRATIVO","GUARD"=>"GUARDA",_=>string.Join(" · ", RoleNavigation.Areas(roles))};
         Sections = NavigationMenu.Sections(roles);
         Home = roles.Contains("USER") ? NavigationMenu.Catalog.Single(x => x.Key == "user-home") : null;
         ToggleCommand = new RelayCommand<NavigationSection>(section =>

@@ -36,7 +36,7 @@ public partial class VerificationImageViewModel(UserApiService api, IAttachmentP
     {
         if (!CanEdit || WriteUncertain) return;
         var version = lifecycle;
-        var image = camera && VehicleType != "BICYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
+        var image = camera && VehicleType is "CAR" or "MOTORCYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
         if (image is not null && version == lifecycle && loadedUserId == session.User?.Id)
             VerificationImage = AttachmentValidation.Validate(image.FileName, image.ContentType, image.Bytes, true);
     });

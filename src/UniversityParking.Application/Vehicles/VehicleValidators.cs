@@ -11,10 +11,10 @@ public sealed class RegisterVehicleCommandValidator : AbstractValidator<Register
         RuleFor(x => x.Brand).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(100).WithMessage("La marca es obligatoria y admite hasta 100 caracteres.");
         RuleFor(x => x.Model).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(100).WithMessage("El modelo es obligatorio y admite hasta 100 caracteres.");
         RuleFor(x => x.Color).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(100).WithMessage("El color es obligatorio y admite hasta 100 caracteres.");
-        RuleFor(x => x.Plate).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(100).When(x => x.Type != VehicleType.BICYCLE).WithMessage("La placa es obligatoria.");
-        RuleFor(x => x.Plate).Empty().When(x => x.Type == VehicleType.BICYCLE).WithMessage("Una bicicleta no utiliza placa.");
-        RuleFor(x => x.FrameNumber).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(150).When(x => x.Type == VehicleType.BICYCLE).WithMessage("El número de marco es obligatorio.");
-        RuleFor(x => x.FrameNumber).Empty().When(x => x.Type != VehicleType.BICYCLE).WithMessage("El vehículo utiliza placa y no número de marco.");
+        RuleFor(x => x.Plate).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(100).When(x => x.Type is not (VehicleType.BICYCLE or VehicleType.SCOOTER)).WithMessage("La placa es obligatoria.");
+        RuleFor(x => x.Plate).Empty().When(x => x.Type is VehicleType.BICYCLE or VehicleType.SCOOTER).WithMessage("Una bicicleta no utiliza placa.");
+        RuleFor(x => x.FrameNumber).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(150).When(x => x.Type is VehicleType.BICYCLE or VehicleType.SCOOTER).WithMessage("El número de marco es obligatorio.");
+        RuleFor(x => x.FrameNumber).Empty().When(x => x.Type is not (VehicleType.BICYCLE or VehicleType.SCOOTER)).WithMessage("El vehículo utiliza placa y no número de marco.");
         RuleFor(x => x.VerificationImage).NotNull().WithMessage("Selecciona la evidencia de verificación.");
     }
 }

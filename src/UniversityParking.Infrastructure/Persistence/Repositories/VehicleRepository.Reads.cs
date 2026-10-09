@@ -14,7 +14,7 @@ public sealed partial class VehicleRepository
     public async Task<VehicleView?> GetViewAsync(Guid id, CancellationToken cancellationToken) =>
         (await ReadRowsAsync(context.Vehicles.AsNoTracking().Where(x => x.Id == id), null, cancellationToken)).SingleOrDefault();
     public Task<IReadOnlyList<VehicleView>> GetByCurrentOwnerAsync(Guid userId, CancellationToken cancellationToken) =>
-        ReadRowsAsync(context.Vehicles.AsNoTracking().Where(x => context.VehicleOwnerships.Any(o => o.VehicleId == x.Id && o.UserId == userId && o.EndAt == null)), null, cancellationToken);
+        ReadRowsAsync(context.Vehicles.AsNoTracking().Where(x => x.DeletedAt == null && context.VehicleOwnerships.Any(o => o.VehicleId == x.Id && o.UserId == userId && o.EndAt == null)), null, cancellationToken);
     public async Task<PagedResult<VehicleView>> SearchAsync(GetVehiclesQuery query, CancellationToken cancellationToken)
     {
         var selection = context.Vehicles.AsNoTracking();

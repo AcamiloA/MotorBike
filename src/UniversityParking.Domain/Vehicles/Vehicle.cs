@@ -14,27 +14,29 @@ public sealed class Vehicle : Entity
     public VehicleStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset? DeletedAt { get; private set; }
 
     public Vehicle(VehicleType type, VehiclePlate? plate, FrameNumber? frameNumber,
         string brand, string model, string color, DateTimeOffset createdAt)
     {
         Type = Guard.Defined(type);
-        if (type == VehicleType.BICYCLE ? plate is not null || frameNumber is null : plate is null || frameNumber is not null)
+        if (type is VehicleType.BICYCLE or VehicleType.SCOOTER ? plate is not null || frameNumber is null : plate is null || frameNumber is not null)
             throw new DomainException("VALIDATION_ERROR", "El identificador no corresponde al tipo de vehículo.");
         Plate = plate;
         FrameNumber = frameNumber;
-        Brand = Guard.Text(brand, 100, "marca");
-        Model = Guard.Text(model, 100, "modelo");
-        Color = Guard.Text(color, 100, "color");
+        Brand = Guard.Text(brand, 100, "marca").ToUpperInvariant();
+        Model = Guard.Text(model, 100, "modelo").ToUpperInvariant();
+        Color = Guard.Text(color, 100, "color").ToUpperInvariant();
         Status = VehicleStatus.ACTIVE;
         CreatedAt = UpdatedAt = Guard.Utc(createdAt);
     }
 
     public void UpdateDescription(string brand, string model, string color, DateTimeOffset updatedAt)
     {
-        var validBrand = Guard.Text(brand, 100, "marca");
-        var validModel = Guard.Text(model, 100, "modelo");
-        var validColor = Guard.Text(color, 100, "color");
+        EnsureNotDeleted();
+        var validBrand = Guard.Text(brand, 100, "marca").ToUpperInvariant();
+        var validModel = Guard.Text(model, 100, "modelo").ToUpperInvariant();
+        var validColor = Guard.Text(color, 100, "color").ToUpperInvariant();
         var now = Guard.Utc(updatedAt);
         Guard.Chronology(now, UpdatedAt);
         Brand = validBrand;
@@ -45,8 +47,9 @@ public sealed class Vehicle : Entity
 
     public void CorrectIdentifier(string identifier, DateTimeOffset updatedAt)
     {
-        var plate = Type == VehicleType.BICYCLE ? null : new VehiclePlate(identifier);
-        var frame = Type == VehicleType.BICYCLE ? new FrameNumber(identifier) : null;
+        EnsureNotDeleted();
+        var plate = Type is VehicleType.BICYCLE or VehicleType.SCOOTER ? null : new VehiclePlate(identifier);
+        var frame = Type is VehicleType.BICYCLE or VehicleType.SCOOTER ? new FrameNumber(identifier) : null;
         var now = Guard.Utc(updatedAt);
         Guard.Chronology(now, UpdatedAt);
         Plate = plate;
@@ -56,9 +59,20 @@ public sealed class Vehicle : Entity
 
     public void Activate(DateTimeOffset now) => SetStatus(VehicleStatus.ACTIVE, now);
     public void Deactivate(DateTimeOffset now) => SetStatus(VehicleStatus.INACTIVE, now);
+    public void Archive(DateTimeOffset now)
+    {
+        EnsureNotDeleted();
+        var utc = Guard.Utc(now); Guard.Chronology(utc, UpdatedAt);
+        DeletedAt = UpdatedAt = utc; Status = VehicleStatus.INACTIVE;
+    }
+    private void EnsureNotDeleted()
+    {
+        if (DeletedAt.HasValue) throw new DomainException("VEHICLE_ARCHIVED", "El vehículo está archivado.");
+    }
 
     private void SetStatus(VehicleStatus status, DateTimeOffset now)
     {
+        EnsureNotDeleted();
         if (Status == status) return;
         var utc = Guard.Utc(now);
         Guard.Chronology(utc, UpdatedAt);

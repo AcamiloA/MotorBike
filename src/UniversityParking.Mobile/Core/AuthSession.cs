@@ -75,6 +75,7 @@ public interface IAppNavigation
 }
 public static class RoleNavigation
 {
+    public static string InstitutionalTitle(string? type)=>type switch {"STUDENT"=>"ESTUDIANTE","TEACHER"=>"DOCENTE","ADMINISTRATIVE"=>"ADMINISTRATIVO","GUARD"=>"GUARDA",_=>"Usuario"};
     public static IReadOnlyList<string> Areas(IReadOnlyCollection<string> roles) =>
         new[] { "USER", "GUARD", "ADMIN" }.Where(roles.Contains).ToArray();
     public static string Title(string role) => role switch { "GUARD" => "Portería", "ADMIN" => "Administración", _ => "Mi cuenta" };

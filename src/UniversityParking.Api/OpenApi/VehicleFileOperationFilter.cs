@@ -14,7 +14,7 @@ public sealed class VehicleFileOperationFilter : IOperationFilter
         {
             operation.Description = method == nameof(VehiclesController.Renew)
                 ? "Renovación sin nueva evidencia si el vehículo ya tiene VerificationImage; documentos legacy opcionales."
-                : "Una sola VerificationImage.File JPEG/PNG hasta 5 MB. Tipo derivado del vehículo: frente de Licencia de Tránsito para carro/moto, foto de bicicleta. Sin OCR.";
+                : "Una sola VerificationImage.File JPEG/PNG hasta 5 MB. Tipo derivado: Licencia de Tránsito para carro/moto, foto para bicicleta/scooter. OCR configurable para carro/moto; nunca para bicicleta/scooter.";
             var schema = new OpenApiSchema { Type = JsonSchemaType.Object, Properties = new Dictionary<string, IOpenApiSchema>(), Required = new HashSet<string>() };
             if (method == nameof(VehiclesController.Register))
             {

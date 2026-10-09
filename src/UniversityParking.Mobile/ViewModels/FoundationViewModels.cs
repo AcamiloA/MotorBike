@@ -27,6 +27,14 @@ public partial class LoginViewModel(AuthService auth, IPublicAuthNavigation? pub
         finally { IsBusy=false; Interlocked.Exchange(ref claimed,0); OnPropertyChanged(nameof(CanStart)); }
     }
     [ObservableProperty] private string identificationNumber = "";
+    [RelayCommand] private async Task ForgotPasswordAsync()
+    {
+        if(IsBusy||publicNavigation is null||Interlocked.CompareExchange(ref claimed,1,0)!=0)return;
+        OnPropertyChanged(nameof(CanStart));ErrorMessage="";
+        try{if(inputs is not null)await inputs.PrepareAsync();IsBusy=true;Password="";await publicNavigation.ShowPasswordRecoveryAsync();}
+        catch{ErrorMessage="No fue posible abrir la recuperación. Intenta nuevamente.";}
+        finally{IsBusy=false;Interlocked.Exchange(ref claimed,0);OnPropertyChanged(nameof(CanStart));}
+    }
     [ObservableProperty] private string password = "";
     [RelayCommand]
     private async Task SignInAsync()

@@ -7,6 +7,7 @@ public interface IPublicAuthNavigation
 {
     Task ShowStudentRegistrationAsync();
     Task ReturnToLoginAsync(string? message = null);
+    Task ShowPasswordRecoveryAsync(Guid? challengeId=null,string? token=null)=>throw new NotSupportedException();
 }
 
 public sealed class StudentRegistrationApiService(ApiClient api)

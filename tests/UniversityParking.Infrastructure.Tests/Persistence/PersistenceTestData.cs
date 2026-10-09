@@ -11,6 +11,8 @@ namespace UniversityParking.Infrastructure.Tests.Persistence;
 
 internal static class PersistenceTestData
 {
+    internal static Task InsertLegacyUser(AppDbContext db,User u)=>db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO users(id,identification_number,full_name,university_id,career,member_type,card_code,status,created_at,updated_at) VALUES ({u.Id},{u.IdentificationNumber.Value},{u.FullName},{u.UniversityId},{u.Career},{u.MemberType.ToString()},{u.CardCode.Value},{u.Status.ToString()},{u.CreatedAt},{u.UpdatedAt})");
+    internal static Task InsertLegacyVehicle(AppDbContext db,Vehicle v)=>db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO vehicles(id,type,plate,frame_number,brand,model,color,status,created_at,updated_at) VALUES ({v.Id},{v.Type.ToString()},{v.Plate!.Value},{(string?)null},{v.Brand},{v.Model},{v.Color},{v.Status.ToString()},{v.CreatedAt},{v.UpdatedAt})");
     internal static readonly DateTimeOffset Now = new(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
     internal static User User(string? identification = null, string? card = null) => new(
         new IdentificationNumber(identification ?? Guid.NewGuid().ToString("N")), "Usuario de prueba", UniversityParking.Domain.Universities.UniversityIds.Etitc, null,

@@ -29,7 +29,7 @@ public partial class RegisterStudentViewModel(StudentRegistrationApiService api,
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
     {base.OnPropertyChanged(e);if(e.PropertyName==nameof(IsBusy)){base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanSubmit)));base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanSelectUniversity)));}}
 
-    [RelayCommand] private Task LoadAsync()=>WorkAsync(async()=>
+    [ObservableProperty] private string email=""; [ObservableProperty] private string phoneNumber=""; [RelayCommand] private Task LoadAsync()=>WorkAsync(async()=>
     {
         var version=lifecycle;var previous=SelectedUniversity?.Id;CatalogLoaded=false;SelectedUniversity=null;Universities.Clear();
         var result=await api.UniversitiesAsync();if(version!=lifecycle||!Accepted(result))return;
@@ -46,13 +46,13 @@ public partial class RegisterStudentViewModel(StudentRegistrationApiService api,
         if(Completed||WriteUncertain)return;
         if(!CatalogLoaded)throw new UserInputException("Carga las universidades antes de registrar.");
         if(SelectedUniversity is null||!Universities.Contains(SelectedUniversity))throw new UserInputException("Selecciona una universidad.");
-        Required(IdentificationNumber,"La identificación",50);Required(FullName,"El nombre",200);Required(Career,"La carrera",200);Required(CardCode,"El código de carné",150);
+        Required(IdentificationNumber,"La identificación",50);Required(FullName,"El nombre",200);Required(Career,"La carrera",200);Required(Email,"El correo",254);Required(PhoneNumber,"El teléfono",40);
         if(!PasswordPresentation.IsValid(Password))throw new UserInputException("La contraseña requiere 8 caracteres, mayúscula, minúscula y número.");
         if(Password!=ConfirmPassword)throw new UserInputException("Las contraseñas no coinciden.");
         var version=lifecycle;submitting=true;
         try
         {
-            var result=await api.RegisterAsync(new RegisterStudentRequest(IdentificationNumber.Trim(),FullName.Trim(),SelectedUniversity.Id,Career.Trim(),CardCode.Trim(),Password));
+            var result=await api.RegisterAsync(new RegisterStudentRequest(IdentificationNumber.Trim(),FullName.Trim(),SelectedUniversity.Id,Career.Trim(),null,Password,Email.Trim(),PhoneNumber.Trim()));
             Password="";ConfirmPassword="";
             if(version!=lifecycle)return;
             if(!Accepted(result)){if(GuardPresentation.Uncertain(result.Error))WriteUncertain=true;return;}

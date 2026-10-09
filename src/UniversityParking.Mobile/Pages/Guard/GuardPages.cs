@@ -15,7 +15,12 @@ internal static class GuardViews
     { var picker = new Picker { Title = title, ItemDisplayBinding = new Binding(display) }; picker.SetBinding(Microsoft.Maui.Controls.Picker.ItemsSourceProperty, items); picker.SetBinding(Microsoft.Maui.Controls.Picker.SelectedItemProperty, selected); picker.SetBinding(VisualElement.IsEnabledProperty, "IsNotBusy"); return picker; }
     public static View Lot() => UserViews.Input(Picker("Lots.Lots", "Lots.Selected", "Name", "Parqueadero activo"));
     public static DatePicker Date(string property) { var date = new DatePicker(); date.SetBinding(DatePicker.DateProperty, property); date.SetBinding(VisualElement.IsEnabledProperty, "IsNotBusy"); return date; }
-    public static View Dates() => UserViews.Stack(UserViews.Text("Desde (Bogotá)"), Date("DateFrom"), UserViews.Text("Hasta (Bogotá)"), Date("DateTo"));
+    public static View Dates()
+    {
+        var enabled=new CheckBox();enabled.SetBinding(CheckBox.IsCheckedProperty,"DateFilterApplied");
+        var dates=UserViews.Stack(UserViews.Text("Desde (Bogotá)"), Date("DateFrom"), UserViews.Text("Hasta (Bogotá)"), Date("DateTo"));dates.SetBinding(VisualElement.IsVisibleProperty,"DateFilterApplied");
+        return UserViews.Stack(new HorizontalStackLayout{Children={enabled,UserViews.Text("Filtrar por fechas",true)}},dates);
+    }
     public static View MovementList(object vm, bool actions)
     {
         return UserViews.List("Items", new DataTemplate(() =>
@@ -26,7 +31,7 @@ internal static class GuardViews
         }));
     }
     public static View ListLayout(View filters, View list, object vm)
-    { var grid = new Grid { RowSpacing = 10, RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star }, new() { Height = GridLength.Auto } } }; grid.Add(filters,0,0); grid.Add(UserViews.Refresh(UserViews.EmptyList(list, "No hay resultados con estos filtros."), "RefreshCommand"),0,1); grid.Add(UserViews.Pager(vm),0,2); return grid; }
+    { var grid = new Grid { RowSpacing = 10, RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star }, new() { Height = GridLength.Auto } } }; grid.Add(vm is AdminUserDetailViewModel?filters:UniversityParking.Mobile.Controls.FilterPanel.Create(filters,vm),0,0); grid.Add(UserViews.Refresh(UserViews.EmptyList(list, "No hay resultados con estos filtros."), "RefreshCommand"),0,1); grid.Add(UserViews.Pager(vm),0,2); return grid; }
 }
 public sealed class GuardHomePage : UserPage<GuardHomeViewModel>
 {
@@ -34,9 +39,7 @@ public sealed class GuardHomePage : UserPage<GuardHomeViewModel>
     {
         var lot = GuardViews.Picker("Lots.Lots", "Lots.Selected", "Name", "Parqueadero activo");
         lot.SelectedIndexChanged += async (_, _) => { if (!vm.IsBusy) await vm.UpdateCommand.ExecuteAsync(null); };
-        Form(UserViews.Input(lot), UserViews.Button("CONSULTAR ESTADO", "UpdateCommand"), UserViews.Bound("Summary"),
-        UserViews.Button("REGISTRO DE ACCESO", "ScanCommand"), UserViews.Button("VER VEHÍCULOS DENTRO", "InsideCommand"),
-        UserViews.Button("REGISTRAR INCIDENTE", "CreateIncidentCommand"), UserViews.Button("INCIDENTES", "IncidentsCommand"), UserViews.Button("HISTORIAL", "HistoryCommand"), UserViews.Button("ACTUALIZAR PARQUEADEROS", "LoadCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"));
+        Form(UserViews.Input(lot),UserViews.Refresh(new ScrollView{Content=UserViews.Bound("Summary")},"UpdateCommand"),UserViews.Button("REINTENTAR PARQUEADEROS","LoadCommand"));
     }
 }
 public sealed class VehiclesInsidePage : UserPage<VehiclesInsideViewModel>

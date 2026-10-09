@@ -18,7 +18,7 @@ public sealed class VehicleVerificationImageConfiguration : IEntityTypeConfigura
         builder.HasOne<Vehicle>().WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
         builder.ToTable(table =>
         {
-            table.HasCheckConstraint("ck_vehicle_verification_images_type", "type IN ('TRANSIT_LICENSE_FRONT', 'BICYCLE_PHOTO')");
+            table.HasCheckConstraint("ck_vehicle_verification_images_type", "type IN ('TRANSIT_LICENSE_FRONT', 'BICYCLE_PHOTO', 'SCOOTER_PHOTO')");
             table.HasCheckConstraint("ck_vehicle_verification_images_size", "size_bytes > 0 AND size_bytes <= 5242880");
             table.HasCheckConstraint("ck_vehicle_verification_images_mime", "content_type IN ('image/jpeg', 'image/png')");
         });

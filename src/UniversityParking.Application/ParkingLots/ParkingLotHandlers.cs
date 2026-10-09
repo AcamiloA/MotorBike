@@ -24,7 +24,7 @@ public sealed class CreateParkingLotCommandHandler(AdministrationOperationContex
         var now = operation.UtcNow;
         var lot = new ParkingLot(name, campus, request.OpeningTime, request.ClosingTime, now);
         await lots.AddAsync(lot, cancellationToken);
-        foreach (var (type, zoneName) in new[] { (VehicleType.CAR, "Zona de carros"), (VehicleType.MOTORCYCLE, "Zona de motos"), (VehicleType.BICYCLE, "Zona de bicicletas") })
+        foreach (var (type, zoneName) in new[] { (VehicleType.CAR, "Zona de carros"), (VehicleType.MOTORCYCLE, "Zona de motos"), (VehicleType.BICYCLE, "Zona de bicicletas"),(VehicleType.SCOOTER,"Zona de scooters") })
             await lots.AddZoneAsync(new ParkingZone(lot.Id, zoneName, type, now), cancellationToken);
         await operation.AuditAsync("PARKING_LOT_CREATED", "ParkingLot", lot.Id, null,
             new { lot.Name, lot.Campus, lot.OpeningTime, lot.ClosingTime, Status = "ACTIVE" }, cancellationToken);

@@ -153,10 +153,10 @@ public sealed partial class GuardFeatureTests
     {
         var setup=await AccessSetup(_=>throw new Exception(),roles:[role]);Assert.Contains("GUARD",setup.Vm.ErrorMessage);Assert.False(setup.Vm.CanConfirm);Assert.False(setup.Vm.CameraMounted);
     }
-    [Fact] public void PinchPanAreBoundedAndResettable()
+    [Fact] public void PressDragReleaseAreBoundedAndResettable()
     {
-        var v=new EvidenceViewport();v.Zoom(4,.5,.5,300,200);Assert.Equal(4,v.Scale);v.Pan(900,-900,300,200);Assert.Equal(450,v.X);Assert.Equal(-300,v.Y);
-        v.Zoom(10,.5,.5,300,200);Assert.Equal(8,v.Scale);v.Zoom(.01,.5,.5,300,200);Assert.Equal(1,v.Scale);Assert.Equal(0,v.X);Assert.Equal(0,v.Y);
-        v.Zoom(2,.25,.25,300,200);Assert.NotEqual(0,v.X);v.Reset();Assert.Equal(1,v.Scale);Assert.Equal(0,v.X);
+        var v=new EvidenceViewport();v.TouchDown(150,100,300,200,300,200);Assert.Equal(2.5,v.Scale);
+        v.TouchMove(900,-900);Assert.Equal(225,v.X);Assert.Equal(-150,v.Y);
+        v.TouchUp();Assert.Equal(1,v.Scale);Assert.Equal(0,v.X);Assert.Equal(0,v.Y);
     }
 }

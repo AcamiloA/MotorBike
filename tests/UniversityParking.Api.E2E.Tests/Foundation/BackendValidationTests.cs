@@ -21,7 +21,7 @@ public sealed class BackendValidationTests(AuthApiFixture fixture) : IAsyncLifet
         await Login(admin.IdentificationNumber.Value);
         var identification = Guid.NewGuid().ToString("N");
         var response = await fixture.Client.PostAsJsonAsync("/api/v1/users", new { identificationNumber = identification,
-            fullName = "Estudiante integral", universityId = UniversityParking.Domain.Universities.UniversityIds.Etitc, career = "Ingeniería", memberType = "STUDENT", cardCode = "CARD-INTEGRAL", initialPassword = AuthApiFixture.Password });
+            fullName = "Estudiante integral", universityId = UniversityParking.Domain.Universities.UniversityIds.Etitc, career = "Ingeniería", memberType = "STUDENT", userType="STUDENT",email=identification+"@example.com",phoneNumber="+573001234567",identificationType="CC",initialPassword = AuthApiFixture.Password });
         Assert.True(response.StatusCode == HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         var id = (await response.Content.ReadFromJsonAsync<UserCreatedResponse>())!.Id;
         await Login(identification);
@@ -50,6 +50,12 @@ public sealed class BackendValidationTests(AuthApiFixture fixture) : IAsyncLifet
     {
         var response = await fixture.Client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(identification, AuthApiFixture.Password));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        fixture.Client.DefaultRequestHeaders.Authorization = new("Bearer", (await response.Content.ReadFromJsonAsync<LoginResponse>())!.AccessToken);
+        var login=(await response.Content.ReadFromJsonAsync<LoginResponse>())!;
+        if(login.RequiresPasswordChange)
+        {
+            Assert.Equal(HttpStatusCode.NoContent,(await fixture.Client.PostAsJsonAsync("/api/v1/auth/temporary-password/complete",new CompleteTemporaryPasswordRequest(login.ChallengeId!.Value,login.PasswordChangeToken!,"ChangedPassword2"))).StatusCode);
+            login=(await (await fixture.Client.PostAsJsonAsync("/api/v1/auth/login",new LoginRequest(identification,"ChangedPassword2"))).Content.ReadFromJsonAsync<LoginResponse>())!;
+        }
+        fixture.Client.DefaultRequestHeaders.Authorization = new("Bearer", login.AccessToken);
     }
 }

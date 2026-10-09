@@ -15,11 +15,13 @@ namespace UniversityParking.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IUnitOfWork
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<PasswordChallenge> PasswordChallenges => Set<PasswordChallenge>();
     public DbSet<University> Universities => Set<University>();
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<PendingFileDeletion> PendingFileDeletions => Set<PendingFileDeletion>();
     public DbSet<VehicleOwnership> VehicleOwnerships => Set<VehicleOwnership>();
     public DbSet<VehicleRegistration> VehicleRegistrations => Set<VehicleRegistration>();
     public DbSet<VehiclePhoto> VehiclePhotos => Set<VehiclePhoto>();

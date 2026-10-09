@@ -16,7 +16,7 @@ public sealed class RegisterStudentTests
     {
         var http=new Http(send??(r=>Task.FromResult(r.Method==HttpMethod.Get?Ok(new[]{University}):new(HttpStatusCode.ServiceUnavailable))));var nav=new Nav();
         var vm=new RegisterStudentViewModel(new(new ApiClient(new HttpClient(http){BaseAddress=new("https://test.example/")})),nav)
-        {IdentificationNumber=" 001 ",FullName=" Nombre ",Career=" Carrera ",CardCode=" CARD ",Password="Password1",ConfirmPassword="Password1"};return(vm,nav,http);
+        {IdentificationNumber=" 001 ",FullName=" Nombre ",Career=" Carrera ",CardCode=" CARD ",Email="student@example.com",PhoneNumber="+573001234567",Password="Password1",ConfirmPassword="Password1"};return(vm,nav,http);
     }
     private static async Task Ready(RegisterStudentViewModel vm){await vm.LoadCommand.ExecuteAsync(null);vm.SelectedUniversity=vm.Universities.Single();}
     [Theory][InlineData("ACTIVE","Tu cuenta fue creada correctamente. Ya puedes iniciar sesión.")][InlineData("PENDING","Tu registro fue recibido y está pendiente de aprobación.")]
@@ -26,7 +26,7 @@ public sealed class RegisterStudentTests
         await Ready(vm);await vm.SubmitCommand.ExecuteAsync(null);Assert.True(vm.Completed);Assert.Equal(message,nav.Message);Assert.Equal(1,nav.Returns);Assert.Equal(1,http.Writes);
         Assert.Empty(vm.Password);Assert.Empty(vm.ConfirmPassword);Assert.False(vm.CanSubmit);
         using var json=JsonDocument.Parse(body!);Assert.Equal(University.Id,json.RootElement.GetProperty("universityId").GetGuid());Assert.Equal("001",json.RootElement.GetProperty("identificationNumber").GetString());
-        Assert.Equal(new[]{"cardCode","career","fullName","identificationNumber","password","universityId"},json.RootElement.EnumerateObject().Select(x=>x.Name).Order());
+        Assert.Equal(new[]{"cardCode","career","email","fullName","identificationNumber","password","phoneNumber","universityId"},json.RootElement.EnumerateObject().Select(x=>x.Name).Order());
     }
     [Fact] public async Task RequiresExplicitRemoteSelection()
     {var (vm,_,http)=Setup();await vm.LoadCommand.ExecuteAsync(null);Assert.Equal("Nombre remoto",Assert.Single(vm.Universities).Name);Assert.Null(vm.SelectedUniversity);Assert.False(vm.CanSubmit);await vm.SubmitCommand.ExecuteAsync(null);Assert.Contains("Selecciona",vm.ErrorMessage);Assert.Equal(0,http.Writes);}
