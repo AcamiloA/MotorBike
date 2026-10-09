@@ -10,13 +10,13 @@ Cada vehículo nuevo requiere **exactamente una** imagen autoritativa:
 | MOTORCYCLE | TRANSIT_LICENSE_FRONT | Frente completo de la Licencia de Tránsito |
 | BICYCLE | BICYCLE_PHOTO | Fotografía de la bicicleta completa |
 
-Carro/moto no solicitan foto del vehículo, reverso ni segunda imagen. Bicicleta no requiere licencia o soporte de propiedad para esta evidencia. No hay OCR, Textract, lectura/comparación automática de placa, reconocimiento visual, scanner/zoom GUARD ni QR en este feature. La semántica se solicita al usuario; el sistema aún no comprueba visualmente el contenido de la imagen.
+Carro/moto no solicitan foto del vehículo, reverso ni segunda imagen. Bicicleta no requiere licencia o soporte de propiedad para esta evidencia. El [OCR del frente de Licencia de Tránsito](transit-license-ocr.md) ahora exige formato/legibilidad en escrituras nuevas de carro/moto; bicicleta no usa OCR. No comprueba autenticidad ni compara/corrige placa; scanner/zoom GUARD y QR siguen pendientes.
 
 ## Registro y contrato multipart
 
 POST /api/v1/vehicles conserva Type, Plate o FrameNumber, Brand, Model y Color. El único archivo es **VerificationImage.File**. No acepta Photos[], Documents[], VerificationImage.Type, VerificationImageType, OwnerId, StorageKey, campos desconocidos ni archivos múltiples. El tipo de evidencia se deriva de Vehicle.Type en servidor.
 
-Solo JPEG/PNG, máximo 5 MB. Se validan extensión, MIME, tamaño, magic bytes y nombre seguro mediante FileUploadValidator. PDF, HEIC y documentos arbitrarios se rechazan. No se comprime ni reduce la resolución de la copia privada. No se certifica aquí legibilidad visual o autenticidad de la licencia.
+Solo JPEG/PNG, máximo 5 MB. Se validan extensión, MIME, tamaño, magic bytes y nombre seguro mediante FileUploadValidator. PDF, HEIC y documentos arbitrarios se rechazan. No se comprime ni reduce la resolución de la copia privada. La validación OCR es heurística de formato/legibilidad y no certifica autenticidad; consulte transit-license-ocr.md.
 
 Vehicle, ownership, registration e imagen se guardan en una transacción. UploadedFileBatch retira subidas nuevas si upload o DB fallan antes del commit. Si el resultado de COMMIT es incierto conserva el archivo que podría ya estar referenciado.
 

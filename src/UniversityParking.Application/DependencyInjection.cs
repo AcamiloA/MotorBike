@@ -9,6 +9,8 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddLogging();
+        services.AddSingleton<UniversityParking.Application.Documents.ITransitLicenseFormatValidator, UniversityParking.Application.Documents.TransitLicenseFormatValidator>();
+        services.AddScoped<UniversityParking.Application.Documents.ITransitLicenseValidationService, UniversityParking.Application.Documents.TransitLicenseValidationService>();
         services.AddOptions<UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions>();
         services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions>,
             UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptionsValidator>();

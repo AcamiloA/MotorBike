@@ -7,7 +7,7 @@ namespace UniversityParking.Application.Tests.Vehicles;
 public sealed partial class VehicleRegistrationTests
 {
     private UpdateVehicleVerificationImageCommandHandler UpdateImage => new(Context, store, store,
-        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance);
+        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance, TestOcr.Service());
     [Fact]
     public async Task LegacyRenewalRequiresExplicitVerificationEvenWithLegacyDocuments()
     {

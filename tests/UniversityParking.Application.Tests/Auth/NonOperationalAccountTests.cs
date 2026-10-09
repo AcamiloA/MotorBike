@@ -42,7 +42,7 @@ public sealed class NonOperationalAccountTests
     {
         var store=new VehicleRegistrationTests.Store();await store.AddAsync(Account(status,store.UtcNow),default);
         var operation=new VehicleOperationContext(store,store,store,store,store,store,store,store);
-        var handler=new RegisterVehicleCommandHandler(operation,store,store,store,store,store,store,new FileUploadValidator(),store,NullLogger<UploadedFileBatch>.Instance);
+        var handler=new RegisterVehicleCommandHandler(operation,store,store,store,store,store,store,new FileUploadValidator(),store,NullLogger<UploadedFileBatch>.Instance,UniversityParking.Application.Tests.Vehicles.TestOcr.Service());
         var result=await handler.Handle(new RegisterVehicleCommand(VehicleType.BICYCLE,null,"FRAME123","Marca","Modelo","Negro",null),default);
         Assert.Equal("USER_INACTIVE",result.Error!.Code);Assert.Empty(store.Vehicles);Assert.Empty(store.Keys);Assert.Equal(0,store.Saves);
     }

@@ -30,7 +30,7 @@ public static class ProblemResponses
         var status = error.Type switch
         {
             ErrorType.Validation => 400, ErrorType.Unauthorized => 401, ErrorType.Forbidden => 403,
-            ErrorType.NotFound => 404, ErrorType.Conflict => 409, _ => 500
+            ErrorType.NotFound => 404, ErrorType.Conflict => 409, ErrorType.Unavailable => 503, _ => 500
         };
         var problem = Create(context, status, status == 500 ? InternalServerErrorCode : error.Code,
             status == 500 ? "Ocurrió un error inesperado." : error.Message, status == 500 ? null : error.ValidationErrors);

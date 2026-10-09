@@ -185,6 +185,7 @@ public partial class DocumentInputViewModel(string type, IAttachmentPicker picke
 public partial class RegisterVehicleViewModel : UserFeatureViewModel
 {
     private readonly UserApiService api; private readonly IAuthSession session; private readonly IAttachmentPicker picker; private readonly IUserNavigation navigation;
+    [ObservableProperty] private string processingMessage = "";
     public ObservableCollection<TypeChoice> Types { get; } = [];
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IdentifierLabel))] private TypeChoice? selectedType;
     [ObservableProperty] private string identifier = "";
@@ -211,10 +212,15 @@ public partial class RegisterVehicleViewModel : UserFeatureViewModel
         if (!VehiclePresentation.AllowedTypes(session.User?.MemberType).Contains(type)) throw new UserInputException("Selecciona un tipo de vehículo permitido.");
         Required(Identifier, IdentifierLabel, type == "BICYCLE" ? 150 : 100); Required(Brand, "Marca"); Required(Model, "Modelo"); Required(Color, "Color");
         if (VerificationImage is null) throw new UserInputException("Selecciona la evidencia de verificación.");
-        var result = await api.RegisterAsync(new(type, Identifier, Brand, Model, Color, VerificationImage)); if (!Accepted(result)) return;
+        ProcessingMessage = type == "BICYCLE" ? "Guardando vehículo..." : "Validando Licencia de Tránsito...";
+        try
+        {
+        var result = await api.RegisterAsync(new(type, Identifier, Brand, Model, Color, VerificationImage)); if (!Accepted(result)) { if (TransitLicensePresentation.DocumentError(result.Error!.Code)) VerificationImage = null; return; }
         VerificationImage = null;
         await navigation.MessageAsync("Vehículo", "Vehículo registrado correctamente.");
         await navigation.BackAsync(); await navigation.GoAsync("vehicle-detail", new Dictionary<string, object> { ["vehicleId"] = result.Value!.Id });
+        }
+        finally { ProcessingMessage = ""; }
     });
 }
 public partial class EditVehicleViewModel(UserApiService api, IUserNavigation navigation) : UserFeatureViewModel

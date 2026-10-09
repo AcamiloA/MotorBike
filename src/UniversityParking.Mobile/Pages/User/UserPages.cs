@@ -157,7 +157,7 @@ public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
         Form(UserViews.Input(types), UserViews.Bound("IdentifierLabel"), UserViews.Input(UserViews.Entry("Identifier", "Identificador del vehículo")),
             UserViews.Input(UserViews.Entry("Brand", "Marca")), UserViews.Input(UserViews.Entry("Model", "Modelo")), UserViews.Input(UserViews.Entry("Color", "Color")),
             UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationHelp", true), UserViews.Bound("VerificationImageName", true), UserViews.Image("VerificationImage", 180), camera, gallery,
-            UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
+            UserViews.Bound("ProcessingMessage", true), UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
     }
 }
 public sealed class EditVehiclePage : UserPage<EditVehicleViewModel>

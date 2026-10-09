@@ -22,7 +22,7 @@ public sealed class UpdateVehicleVerificationImageCommandValidator : AbstractVal
 }
 public sealed class UpdateVehicleVerificationImageCommandHandler(VehicleOperationContext operation,
     IVehicleEvidenceRepository evidence, IUnitOfWork unitOfWork, FileUploadValidator validator, IFileStorage storage,
-    ILogger<UploadedFileBatch> logger) : IRequestHandler<UpdateVehicleVerificationImageCommand, Result>
+    ILogger<UploadedFileBatch> logger, UniversityParking.Application.Documents.ITransitLicenseValidationService licenseValidation) : IRequestHandler<UpdateVehicleVerificationImageCommand, Result>
 {
     public async Task<Result> Handle(UpdateVehicleVerificationImageCommand request, CancellationToken cancellationToken)
     {
@@ -35,6 +35,11 @@ public sealed class UpdateVehicleVerificationImageCommandHandler(VehicleOperatio
         var validated = await validator.ValidateAsync(request.VerificationImage, true, cancellationToken);
         if (validated.IsFailure) return Result.Failure(validated.Error!);
         var vehicle = access.Value;
+        if (vehicle.Type is VehicleType.CAR or VehicleType.MOTORCYCLE)
+        {
+            var format = await licenseValidation.ValidateAsync(validated.Value, cancellationToken);
+            if (format.IsFailure) return Result.Failure(format.Error!);
+        }
         var image = await evidence.GetVerificationImageAsync(vehicle.Id, cancellationToken);
         var oldKey = image?.StorageKey;
         var oldValue = image is null ? null : new { image.Id, Type = image.Type.ToString(), image.OriginalFileName };

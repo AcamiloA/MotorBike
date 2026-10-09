@@ -27,6 +27,7 @@ Mobile consume la API sin referencias al backend. Detalle en
 - [Registro público de estudiantes, aprobación y configuración](docs/student-registration.md).
 - [Arquitectura para futuras integraciones institucionales; ninguna integración real](docs/university-integrations.md).
 - [Evidencia única por vehículo, reemplazo y transición legacy](docs/vehicle-verification-image.md).
+- [OCR del frente de Licencia de Tránsito: formato, configuración y límites](docs/transit-license-ocr.md).
 - [Docker local y configuración Railway](docs/deployment.md).
 - [Seed, cuentas y APK demo](docs/demo.md).
 - [Respaldos PostgreSQL y archivos privados](docs/backups.md).
