@@ -18,6 +18,24 @@ namespace UniversityParking.Api.Controllers;
 [Route("api/v1/auth")]
 public sealed class AuthController(ISender sender) : ControllerBase
 {
+    [HttpPost("password-recovery/request"), AllowAnonymous, EnableRateLimiting(RateLimitPolicies.Login)]
+    public async Task<IActionResult> RequestRecovery(RequestPasswordRecoveryRequest request,CancellationToken token)
+    {
+        var result=await sender.Send(new UniversityParking.Application.Auth.PasswordRecovery.RequestPasswordRecoveryCommand(request.Email),token);
+        return result.IsSuccess?Ok(new {Message="Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."}):ProblemResponses.Map(HttpContext,result.Error!);
+    }
+    [HttpPost("password-recovery/complete"), AllowAnonymous, EnableRateLimiting(RateLimitPolicies.Login)]
+    public async Task<IActionResult> CompleteRecovery(CompletePasswordRecoveryRequest request,CancellationToken token)
+    {
+        var result=await sender.Send(new UniversityParking.Application.Auth.PasswordRecovery.CompletePasswordRecoveryCommand(request.Email,request.Code,request.NewPassword),token);
+        return result.IsSuccess?NoContent():ProblemResponses.Map(HttpContext,result.Error!);
+    }
+    [HttpPost("temporary-password/complete"), AllowAnonymous, EnableRateLimiting(RateLimitPolicies.Login)]
+    public async Task<IActionResult> CompleteTemporary(CompleteTemporaryPasswordRequest request,CancellationToken token)
+    {
+        var result=await sender.Send(new UniversityParking.Application.Auth.PasswordRecovery.CompleteTemporaryPasswordCommand(request.ChallengeId,request.Token,request.NewPassword),token);
+        return result.IsSuccess?NoContent():ProblemResponses.Map(HttpContext,result.Error!);
+    }
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Login)]
@@ -31,7 +49,8 @@ public sealed class AuthController(ISender sender) : ControllerBase
         if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
         var value = result.Value;
         return Ok(new LoginResponse(value.AccessToken, value.ExpiresAtUtc,
-            new LoginUserResponse(value.User.Id, value.User.FullName, value.User.MemberType.ToString(), value.User.Roles)));
+            new LoginUserResponse(value.User.Id, value.User.FullName, value.User.MemberType.ToString(), value.User.Roles,value.User.UserType.ToString()),
+            value.RequiresPasswordChange,value.ChallengeId,value.PasswordChangeToken));
     }
 
     [HttpPost("register/student")]
@@ -45,7 +64,7 @@ public sealed class AuthController(ISender sender) : ControllerBase
     public async Task<IActionResult> RegisterStudent(RegisterStudentRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new RegisterStudentCommand(request.IdentificationNumber, request.FullName,
-            request.UniversityId, request.Career, request.CardCode, request.Password), cancellationToken);
+            request.UniversityId, request.Career, request.CardCode, request.Password,request.Email,request.PhoneNumber), cancellationToken);
         if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
         return StatusCode(StatusCodes.Status201Created, new RegisterStudentResponse(result.Value.UserId, result.Value.Status.ToString()));
     }

@@ -10,7 +10,7 @@ public static class NavigationDestinations
     {
         "user-home" => typeof(UserHomePage), "my-vehicles" => typeof(MyVehiclesPage),
         "my-history" => typeof(MyHistoryPage), "user-news" => typeof(NewsPage), "user-profile" => typeof(ProfilePage),
-        "guard-home" => typeof(GuardHomePage), "guard-inside" => typeof(VehiclesInsidePage),
+        "guard-home" => typeof(GuardHomePage),"guard-access-control"=>typeof(GuardAccessControlPage), "guard-inside" => typeof(VehiclesInsidePage),
         "guard-incidents" => typeof(IncidentsPage), "guard-history" => typeof(ParkingHistoryPage),
         "admin-home" => typeof(AdminDashboardPage), "admin-users" => typeof(AdminUsersPage),
         "admin-vehicles" => typeof(AdminVehiclesPage), "admin-periods" => typeof(AdminPeriodsPage),

@@ -55,7 +55,7 @@ public static class GuardPresentation
         "PARKING_LOT_CLOSED" => "El parqueadero está cerrado.", "VEHICLE_REGISTRATION_REQUIRED" => "El vehículo necesita un registro vigente.",
         "USER_INACTIVE" => "El usuario está inactivo.", "VEHICLE_INACTIVE" => "El vehículo está inactivo.", _ => error.Message
     };
-    public static readonly TypeChoice[] VehicleTypes = [new("", "Todos los tipos"), new("CAR", "Carro"), new("MOTORCYCLE", "Moto"), new("BICYCLE", "Bicicleta")];
+    public static readonly TypeChoice[] VehicleTypes = [new("", "Todos los tipos"), new("CAR", "Carro"), new("MOTORCYCLE", "Moto"), new("BICYCLE", "Bicicleta"),new("SCOOTER","Scooter")];
     public static readonly TypeChoice[] IncidentTypes = Enum.GetNames<IncidentKind>().Select(x => new TypeChoice(x, IncidentType(x))).ToArray();
     public static DateTimeOffset BogotaInstant(DateTime date, TimeSpan time) => new(DateTime.SpecifyKind(date.Date.Add(time), DateTimeKind.Unspecified), TimeSpan.FromHours(-5));
 }

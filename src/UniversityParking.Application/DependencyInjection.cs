@@ -9,6 +9,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddLogging();
+        services.AddScoped<UniversityParking.Application.Auth.PasswordRecovery.PasswordChallengeService>();
         services.AddOptions<UniversityParking.Application.Documents.DocumentOcrOptions>();
         services.AddSingleton<UniversityParking.Application.Parking.IQrIdentityParser, UniversityParking.Application.Parking.QrIdentityParser>();
         services.AddSingleton<UniversityParking.Application.Documents.ITransitLicenseFormatValidator, UniversityParking.Application.Documents.TransitLicenseFormatValidator>();

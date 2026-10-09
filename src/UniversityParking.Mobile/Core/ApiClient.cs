@@ -32,7 +32,9 @@ public sealed class AuthHttpHandler(IAuthSession session, IAppNavigation navigat
         if (request.RequestUri is not { } uri || uri.Scheme != options.BaseAddress.Scheme || uri.Authority != options.BaseAddress.Authority)
             throw new InvalidOperationException("La solicitud no pertenece al servidor configurado.");
         var login = uri.AbsolutePath.EndsWith("/api/v1/auth/login", StringComparison.Ordinal)
-            || uri.AbsolutePath.EndsWith("/api/v1/auth/register/student", StringComparison.Ordinal);
+            || uri.AbsolutePath.EndsWith("/api/v1/auth/register/student", StringComparison.Ordinal)
+            || uri.AbsolutePath.Contains("/api/v1/auth/password-recovery/", StringComparison.Ordinal)
+            || uri.AbsolutePath.EndsWith("/api/v1/auth/temporary-password/complete", StringComparison.Ordinal);
         var token = login ? null : await session.GetTokenAsync();
         if (request.Options.TryGetValue(ApiClient.ExpectedSessionOption, out var expected))
         {

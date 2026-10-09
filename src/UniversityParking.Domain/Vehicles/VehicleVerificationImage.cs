@@ -2,7 +2,7 @@ using UniversityParking.Domain.Common;
 
 namespace UniversityParking.Domain.Vehicles;
 
-public enum VehicleVerificationImageType { TRANSIT_LICENSE_FRONT, BICYCLE_PHOTO }
+public enum VehicleVerificationImageType { TRANSIT_LICENSE_FRONT, BICYCLE_PHOTO, SCOOTER_PHOTO }
 
 public sealed class VehicleVerificationImage : Entity
 {
@@ -20,8 +20,12 @@ public sealed class VehicleVerificationImage : Entity
         VehicleId = Guard.Id(vehicle.Id, "vehículo"); Type = ForVehicle(vehicle.Type);
         CreatedAt = UpdatedAt = Guard.Utc(now); SetMetadata(key, name, mime, size);
     }
-    public static VehicleVerificationImageType ForVehicle(VehicleType type) => Guard.Defined(type) == VehicleType.BICYCLE
-        ? VehicleVerificationImageType.BICYCLE_PHOTO : VehicleVerificationImageType.TRANSIT_LICENSE_FRONT;
+    public static VehicleVerificationImageType ForVehicle(VehicleType type) => Guard.Defined(type) switch
+    {
+        VehicleType.BICYCLE => VehicleVerificationImageType.BICYCLE_PHOTO,
+        VehicleType.SCOOTER => VehicleVerificationImageType.SCOOTER_PHOTO,
+        _ => VehicleVerificationImageType.TRANSIT_LICENSE_FRONT
+    };
     public void EnsureCompatible(VehicleType vehicleType)
     {
         if (Type != ForVehicle(vehicleType)) throw new DomainException("VALIDATION_ERROR", "La evidencia no corresponde al tipo de vehículo.");

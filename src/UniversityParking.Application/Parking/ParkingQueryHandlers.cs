@@ -36,7 +36,7 @@ public sealed class GetParkingAccessUserQueryHandler(AdministrationOperationCont
             return Result<ParkingAccessView>.Success(new(summary, null, []));
         var owned = await vehicles.GetByCurrentOwnerAsync(user.Id, cancellationToken);
         var eligible = owned.Where(x => x.Status == VehicleStatus.ACTIVE && x.RegistrationState == RegistrationState.ACTIVE && !x.IsInside &&
-            !(user.MemberType == MemberType.STUDENT && x.Type == VehicleType.CAR)).ToArray();
+            !(user.UserType == InstitutionalUserType.STUDENT && x.Type == VehicleType.CAR)).ToArray();
         var enabled = eligible.Where(x => x.VerificationImageId.HasValue && x.VerificationImageType == VehicleVerificationImage.ForVehicle(x.Type)).Select(Vehicle).ToArray();
         var missing = enabled.Length == 0 && eligible.Length > 0;
         return Result<ParkingAccessView>.Success(new(summary, null, enabled, EntryBlockCode: missing ? "VEHICLE_VERIFICATION_REQUIRED" : null,

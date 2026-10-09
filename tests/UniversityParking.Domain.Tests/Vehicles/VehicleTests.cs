@@ -91,14 +91,14 @@ public sealed class VehicleTests
         var vehicle = Create(VehicleType.MOTORCYCLE);
         var id = vehicle.Id;
         vehicle.UpdateDescription(" Nueva marca ", " Nuevo modelo ", " Azul ", Now.AddMinutes(1));
-        Assert.Equal("Nueva marca", vehicle.Brand);
-        Assert.Equal("Nuevo modelo", vehicle.Model);
-        Assert.Equal("Azul", vehicle.Color);
+        Assert.Equal("NUEVA MARCA", vehicle.Brand);
+        Assert.Equal("NUEVO MODELO", vehicle.Model);
+        Assert.Equal("AZUL", vehicle.Color);
         Assert.Equal("ABC123", vehicle.Plate!.Value);
         Assert.Equal(VehicleType.MOTORCYCLE, vehicle.Type);
         Assert.Equal(id, vehicle.Id);
         Assert.Throws<DomainException>(() => vehicle.UpdateDescription("Otra", " ", "Rojo", Now.AddMinutes(2)));
-        Assert.Equal("Nueva marca", vehicle.Brand);
+        Assert.Equal("NUEVA MARCA", vehicle.Brand);
     }
 
     [Theory]

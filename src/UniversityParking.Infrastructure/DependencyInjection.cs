@@ -40,8 +40,11 @@ public static class DependencyInjection
         services.AddSingleton<IParkingTimeZone, BogotaParkingTimeZone>();
         services.AddScoped<IVehicleEvidenceRepository, VehicleEvidenceRepository>();
         services.AddFileStorage(configuration);
+        services.AddScoped<IFileDeletionQueue,FileDeletionQueue>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPasswordChallengeRepository, PasswordChallengeRepository>();
+        UniversityParking.Infrastructure.Email.EmailRegistration.AddEmailDelivery(services, configuration);
         services.AddScoped<IUniversityRepository, UniversityRepository>();
         services.AddScoped<IUserCredentialRepository, UserCredentialRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();

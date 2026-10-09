@@ -10,14 +10,14 @@ public sealed class CreateUserCommandValidator : AbstractValidator<CreateUserCom
     {
         RuleFor(x => x.IdentificationNumber).NotEmpty().WithMessage("La identificación es obligatoria.").MaximumLength(50).WithMessage("La identificación admite hasta 50 caracteres.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.UniversityId).NotEmpty().WithMessage("Selecciona una universidad.");
+        RuleFor(x => x.UniversityId).NotEmpty().When(x=>x.UserType is InstitutionalUserType.STUDENT or InstitutionalUserType.TEACHER).WithMessage("Selecciona una universidad.");
         RuleFor(x => x.Career).MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.Career).NotEmpty().When(x => x.MemberType == MemberType.STUDENT)
+        RuleFor(x => x.Career).NotEmpty().When(x => x.UserType == InstitutionalUserType.STUDENT)
             .WithMessage("La carrera es obligatoria para estudiantes.");
         RuleFor(x => x.MemberType).IsInEnum().WithMessage("El valor no es válido.");
-        RuleFor(x => x.CardCode).NotEmpty().WithMessage("El código de carné es obligatorio.").MaximumLength(150).WithMessage("El código de carné admite hasta 150 caracteres.");
+        RuleFor(x=>x.Email).NotEmpty().MaximumLength(254).EmailAddress(); RuleFor(x=>x.PhoneNumber).NotEmpty().MaximumLength(40);
         RuleFor(x => x.InitialPassword).Cascade(CascadeMode.Stop).ExistingPasswordPolicy();
-        RuleForEach(x => x.Roles).Must(UserValidation.IsRole).WithMessage("El rol no es válido.");
+        RuleFor(x=>x.UserType).IsInEnum(); RuleFor(x=>x.IdentificationType).NotEmpty().Must(x=>x is "CC" or "CE" or "TI" or "PASSPORT");RuleFor(x=>x.Roles).Must(x=>x is null || x.Count==0).WithMessage("El rol se deriva del tipo institucional.");
     }
 }
 public sealed class UpdateMyProfileCommandValidator : AbstractValidator<UpdateMyProfileCommand>
@@ -34,12 +34,12 @@ public sealed class UpdateUserCommandValidator : AbstractValidator<UpdateUserCom
     {
         RuleFor(x => x.UserId).NotEmpty().WithMessage("El identificador es obligatorio.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("El campo es obligatorio.").MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.UniversityId).NotEmpty().WithMessage("Selecciona una universidad.");
+        RuleFor(x => x.UniversityId).NotEmpty().When(x=>x.UserType is not (InstitutionalUserType.ADMINISTRATIVE or InstitutionalUserType.GUARD)).WithMessage("Selecciona una universidad.");
         RuleFor(x => x.Career).MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
-        RuleFor(x => x.Career).NotEmpty().When(x => x.MemberType == MemberType.STUDENT)
+        RuleFor(x => x.Career).NotEmpty().When(x => x.UserType == InstitutionalUserType.STUDENT)
             .WithMessage("La carrera es obligatoria para estudiantes.");
         RuleFor(x => x.MemberType).IsInEnum().WithMessage("El valor no es válido.");
-        RuleFor(x => x.CardCode).NotEmpty().WithMessage("El código de carné es obligatorio.").MaximumLength(150).WithMessage("El código de carné admite hasta 150 caracteres.");
+        RuleFor(x=>x.Email).NotEmpty().MaximumLength(254).EmailAddress(); RuleFor(x=>x.PhoneNumber).NotEmpty().MaximumLength(40);
     }
 }
 public sealed class AssignRoleCommandValidator : AbstractValidator<AssignRoleCommand>
@@ -76,6 +76,7 @@ public sealed class GetUsersQueryValidator : AbstractValidator<GetUsersQuery>
     {
         RuleFor(x => x.Search).MaximumLength(200).WithMessage("El campo admite hasta 200 caracteres.");
         RuleFor(x => x.MemberType).IsInEnum().WithMessage("El valor no es válido.").When(x => x.MemberType.HasValue);
+        RuleFor(x=>x.UserType).IsInEnum().When(x=>x.UserType.HasValue);
         RuleFor(x => x.Status).IsInEnum().WithMessage("El valor no es válido.").When(x => x.Status.HasValue);
         RuleFor(x => x.Role).Must(UserValidation.IsRole).WithMessage("El rol no es válido.").When(x => x.Role is not null);
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithMessage("La página debe ser mayor o igual a 1.");

@@ -22,6 +22,12 @@ namespace UniversityParking.Api.Controllers;
 [ProducesResponseType(typeof(ApiProblemDetails), 409)]
 public sealed class VehiclesController(ISender sender) : ControllerBase
 {
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Archive(Guid id,CancellationToken token)
+    {var result=await sender.Send(new ArchiveVehicleCommand(id),token);return result.IsSuccess?NoContent():ProblemResponses.Map(HttpContext,result.Error!);}
+    [HttpPost("file-deletions/retry"),Authorize(Policy=PolicyNames.Admin)]
+    public async Task<IActionResult> RetryFileDeletions(CancellationToken token)
+    {var result=await sender.Send(new RetryVehicleFileDeletionsCommand(),token);return result.IsSuccess?Ok(new{Pending=result.Value}):ProblemResponses.Map(HttpContext,result.Error!);}
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(50 * 1024 * 1024)]
@@ -87,7 +93,7 @@ public sealed class VehiclesController(ISender sender) : ControllerBase
     [ProducesResponseType(204)]
     public async Task<IActionResult> Update(Guid id, UpdateVehicleRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new UpdateVehicleCommand(id, request.Brand, request.Model, request.Color), cancellationToken);
+        var result = await sender.Send(new UpdateVehicleCommand(id, request.Brand, request.Model, request.Color,request.Identifier), cancellationToken);
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
     [HttpPatch("{id:guid}/activate")]

@@ -8,6 +8,6 @@ public sealed class UserCredentialRepository(AppDbContext context) : IUserCreden
 {
     public async Task AddAsync(UserCredential credential, CancellationToken cancellationToken) =>
         await context.UserCredentials.AddAsync(credential, cancellationToken);
-    public Task<UserCredential?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken) =>
-        context.UserCredentials.FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+    public async Task<UserCredential?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken)
+    { var item=await context.UserCredentials.FirstOrDefaultAsync(x=>x.UserId==userId,cancellationToken);if(item is not null)await context.Entry(item).ReloadAsync(cancellationToken);return item; }
 }

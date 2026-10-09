@@ -30,6 +30,15 @@ services:
       Storage__Provider: Local
       Storage__LocalRootPath: /app/App_Data/private-files
       DocumentOcr__Enabled: "${DocumentOcr__Enabled:-false}"
+      EmailDelivery__Enabled: "${EmailDelivery__Enabled:-false}"
+      EmailDelivery__Provider: "${EmailDelivery__Provider:-Smtp}"
+      Smtp__Host: "${Smtp__Host:-}"
+      Smtp__Port: "${Smtp__Port:-587}"
+      Smtp__UseStartTls: "${Smtp__UseStartTls:-true}"
+      Smtp__Username: "${Smtp__Username:-}"
+      Smtp__Password: "${Smtp__Password:-}"
+      Smtp__FromEmail: "${Smtp__FromEmail:-}"
+      Smtp__FromName: "${Smtp__FromName:-MotorBike Park}"
       Swagger__Enabled: "${SWAGGER_ENABLED:-false}"
     depends_on:
       postgres:

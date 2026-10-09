@@ -6,7 +6,7 @@ namespace UniversityParking.Api.E2E.Tests.Auth;
 public sealed class RegisterStudentContractTests
 {
     private static readonly JsonSerializerOptions Json=new(JsonSerializerDefaults.Web);
-    private static RegisterStudentRequest Request()=>new("001","Nombre",Guid.NewGuid(),"Carrera","CARD","Password1");
+    private static RegisterStudentRequest Request()=>new("001","Nombre",Guid.NewGuid(),"Carrera","CARD","Password1", Email:Guid.NewGuid().ToString("N")+"@example.com",PhoneNumber:"+573001234567");
     [Theory][InlineData("memberType")][InlineData("roles")][InlineData("status")][InlineData("autoApprove")][InlineData("confirmPassword")][InlineData("isAdmin")]
     public void PayloadRejectsClientControlledPrivilegesAndConfirmation(string field)
     {
@@ -18,7 +18,7 @@ public sealed class RegisterStudentContractTests
     [Fact] public void RequestAndResponseHaveOnlyTheirDeclaredPublicFields()
     {
         using var request=JsonDocument.Parse(JsonSerializer.Serialize(Request(),Json));
-        Assert.Equal(new[]{"cardCode","career","fullName","identificationNumber","password","universityId"},request.RootElement.EnumerateObject().Select(x=>x.Name).Order());
+        Assert.Equal(new[]{"cardCode","career","email","fullName","identificationNumber","password","phoneNumber","universityId"},request.RootElement.EnumerateObject().Select(x=>x.Name).Order());
         using var response=JsonDocument.Parse(JsonSerializer.Serialize(new RegisterStudentResponse(Guid.NewGuid(),"PENDING"),Json));
         Assert.Equal(new[]{"status","userId"},response.RootElement.EnumerateObject().Select(x=>x.Name).Order());
     }

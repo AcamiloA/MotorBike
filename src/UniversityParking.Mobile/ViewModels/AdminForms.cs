@@ -31,10 +31,14 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
 {
     public Guid UserId {get;set;}
     public bool IsNew=>UserId==Guid.Empty;
-    public IReadOnlyList<TypeChoice> Members=>AdminPresentation.Members;
-    [ObservableProperty] private TypeChoice member=AdminPresentation.Members[0];
+    public IReadOnlyList<TypeChoice> Members {get;}=[new("STUDENT","ESTUDIANTE"),new("TEACHER","DOCENTE"),new("ADMINISTRATIVE","ADMINISTRATIVO"),new("GUARD","GUARDA")];
+    [ObservableProperty] private TypeChoice member=new("STUDENT","ESTUDIANTE");
     [ObservableProperty] private string identification="";
     [ObservableProperty] private string fullName="";
+    [ObservableProperty] private string firstName="";
+    [ObservableProperty] private string lastName="";
+    public IReadOnlyList<TypeChoice> IdentificationTypes {get;}=[new("CC","Cédula de ciudadanía"),new("CE","Cédula de extranjería"),new("TI","Tarjeta de identidad"),new("PASSPORT","Pasaporte")];
+    [ObservableProperty] private TypeChoice identificationType=new("CC","Cédula de ciudadanía");
     public ObservableCollection<UniversityResponse> Universities {get;}=[];
     [ObservableProperty,NotifyPropertyChangedFor(nameof(UniversityId),nameof(UniversityName),nameof(CanSave),nameof(CurrentUniversityNotice))]
     private UniversityResponse? selectedUniversity;
@@ -45,15 +49,16 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
     public string UniversityName=>SelectedUniversity?.Name??"";
     public string CurrentUniversityNotice=>SelectedUniversity?.Id==currentInactiveId&&currentInactiveId.HasValue
         ?"La universidad actual no está en el catálogo activo. Puedes conservarla o elegir otra.":"";
-    public new bool CanSave=>base.CanSave&&UniversitiesLoaded&&detailsLoaded&&SelectedUniversity is not null&&Universities.Contains(SelectedUniversity);
+    public bool RequiresUniversity=>Member.Code is "STUDENT" or "TEACHER";
+    public new bool CanSave=>base.CanSave&&UniversitiesLoaded&&detailsLoaded&&(!RequiresUniversity || SelectedUniversity is not null&&Universities.Contains(SelectedUniversity));
     public bool CanSelectUniversity=>base.CanSave&&UniversitiesLoaded;
     [ObservableProperty] private string career="";
     [ObservableProperty] private string cardCode="";
-    [ObservableProperty] private string initialPassword="";
+    [ObservableProperty] private string email="";[ObservableProperty] private string phoneNumber="";[ObservableProperty] private string confirmPassword="";[ObservableProperty] private string initialPassword="";
     [ObservableProperty] private bool addGuard;
     [ObservableProperty] private bool addAdmin;
     public string CareerLabel=>Member?.Code=="STUDENT"?"Carrera (obligatoria)":"Carrera (opcional)";
-    partial void OnMemberChanged(TypeChoice value)=>OnPropertyChanged(nameof(CareerLabel));
+    partial void OnMemberChanged(TypeChoice value){OnPropertyChanged(nameof(CareerLabel));OnPropertyChanged(nameof(RequiresUniversity));OnPropertyChanged(nameof(CanSave));}
     [RelayCommand] private Task LoadAsync()=>WorkAsync(async()=>
     {
         Require();var accountId=Session.User!.Id;var targetId=UserId;var previousId=SelectedUniversity?.Id;
@@ -76,7 +81,7 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
         if(user is not null)
         {
             Identification=user.IdentificationNumber;FullName=user.FullName;Career=user.Career??"";CardCode=user.CardCode;
-            Member=Members.FirstOrDefault(x=>x.Code==user.MemberType)??throw new UserInputException("El tipo de miembro no es válido.");
+            Email=user.Email??"";PhoneNumber=user.PhoneNumber??"";Member=Members.FirstOrDefault(x=>x.Code==user.UserType)??throw new UserInputException("El tipo de miembro no es válido.");
             var current=Universities.FirstOrDefault(x=>x.Id==user.UniversityId);
             if(current is null){currentInactiveId=user.UniversityId;current=new(user.UniversityId,"",user.UniversityName);Universities.Add(current);}
             SelectedUniversity=current;
@@ -89,18 +94,19 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
     {
         if(Completed||WriteUncertain)return;Require();
         if(!UniversitiesLoaded||!detailsLoaded)throw new UserInputException("Carga las universidades antes de guardar.");
-        if(SelectedUniversity is null||!Universities.Contains(SelectedUniversity)||UniversityId==Guid.Empty)throw new UserInputException("Selecciona una universidad.");
-        Required(FullName,"El nombre",200);Required(CardCode,"El código de carné",150);
+        if(RequiresUniversity&&(SelectedUniversity is null||!Universities.Contains(SelectedUniversity)||UniversityId==Guid.Empty))throw new UserInputException("Selecciona una universidad.");
+        if(IsNew){Required(FirstName,"Los nombres",100);Required(LastName,"Los apellidos",100);FullName=FirstName.Trim()+" "+LastName.Trim();}
+        Required(FullName,"El nombre",200);Required(Email,"El correo",254);Required(PhoneNumber,"El teléfono",40);
         if(Member is null||!Members.Any(x=>x.Code==Member.Code))throw new UserInputException("Selecciona un tipo de miembro válido.");if(Member.Code=="STUDENT")Required(Career,"La carrera",200);else if(Career.Trim().Length>200)throw new UserInputException("La carrera admite hasta 200 caracteres.");
-        var kind=Enum.Parse<UserMemberType>(Member.Code);var career=string.IsNullOrWhiteSpace(Career)?null:Career.Trim();
+        var institutional=Enum.Parse<UserInstitutionalType>(Member.Code);var kind=Member.Code=="STUDENT"?UserMemberType.STUDENT:Member.Code=="TEACHER"?UserMemberType.TEACHER:UserMemberType.STAFF;var career=string.IsNullOrWhiteSpace(Career)?null:Career.Trim();
         if(IsNew)
         {
             Required(Identification,"La identificación",50);if(!PasswordPresentation.IsValid(InitialPassword))throw new UserInputException("La contraseña inicial requiere 8 caracteres, mayúscula, minúscula y número.");
-            var roles=new List<string>{"USER"};if(AddGuard)roles.Add("GUARD");if(AddAdmin)roles.Add("ADMIN");
-            try {var result=await api.CreateUserAsync(new(Identification.Trim(),FullName.Trim(),UniversityId,career,kind,CardCode.Trim(),InitialPassword,roles));if(!Mutation(result))return;Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=result.Value!.Id});}
+            if(InitialPassword!=ConfirmPassword)throw new UserInputException("Las contraseñas no coinciden.");
+            try {var result=await api.CreateUserAsync(new(Identification.Trim(),FullName.Trim(),UniversityId,career,kind,null,InitialPassword,null,institutional,Email.Trim(),PhoneNumber.Trim(),IdentificationType.Code));if(!Mutation(result))return;Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=result.Value!.Id});}
             finally{InitialPassword="";}
         }
-        else {var result=await api.EditUserAsync(UserId,new(FullName.Trim(),UniversityId,career,kind,CardCode.Trim()));if(Mutation(result)){Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=UserId});}}
+        else {var result=await api.EditUserAsync(UserId,new(FullName.Trim(),UniversityId,career,kind,null,institutional,Email.Trim(),PhoneNumber.Trim()));if(Mutation(result)){Completed=true;await navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=UserId});}}
     });
     [RelayCommand] private Task ListAsync()=>navigation.GoAsync("admin-users");
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
@@ -112,12 +118,23 @@ public partial class AdminUserFormViewModel(AdminApiService api,IAuthSession ses
 }
 public partial class AdminUserDetailViewModel(AdminApiService api,IAuthSession session,IUserNavigation navigation,IAppNavigation appNavigation):PagedUserViewModel<AdminRow>
 {
+    [ObservableProperty] private bool showPasswordReset;
+    [ObservableProperty] private string temporaryPassword="";
+    [ObservableProperty] private string confirmTemporaryPassword="";
+    [RelayCommand] private void OpenPasswordReset()=>ShowPasswordReset=true;
+    [RelayCommand] private Task ResetPasswordAsync()=>WorkAsync(async()=>
+    {
+        if(User is null||WriteUncertain)return;AdminPresentation.RequireAdmin(session);
+        if(!PasswordPresentation.IsValid(TemporaryPassword)||TemporaryPassword!=ConfirmTemporaryPassword)throw new UserInputException("Verifica la contraseña temporal y su confirmación.");
+        try{if(Mutation(await api.ResetPasswordAsync(UserId,TemporaryPassword))){ShowPasswordReset=false;await navigation.MessageAsync("Contraseña","Se solicitará cambiar la contraseña temporal al ingresar.");}}
+        finally{TemporaryPassword=ConfirmTemporaryPassword="";}
+    });
     public Guid UserId {get;set;}
     [ObservableProperty] private UserProfileResponse? user;
     [ObservableProperty] private TypeChoice selectedRole=new("GUARD","GUARD");
     [ObservableProperty] private bool writeUncertain;
     public IReadOnlyList<TypeChoice> Roles {get;}=[new("GUARD","GUARD"),new("ADMIN","ADMIN")];
-    public string Summary=>User is null?"":$"{User.FullName}\n{User.IdentificationNumber} · {AdminPresentation.Member(User.MemberType)}\n{User.UniversityName} · {User.Career}\nCarné: {User.CardCode}\n{AdminPresentation.Status(User.Status)}\nRoles: {string.Join(", ",User.Roles)}";
+    public string Summary=>User is null?"":$"{User.FullName}\n{User.IdentificationNumber} · {RoleNavigation.InstitutionalTitle(User.UserType)}\n{User.UniversityName} · {User.Career}\n{User.Email}\n{User.PhoneNumber}\n{AdminPresentation.Status(User.Status)}\nRoles: {string.Join(", ",User.Roles)}";
     public string StatusAction=>User?.Status=="ACTIVE"?"DESACTIVAR USUARIO":User?.Status=="INACTIVE"?"ACTIVAR USUARIO":"";
     public bool ShowOperationalStatus=>User?.Status is "ACTIVE" or "INACTIVE";
     public bool IsPendingRegistration=>User is {Status:"PENDING",MemberType:"STUDENT"};
@@ -218,7 +235,7 @@ public partial class AdminCorrectViewModel(AdminApiService api,IAuthSession sess
     [ObservableProperty] private string reason="";
     public string Summary=>Vehicle is null?"":$"{VehiclePresentation.TypeName(Vehicle.Type)}\nIdentificador actual: {AdminPresentation.Identifier(Vehicle)}";
     partial void OnVehicleChanged(VehicleResponse? value)=>OnPropertyChanged(nameof(Summary));
-    [RelayCommand] private Task SaveAsync()=>WorkAsync(async()=>{if(Completed||WriteUncertain||Vehicle is null)return;Require();Required(Identifier,"El nuevo identificador",Vehicle.Type=="BICYCLE"?100:30);Required(Reason,"El motivo",500);if(!await navigation.ConfirmAsync("Corregir identificador",$"¿Cambiar {AdminPresentation.Identifier(Vehicle)} por {Identifier.Trim()}?"))return;if(Mutation(await api.CorrectAsync(Vehicle.Id,Identifier,Reason))){Completed=true;await navigation.GoAsync("admin-vehicle-detail",new Dictionary<string,object>{["vehicleId"]=Vehicle.Id});}});
+    [RelayCommand] private Task SaveAsync()=>WorkAsync(async()=>{if(Completed||WriteUncertain||Vehicle is null)return;Require();Required(Identifier,"El nuevo identificador",Vehicle.Type is "BICYCLE" or "SCOOTER"?100:30);Required(Reason,"El motivo",500);if(!await navigation.ConfirmAsync("Corregir identificador",$"¿Cambiar {AdminPresentation.Identifier(Vehicle)} por {Identifier.Trim()}?"))return;if(Mutation(await api.CorrectAsync(Vehicle.Id,Identifier,Reason))){Completed=true;await navigation.GoAsync("admin-vehicle-detail",new Dictionary<string,object>{["vehicleId"]=Vehicle.Id});}});
 }
 public partial class AdminPeriodFormViewModel(AdminApiService api,IAuthSession session,IUserNavigation navigation):AdminFeatureViewModel(session)
 {

@@ -22,7 +22,7 @@ public sealed class RegisterStudentEndpointTests(AuthApiFixture fixture):IAsyncL
     public async Task InitializeAsync()
     {await fixture.ResetAsync();await using var db=fixture.CreateContext();db.Roles.Add(new Role("USER"));await db.SaveChangesAsync();}
     public Task DisposeAsync()=>Task.CompletedTask;
-    private static RegisterStudentRequest Request()=>new(Guid.NewGuid().ToString("N"),"Estudiante",UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password);
+    private static RegisterStudentRequest Request()=>new(Guid.NewGuid().ToString("N"),"Estudiante",UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password, Email:Guid.NewGuid().ToString("N")+"@example.com",PhoneNumber:"+573001234567");
     private static async Task Problem(HttpResponseMessage response,HttpStatusCode status,string code)
     {
         Assert.Equal(status,response.StatusCode);Assert.Equal("application/problem+json",response.Content.Headers.ContentType!.MediaType);
@@ -71,8 +71,8 @@ public sealed class RegisterStudentEndpointTests(AuthApiFixture fixture):IAsyncL
     public async Task DuplicateIdentificationOrCardReturns409(bool identification)
     {
         var first=Request();Assert.Equal(HttpStatusCode.Created,(await fixture.Client.PostAsJsonAsync(Route,first)).StatusCode);
-        var second=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{CardCode=first.CardCode};
-        await Problem(await fixture.Client.PostAsJsonAsync(Route,second),HttpStatusCode.Conflict,identification?"USER_ALREADY_EXISTS":"USER_CARD_CODE_ALREADY_EXISTS");
+        var second=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{Email=first.Email};
+        await Problem(await fixture.Client.PostAsJsonAsync(Route,second),HttpStatusCode.Conflict,identification?"USER_ALREADY_EXISTS":"EMAIL_ALREADY_EXISTS");
         await using var db=fixture.CreateContext();Assert.Equal(1,await db.Users.CountAsync());Assert.Equal(1,await db.UserCredentials.CountAsync());
     }
 
@@ -113,6 +113,6 @@ public sealed class RegisterStudentEndpointTests(AuthApiFixture fixture):IAsyncL
         Assert.True(operation.GetProperty("responses").TryGetProperty("201",out _));
         var schemas=json.RootElement.GetProperty("components").GetProperty("schemas");
         Assert.Equal(new[]{"status","userId"},schemas.GetProperty("RegisterStudentResponse").GetProperty("properties").EnumerateObject().Select(x=>x.Name).Order());
-        Assert.Equal(new[]{"cardCode","career","fullName","identificationNumber","password","universityId"},schemas.GetProperty("RegisterStudentRequest").GetProperty("properties").EnumerateObject().Select(x=>x.Name).Order());
+        Assert.Equal(new[]{"cardCode","career","email","fullName","identificationNumber","password","phoneNumber","universityId"},schemas.GetProperty("RegisterStudentRequest").GetProperty("properties").EnumerateObject().Select(x=>x.Name).Order());
     }
 }

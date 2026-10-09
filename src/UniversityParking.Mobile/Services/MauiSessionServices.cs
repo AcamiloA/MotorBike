@@ -12,6 +12,12 @@ public sealed class AppNavigation(IServiceProvider services, IAuthSession sessio
 {
     private Window? window;
     public void Attach(Window value) => window = value;
+    public Task ShowPasswordRecoveryAsync(Guid? challengeId=null,string? token=null)=>MainThread.InvokeOnMainThreadAsync(async()=>
+    {
+        if(window is null||await session.GetTokenAsync() is not null)return;
+        var vm=services.GetRequiredService<UniversityParking.Mobile.ViewModels.PasswordRecoveryViewModel>();vm.ChallengeId=challengeId;vm.ChallengeToken=token;
+        window.Page=new PasswordRecoveryPage(vm);
+    });
     public Task ShowLoginAsync(string? message = null) => MainThread.InvokeOnMainThreadAsync(async () =>
     {
         if (window is null) return;

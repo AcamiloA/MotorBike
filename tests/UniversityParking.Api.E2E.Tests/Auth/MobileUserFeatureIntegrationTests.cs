@@ -52,7 +52,7 @@ public sealed class MobileUserFeatureIntegrationTests(AuthApiFixture fixture) : 
         var detail = await setup.Api.VehicleAsync(id); Assert.Equal(user.Id, detail.Value!.Vehicle.CurrentOwnerId);
         var photo = await setup.Api.FileAsync(detail.Value.VerificationImage!.ContentUrl); Assert.True(photo.IsSuccess); Assert.NotEmpty(photo.Value!);
         var edited = await setup.Api.EditVehicleAsync(id, "Updated", "Model", "Red"); Assert.True(edited.IsSuccess);
-        Assert.Equal("Updated", (await setup.Api.VehicleAsync(id)).Value!.Vehicle.Brand);
+        Assert.Equal("UPDATED", (await setup.Api.VehicleAsync(id)).Value!.Vehicle.Brand);
         Assert.True((await setup.Api.VehicleStatusAsync(id, false)).IsSuccess); Assert.True((await setup.Api.VehicleStatusAsync(id, true)).IsSuccess);
     }
     [Fact]

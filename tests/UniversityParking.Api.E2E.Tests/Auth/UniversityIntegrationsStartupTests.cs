@@ -33,7 +33,7 @@ public sealed class UniversityIntegrationsStartupTests(AuthApiFixture fixture) :
         await using var factory = fixture.CreateFactory(s => s.AddSingleton<IUniversityStudentValidator>(adapter), settings);
         using var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
         var request = new RegisterStudentRequest(Guid.NewGuid().ToString("N"), "Estudiante", UniversityIds.Cmc,
-            "Carrera", Guid.NewGuid().ToString("N"), AuthApiFixture.Password);
+            "Carrera", Guid.NewGuid().ToString("N"), AuthApiFixture.Password, Email: Guid.NewGuid().ToString("N")+"@example.com", PhoneNumber:"+573001234567");
         var response = await client.PostAsJsonAsync("/api/v1/auth/register/student", request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var result = (await response.Content.ReadFromJsonAsync<RegisterStudentResponse>())!;

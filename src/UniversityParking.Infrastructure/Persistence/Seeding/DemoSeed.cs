@@ -79,7 +79,7 @@ public sealed class DemoSeed(AppDbContext db, IPasswordHasher passwords, IFileSt
             var zones = new Dictionary<VehicleType, ParkingZone>();
             foreach (var type in Enum.GetValues<VehicleType>())
                 zones[type] = await FindOrAddAsync(21 + (int)type, () => new ParkingZone(lot.Id,
-                    type == VehicleType.CAR ? "Carros" : type == VehicleType.MOTORCYCLE ? "Motos" : "Bicicletas", type, created), token);
+                    type == VehicleType.CAR ? "Carros" : type == VehicleType.MOTORCYCLE ? "Motos" : type==VehicleType.SCOOTER?"Scooters":"Bicicletas", type, created), token);
             await db.SaveChangesAsync(token);
 
             if (options.DemoEnabled)

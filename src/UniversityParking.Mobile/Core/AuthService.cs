@@ -12,6 +12,13 @@ public sealed class AuthService(ApiClient api, IAuthSession session, IAppNavigat
         var result = await api.PostAsync<LoginResponse>("api/v1/auth/login", new LoginRequest(identification.Trim(), password), token);
         if (!result.IsSuccess) return result;
         var login = result.Value!;
+        if(login.RequiresPasswordChange)
+        {
+            await session.ClearAsync();
+            if(navigation is not IPublicAuthNavigation publicNavigation || login.ChallengeId is null || string.IsNullOrEmpty(login.PasswordChangeToken))
+                return ApiResult<LoginResponse>.Failure("PASSWORD_CHALLENGE_INVALID","No fue posible iniciar el cambio de contraseña.");
+            await publicNavigation.ShowPasswordRecoveryAsync(login.ChallengeId,login.PasswordChangeToken);return result;
+        }
         try
         {
             await session.SaveAsync(login.AccessToken, null);

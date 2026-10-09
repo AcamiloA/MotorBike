@@ -8,7 +8,7 @@ public static class VehicleDocumentPolicy
     {
         VehicleType.CAR or VehicleType.MOTORCYCLE => Array.AsReadOnly(new[]
             { VehicleDocumentType.VEHICLE_REGISTRATION, VehicleDocumentType.INSURANCE }),
-        VehicleType.BICYCLE => Array.AsReadOnly(new[] { VehicleDocumentType.OWNERSHIP_SUPPORT }),
+        VehicleType.BICYCLE or VehicleType.SCOOTER => Array.AsReadOnly(new[] { VehicleDocumentType.OWNERSHIP_SUPPORT }),
         _ => throw new DomainException("VALIDATION_ERROR", "El tipo de vehículo no es válido.")
     };
 

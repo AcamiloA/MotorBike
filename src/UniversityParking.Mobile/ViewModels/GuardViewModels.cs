@@ -93,7 +93,7 @@ public partial class ParkingHistoryViewModel(GuardApiService api, GuardLotSessio
     protected override Task LoadPageAsync() => WorkAsync(async () =>
     {
         lots.RequireGuard(); if (DateTo.Date < DateFrom.Date) throw new UserInputException("La fecha final debe ser mayor o igual a la inicial."); await lots.RefreshAsync();
-        var result = await api.HistoryAsync(lots.RequireLot(), DateOnly.FromDateTime(DateFrom), DateOnly.FromDateTime(DateTo), Identification, Plate, Frame, SelectedType.Code, SelectedState.Code, Page);
+        var result = await api.HistoryAsync(lots.RequireLot(), DateFilterApplied?DateOnly.FromDateTime(DateFrom):null, DateFilterApplied?DateOnly.FromDateTime(DateTo):null, Identification, Plate, Frame, SelectedType.Code, SelectedState.Code, Page);
         if (Accepted(result)) { var value = result.Value!; Apply(new(value.Items.Select(x => new GuardMovementCard(x)).ToArray(), value.Page, value.PageSize, value.TotalCount, value.TotalPages)); }
     });
 }
@@ -116,7 +116,7 @@ public partial class IncidentsViewModel(GuardApiService api, GuardLotSession lot
     protected override Task LoadPageAsync() => WorkAsync(async () =>
     {
         lots.RequireGuard(); if (DateTo.Date < DateFrom.Date) throw new UserInputException("La fecha final debe ser mayor o igual a la inicial."); await lots.RefreshAsync();
-        var result = await api.IncidentsAsync(lots.RequireLot(), SelectedType.Code, SelectedState.Code, DateOnly.FromDateTime(DateFrom), DateOnly.FromDateTime(DateTo), Page);
+        var result = await api.IncidentsAsync(lots.RequireLot(), SelectedType.Code, SelectedState.Code, DateFilterApplied?DateOnly.FromDateTime(DateFrom):null, DateFilterApplied?DateOnly.FromDateTime(DateTo):null, Page);
         if (Accepted(result)) { var value = result.Value!; Apply(new(value.Items.Select(x => new IncidentCard(x)).ToArray(), value.Page, value.PageSize, value.TotalCount, value.TotalPages)); }
     });
     [RelayCommand] private Task OpenAsync(IncidentCard? item) => item is null ? Task.CompletedTask : navigation.GoAsync("guard-incident-detail", new Dictionary<string, object> { ["incidentId"] = item.Incident.Id });

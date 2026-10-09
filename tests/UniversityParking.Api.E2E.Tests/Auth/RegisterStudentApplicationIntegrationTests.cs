@@ -27,7 +27,7 @@ public sealed class RegisterStudentApplicationIntegrationTests(AuthApiFixture fi
         db.Roles.AddRange(new Role("USER"),new Role("ADMIN"),new Role("GUARD"));await db.SaveChangesAsync();
     }
     public Task DisposeAsync()=>Task.CompletedTask;
-    private static RegisterStudentCommand Request()=>new(Guid.NewGuid().ToString("N"),"Estudiante",UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password);
+    private static RegisterStudentCommand Request()=>new(Guid.NewGuid().ToString("N"),"Estudiante",UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password,Email:Guid.NewGuid().ToString("N")+"@example.com",PhoneNumber:"+573001234567");
     private static async Task<Result<RegisterStudentResult>> Send(IServiceProvider provider,RegisterStudentCommand request)
     {await using var scope=provider.CreateAsyncScope();return await scope.ServiceProvider.GetRequiredService<ISender>().Send(request);}
 
@@ -40,7 +40,7 @@ public sealed class RegisterStudentApplicationIntegrationTests(AuthApiFixture fi
         var login=await client.PostAsJsonAsync("/api/v1/auth/login",new LoginRequest(actor.IdentificationNumber.Value,AuthApiFixture.Password));
         Assert.Equal(HttpStatusCode.OK,login.StatusCode);
         client.DefaultRequestHeaders.Authorization=new("Bearer",(await login.Content.ReadFromJsonAsync<LoginResponse>())!.AccessToken);
-        var response=await client.PostJsonAsync("/api/v1/users",new CreateUserRequest(Guid.NewGuid().ToString("N"),"Personal",UniversityIds.Cmc,null,UserMemberType.STAFF,Guid.NewGuid().ToString("N"),AuthApiFixture.Password));
+        var response=await client.PostJsonAsync("/api/v1/users",new CreateUserRequest(Guid.NewGuid().ToString("N"),"Personal",UniversityIds.Cmc,null,UserMemberType.STAFF,Guid.NewGuid().ToString("N"),AuthApiFixture.Password,UserType:UserInstitutionalType.ADMINISTRATIVE,Email:Guid.NewGuid().ToString("N")+"@example.com",PhoneNumber:"+573001234567",IdentificationType:"CC"));
         Assert.Equal(HttpStatusCode.Created,response.StatusCode);var id=(await response.Content.ReadFromJsonAsync<UserCreatedResponse>())!.Id;
         await using var db=fixture.CreateContext();var user=await db.Users.SingleAsync(x=>x.Id==id);
         Assert.Equal(UserStatus.ACTIVE,user.Status);Assert.Equal(MemberType.STAFF,user.MemberType);
@@ -65,17 +65,17 @@ public sealed class RegisterStudentApplicationIntegrationTests(AuthApiFixture fi
     public async Task DuplicateRequestDoesNotCreatePartialAccount(bool identification)
     {
         var first=Request();Assert.True((await Send(fixture.Factory.Services,first)).IsSuccess);
-        var duplicate=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{CardCode=first.CardCode};
-        var result=await Send(fixture.Factory.Services,duplicate);Assert.Equal(identification?"USER_ALREADY_EXISTS":"USER_CARD_CODE_ALREADY_EXISTS",result.Error!.Code);
+        var duplicate=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{Email=first.Email};
+        var result=await Send(fixture.Factory.Services,duplicate);Assert.Equal(identification?"USER_ALREADY_EXISTS":"EMAIL_ALREADY_EXISTS",result.Error!.Code);
         await AssertOneAccount();
     }
 
     [Theory][InlineData(true)][InlineData(false)]
     public async Task ConcurrentDuplicateRequestsHaveOnlyOneWinner(bool identification)
     {
-        var first=Request();var second=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{CardCode=first.CardCode};
+        var first=Request();var second=identification?Request() with{IdentificationNumber=first.IdentificationNumber}:Request() with{Email=first.Email};
         var results=await Task.WhenAll(Send(fixture.Factory.Services,first),Send(fixture.Factory.Services,second));
-        Assert.Single(results,x=>x.IsSuccess);Assert.Equal(identification?"USER_ALREADY_EXISTS":"USER_CARD_CODE_ALREADY_EXISTS",Assert.Single(results,x=>x.IsFailure).Error!.Code);
+        Assert.Single(results,x=>x.IsSuccess);Assert.Equal(identification?"USER_ALREADY_EXISTS":"EMAIL_ALREADY_EXISTS",Assert.Single(results,x=>x.IsFailure).Error!.Code);
         await AssertOneAccount();
     }
 

@@ -61,10 +61,10 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
     public bool CanManual => active && lots.IsGuard && !IsBusy && !ZoomOpen && !NeedsVerification;
     public bool CanReset => active && !IsBusy && !NeedsVerification;
     public string UserSummary => Access is null ? Movement?.UserFullName ?? "" : $"{Access.User.FullName}\n{Access.User.MemberType} · {AdminPresentation.Status(Access.User.Status)}";
-    public string VehicleSummary => SelectedVehicle is { } vehicle ? $"{VehiclePresentation.TypeName(vehicle.Type)}\n{(vehicle.Type == "BICYCLE" ? "MARCO REGISTRADO" : "PLACA REGISTRADA")}: {vehicle.Identifier}\n{vehicle.Brand} {vehicle.Model}" : "";
+    public string VehicleSummary => SelectedVehicle is { } vehicle ? $"{VehiclePresentation.TypeName(vehicle.Type)}\n{(vehicle.Type is "BICYCLE" or "SCOOTER" ? "MARCO REGISTRADO" : "PLACA REGISTRADA")}: {vehicle.Identifier}\n{vehicle.Brand} {vehicle.Model}" : "";
     public string MovementSummary => Movement is { } movement ? $"Ingreso: {MobileDates.Display(movement.CheckInAtUtc)}\n{movement.ParkingLotName}\nDuración aproximada: {movement.Duration.TotalMinutes:N0} minutos" : "";
-    public string EvidenceLabel => SelectedVehicle?.Type == "BICYCLE" ? "Foto de la bicicleta" : "Frente de la Licencia de Tránsito";
-    public string VisualInstruction => SelectedVehicle?.Type == "BICYCLE" ? "Compara la foto y el marco registrado con la bicicleta." : "Verifica visualmente que la placa del documento corresponda al vehículo.";
+    public string EvidenceLabel => SelectedVehicle?.Type is "BICYCLE" or "SCOOTER" ? VehiclePresentation.VerificationLabel(SelectedVehicle?.Type) : "Frente de la Licencia de Tránsito";
+    public string VisualInstruction => SelectedVehicle?.Type is "BICYCLE" or "SCOOTER" ? "Compara la foto y el serial registrado con el vehículo." : "Verifica visualmente que la placa del documento corresponda al vehículo.";
 
     public GuardAccessControlViewModel(GuardApiService api, GuardLotSession lots, IAuthSession session,
         IScannerPermission permission, IEvidenceImageValidator images)

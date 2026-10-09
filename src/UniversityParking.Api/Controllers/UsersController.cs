@@ -1,4 +1,5 @@
 using MediatR;
+using UniversityParking.Contracts.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UniversityParking.Api.Authorization;
@@ -20,6 +21,12 @@ namespace UniversityParking.Api.Controllers;
 [ProducesResponseType(typeof(ApiProblemDetails), 409)]
 public sealed class UsersController(ISender sender) : ControllerBase
 {
+    [HttpPost("{id:guid}/reset-password"), Authorize(Policy=PolicyNames.Admin)]
+    public async Task<IActionResult> ResetPassword(Guid id,ResetUserPasswordRequest request,CancellationToken token)
+    {
+        var result=await sender.Send(new UniversityParking.Application.Auth.PasswordRecovery.ResetUserPasswordCommand(id,request.TemporaryPassword),token);
+        return result.IsSuccess?NoContent():ProblemResponses.Map(HttpContext,result.Error!);
+    }
     [HttpGet("me")]
     [ProducesResponseType(typeof(UserProfileResponse), 200)]
     public async Task<IActionResult> GetMyProfile(CancellationToken cancellationToken)
@@ -31,7 +38,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     [ProducesResponseType(204)]
     public async Task<IActionResult> UpdateMyProfile(UpdateMyProfileRequest request, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new UpdateMyProfileCommand(request.FullName, request.Career), cancellationToken);
+        var result = await sender.Send(new UpdateMyProfileCommand(request.FullName, request.Career,request.Email,request.PhoneNumber), cancellationToken);
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
     [HttpGet]
@@ -39,14 +46,14 @@ public sealed class UsersController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(PagedResponse<UserListItemResponse>), 200)]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken, [FromQuery] string? search = null,
         [FromQuery] UserMemberType? memberType = null, [FromQuery] UserAccountStatus? status = null,
-        [FromQuery] string? role = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        [FromQuery] string? role = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,[FromQuery] UserInstitutionalType? userType=null)
     {
         var result = await sender.Send(new GetUsersQuery(search, memberType.HasValue ? (MemberType)memberType.Value : null,
-            status.HasValue ? (UserStatus)status.Value : null, role, page, pageSize), cancellationToken);
+            status.HasValue ? (UserStatus)status.Value : null, role, page, pageSize,userType.HasValue?(InstitutionalUserType)userType.Value:null), cancellationToken);
         if (result.IsFailure) return ProblemResponses.Map(HttpContext, result.Error!);
         var value = result.Value;
         var items = value.Items.Select(x => new UserListItemResponse(x.Id, x.IdentificationNumber, x.FullName,
-            x.UniversityId, x.UniversityName, x.Career, x.MemberType.ToString(), x.CardCode, x.Status.ToString(), x.Roles)).ToArray();
+            x.UniversityId, x.UniversityName, x.Career, x.MemberType.ToString(), x.CardCode, x.Status.ToString(), x.Roles,x.UserType.ToString(),x.Email,x.PhoneNumber,x.MustChangePassword)).ToArray();
         return Ok(new PagedResponse<UserListItemResponse>(items, value.Page, value.PageSize, value.TotalCount, value.TotalPages));
     }
     [HttpGet("{id:guid}")]
@@ -63,7 +70,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     public async Task<IActionResult> Create(CreateUserRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new CreateUserCommand(request.IdentificationNumber, request.FullName,
-            request.UniversityId, request.Career, (MemberType)request.MemberType, request.CardCode, request.InitialPassword, request.Roles), cancellationToken);
+            request.UniversityId, request.Career, (MemberType)request.MemberType, request.CardCode ?? "", request.InitialPassword, request.Roles,(InstitutionalUserType)request.UserType,request.Email,request.PhoneNumber,request.IdentificationType), cancellationToken);
         return result.IsSuccess ? CreatedAtAction(nameof(GetById), new { id = result.Value }, new UserCreatedResponse(result.Value)) :
             ProblemResponses.Map(HttpContext, result.Error!);
     }
@@ -73,7 +80,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     public async Task<IActionResult> Update(Guid id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new UpdateUserCommand(id, request.FullName, request.UniversityId, request.Career,
-            (MemberType)request.MemberType, request.CardCode), cancellationToken);
+            (MemberType)request.MemberType, request.CardCode,request.UserType.HasValue?(InstitutionalUserType)request.UserType.Value:null,request.Email,request.PhoneNumber), cancellationToken);
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
     [HttpPatch("{id:guid}/registration/approve")]
@@ -127,5 +134,5 @@ public sealed class UsersController(ISender sender) : ControllerBase
         return result.IsSuccess ? NoContent() : ProblemResponses.Map(HttpContext, result.Error!);
     }
     private static UserProfileResponse Map(UserProfile value) => new(value.Id, value.IdentificationNumber,
-        value.FullName, value.UniversityId, value.UniversityName, value.Career, value.MemberType.ToString(), value.CardCode, value.Status.ToString(), value.Roles);
+        value.FullName, value.UniversityId, value.UniversityName, value.Career, value.MemberType.ToString(), value.CardCode, value.Status.ToString(), value.Roles,value.UserType.ToString(),value.Email,value.PhoneNumber,value.MustChangePassword);
 }

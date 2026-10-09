@@ -7,6 +7,7 @@ namespace UniversityParking.Application.Common.Abstractions;
 
 public interface IUserRepository
 {
+    Task<User?> GetByEmailAsync(string normalizedEmail, CancellationToken token);
     Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken);
     Task<PagedResult<UserProfile>> SearchAsync(GetUsersQuery query, CancellationToken cancellationToken);
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken);

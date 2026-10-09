@@ -57,11 +57,11 @@ public partial class AdminDashboardViewModel(AdminApiService api,IAuthSession se
 }
 public partial class AdminUsersViewModel(AdminApiService api,IAuthSession session,IUserNavigation navigation):AdminListViewModel(api,session,navigation)
 {
-    public override IReadOnlyList<TypeChoice> Types=>AdminPresentation.All(AdminPresentation.Members);
+    public override IReadOnlyList<TypeChoice> Types {get;}=[new("","Todos"),new("STUDENT","ESTUDIANTE"),new("TEACHER","DOCENTE"),new("ADMINISTRATIVE","ADMINISTRATIVO"),new("GUARD","GUARDA")];
     public override IReadOnlyList<TypeChoice> States=>AdminPresentation.All(AdminPresentation.UserStatuses);
     public IReadOnlyList<TypeChoice> Roles=>AdminPresentation.All(AdminPresentation.Roles);
     [ObservableProperty] private TypeChoice selectedRole=new("","Todos");
-    protected override async Task ReadAsync()=>Rows(await Api.UsersAsync(Search,SelectedType?.Code,SelectedStatus?.Code,SelectedRole?.Code,Page),x=>new(x.FullName,$"{x.IdentificationNumber} · {AdminPresentation.Member(x.MemberType)} · {AdminPresentation.Status(x.Status)}\n{x.UniversityName}\nRoles: {string.Join(", ",x.Roles)}",x));
+    protected override async Task ReadAsync()=>Rows(await Api.UsersAsync(Search,SelectedType?.Code,SelectedStatus?.Code,SelectedRole?.Code,Page),x=>new(x.FullName,$"{x.IdentificationNumber} · {RoleNavigation.InstitutionalTitle(x.UserType)} · {AdminPresentation.Status(x.Status)}\n{x.UniversityName}\nRoles: {string.Join(", ",x.Roles)}",x));
     protected override Task OpenAsync(AdminRow row)=>Navigation.GoAsync("admin-user-detail",new Dictionary<string,object>{["userId"]=((UserListItemResponse)row.Value).Id});
     [RelayCommand] private Task CreateAsync()=>WorkAsync(()=>{Require();return Navigation.GoAsync("admin-user-form");});
 }
@@ -105,7 +105,7 @@ public partial class AdminIncidentsViewModel(AdminApiService api,IAuthSession se
         Dates();await LoadLotsAsync();Guid? user=null,vehicle=null;
         if(!string.IsNullOrWhiteSpace(Identification)){var result=await Api.FindUserAsync(Identification);if(!Accepted(result))return;user=result.Value!.Id;}
         if(!string.IsNullOrWhiteSpace(VehicleIdentifier)){var result=await Api.FindVehicleAsync(VehicleIdentifier);if(!Accepted(result))return;vehicle=result.Value!.Id;}
-        Rows(await Api.IncidentsAsync(SelectedLot?.Id,user,vehicle,SelectedType?.Code,SelectedStatus?.Code,DateOnly.FromDateTime(DateFrom),DateOnly.FromDateTime(DateTo),Page),x=>new(GuardPresentation.IncidentType(x.Type)+" · "+GuardPresentation.IncidentStatus(x.Status),$"{MobileDates.Display(x.OccurredAt)}\n{Lots.FirstOrDefault(l=>l.Id==x.ParkingLotId)?.Name}\n{x.Description}\nUsuario: {x.UserId}\nVehículo: {x.VehicleId}",x));
+        Rows(await Api.IncidentsAsync(SelectedLot?.Id,user,vehicle,SelectedType?.Code,SelectedStatus?.Code,DateFilterApplied?DateOnly.FromDateTime(DateFrom):null,DateFilterApplied?DateOnly.FromDateTime(DateTo):null,Page),x=>new(GuardPresentation.IncidentType(x.Type)+" · "+GuardPresentation.IncidentStatus(x.Status),$"{MobileDates.Display(x.OccurredAt)}\n{Lots.FirstOrDefault(l=>l.Id==x.ParkingLotId)?.Name}\n{x.Description}\nUsuario: {x.UserId}\nVehículo: {x.VehicleId}",x));
     }
     protected override Task OpenAsync(AdminRow row)=>Navigation.GoAsync("admin-incident-detail",new Dictionary<string,object>{["incidentId"]=((IncidentResponse)row.Value).Id});
     [RelayCommand] private Task CreateAsync()=>WorkAsync(()=>{Require();return Navigation.GoAsync("admin-incident-create");});
@@ -126,7 +126,7 @@ public partial class AdminHistoryViewModel(AdminApiService api,IAuthSession sess
     [ObservableProperty] private string frame="";
     protected override async Task ReadAsync()
     {
-        Dates();await LoadLotsAsync();Rows(await Api.HistoryAsync(SelectedLot?.Id,Identification,Plate,Frame,SelectedType?.Code,SelectedStatus?.Code,DateOnly.FromDateTime(DateFrom),DateOnly.FromDateTime(DateTo),Page),x=>new($"{x.UserFullName} · {x.VehicleIdentifier}",$"{x.ParkingLotName} · {VehiclePresentation.TypeName(x.VehicleType)}\nEntrada: {MobileDates.Display(x.CheckInAtUtc)}\n{(x.CheckOutAtUtc is null?"Salida pendiente":"Salida: "+MobileDates.Display(x.CheckOutAtUtc.Value))}\nDuración API: {x.Duration}",x));
+        Dates();await LoadLotsAsync();Rows(await Api.HistoryAsync(SelectedLot?.Id,Identification,Plate,Frame,SelectedType?.Code,SelectedStatus?.Code,DateFilterApplied?DateOnly.FromDateTime(DateFrom):null,DateFilterApplied?DateOnly.FromDateTime(DateTo):null,Page),x=>new($"{x.UserFullName} · {x.VehicleIdentifier}",$"{x.ParkingLotName} · {VehiclePresentation.TypeName(x.VehicleType)}\nEntrada: {MobileDates.Display(x.CheckInAtUtc)}\n{(x.CheckOutAtUtc is null?"Salida pendiente":"Salida: "+MobileDates.Display(x.CheckOutAtUtc.Value))}\nDuración API: {x.Duration}",x));
     }
     protected override Task OpenAsync(AdminRow row)=>Navigation.MessageAsync("Movimiento",row.Title+"\n"+row.Summary);
 }
@@ -140,7 +140,7 @@ public partial class AdminAuditViewModel(AdminApiService api,IAuthSession sessio
     {
         Dates();Guid? actor=null,id=null;if(!string.IsNullOrWhiteSpace(ActorIdentification)){var result=await Api.FindUserAsync(ActorIdentification);if(!Accepted(result))return;actor=result.Value!.Id;}
         if(!string.IsNullOrWhiteSpace(EntityId)){if(!Guid.TryParse(EntityId.Trim(),out var value)||value==Guid.Empty)throw new UserInputException("El identificador de entidad no es válido.");id=value;}
-        Rows(await Api.AuditAsync(actor,Action,EntityType,id,DateOnly.FromDateTime(DateFrom),DateOnly.FromDateTime(DateTo),Page),x=>new(x.Action+" · "+x.EntityType,$"{MobileDates.Display(x.CreatedAt)}\nActor: {x.ActorUserId}\nEntidad: {x.EntityId}",x));
+        Rows(await Api.AuditAsync(actor,Action,EntityType,id,DateFilterApplied?DateOnly.FromDateTime(DateFrom):null,DateFilterApplied?DateOnly.FromDateTime(DateTo):null,Page),x=>new(x.Action+" · "+x.EntityType,$"{MobileDates.Display(x.CreatedAt)}\nActor: {x.ActorUserId}\nEntidad: {x.EntityId}",x));
     }
     protected override Task OpenAsync(AdminRow row)=>Navigation.MessageAsync("Detalle de auditoría",row.Summary+"\nAntes:\n"+AdminPresentation.AuditValues(((AuditResponse)row.Value).OldValues)+"\nDespués:\n"+AdminPresentation.AuditValues(((AuditResponse)row.Value).NewValues)+"\nTraceId: "+((AuditResponse)row.Value).TraceId);
 }

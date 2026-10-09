@@ -22,7 +22,7 @@ public sealed class StudentRegistrationReviewEndpointTests(AuthApiFixture fixtur
     public async Task InitializeAsync()
     {
         await fixture.ResetAsync();admin=await fixture.CreateUserAsync("USER","ADMIN");
-        var registration=await fixture.Client.PostAsJsonAsync("/api/v1/auth/register/student",new RegisterStudentRequest(Guid.NewGuid().ToString("N"),"Pendiente",UniversityParking.Domain.Universities.UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password));
+        var registration=await fixture.Client.PostAsJsonAsync("/api/v1/auth/register/student",new RegisterStudentRequest(Guid.NewGuid().ToString("N"),"Pendiente",UniversityParking.Domain.Universities.UniversityIds.Cmc,"Carrera",Guid.NewGuid().ToString("N"),AuthApiFixture.Password, Email: Guid.NewGuid().ToString("N")+"@example.com", PhoneNumber:"+573001234567"));
         Assert.Equal(HttpStatusCode.Created,registration.StatusCode);target=(await registration.Content.ReadFromJsonAsync<RegisterStudentResponse>())!.UserId;
         await Login(admin);
     }

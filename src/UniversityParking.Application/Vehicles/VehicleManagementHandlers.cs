@@ -9,7 +9,7 @@ using UniversityParking.Domain.Vehicles.ValueObjects;
 
 namespace UniversityParking.Application.Vehicles;
 
-public sealed class UpdateVehicleCommandHandler(VehicleOperationContext operation, IUnitOfWork unitOfWork)
+public sealed class UpdateVehicleCommandHandler(VehicleOperationContext operation, IUnitOfWork unitOfWork,IVehicleRepository? vehicles=null)
     : IRequestHandler<UpdateVehicleCommand, Result>
 {
     public async Task<Result> Handle(UpdateVehicleCommand request, CancellationToken cancellationToken)
@@ -19,6 +19,13 @@ public sealed class UpdateVehicleCommandHandler(VehicleOperationContext operatio
         if (access.IsFailure) return Result.Failure(access.Error!);
         var vehicle = access.Value;
         var before = new { vehicle.Brand, vehicle.Model, vehicle.Color };
+        if(request.Identifier is not null)
+        {
+            if(vehicles is null)throw new InvalidOperationException();
+            var duplicate=vehicle.Type is VehicleType.BICYCLE or VehicleType.SCOOTER?await vehicles.GetByFrameNumberAsync(new FrameNumber(request.Identifier),cancellationToken):await vehicles.GetByPlateAsync(new VehiclePlate(request.Identifier),cancellationToken);
+            if(duplicate is not null && duplicate.Id!=vehicle.Id)return Result.Failure(VehicleErrors.IdentifierAlreadyExists);
+            vehicle.CorrectIdentifier(request.Identifier,operation.UtcNow);
+        }
         vehicle.UpdateDescription(request.Brand, request.Model, request.Color, operation.UtcNow);
         await operation.AuditAsync("VEHICLE_UPDATED", vehicle.Id, before, new { vehicle.Brand, vehicle.Model, vehicle.Color }, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -79,7 +86,7 @@ public sealed class CorrectVehicleIdentifierCommandHandler(VehicleOperationConte
         var access = await operation.AuthorizedVehicleAsync(request.VehicleId, cancellationToken, adminOnly: true, locked: true);
         if (access.IsFailure) return Result.Failure(access.Error!);
         var vehicle = access.Value;
-        var duplicate = vehicle.Type == VehicleType.BICYCLE ? await vehicles.GetByFrameNumberAsync(new FrameNumber(request.Identifier), cancellationToken) :
+        var duplicate = vehicle.Type is VehicleType.BICYCLE or VehicleType.SCOOTER ? await vehicles.GetByFrameNumberAsync(new FrameNumber(request.Identifier), cancellationToken) :
             await vehicles.GetByPlateAsync(new VehiclePlate(request.Identifier), cancellationToken);
         if (duplicate is not null && duplicate.Id != vehicle.Id) return Result.Failure(VehicleErrors.IdentifierAlreadyExists);
         var oldIdentifier = vehicle.Plate?.Value ?? vehicle.FrameNumber!.Value;

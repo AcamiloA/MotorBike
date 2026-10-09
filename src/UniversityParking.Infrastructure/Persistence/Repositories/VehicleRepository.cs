@@ -20,9 +20,9 @@ public sealed partial class VehicleRepository(AppDbContext context) : IVehicleRe
              vehicle.Type == VehicleType.CAR && vehicle.Status == VehicleStatus.ACTIVE
          select vehicle.Id).AnyAsync(cancellationToken);
     public Task<Vehicle?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => context.Vehicles.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-    public Task<Vehicle?> GetByPlateAsync(VehiclePlate plate, CancellationToken cancellationToken) => context.Vehicles.FirstOrDefaultAsync(x => x.Plate == plate, cancellationToken);
-    public Task<Vehicle?> GetByFrameNumberAsync(FrameNumber frameNumber, CancellationToken cancellationToken) => context.Vehicles.FirstOrDefaultAsync(x => x.FrameNumber == frameNumber, cancellationToken);
-    public Task<bool> ExistsByPlateAsync(VehiclePlate plate, CancellationToken cancellationToken) => context.Vehicles.AnyAsync(x => x.Plate == plate, cancellationToken);
-    public Task<bool> ExistsByFrameNumberAsync(FrameNumber frameNumber, CancellationToken cancellationToken) => context.Vehicles.AnyAsync(x => x.FrameNumber == frameNumber, cancellationToken);
+    public Task<Vehicle?> GetByPlateAsync(VehiclePlate plate, CancellationToken cancellationToken) => context.Vehicles.FirstOrDefaultAsync(x => x.DeletedAt == null && x.Plate == plate, cancellationToken);
+    public Task<Vehicle?> GetByFrameNumberAsync(FrameNumber frameNumber, CancellationToken cancellationToken) => context.Vehicles.FirstOrDefaultAsync(x => x.DeletedAt == null && x.FrameNumber == frameNumber, cancellationToken);
+    public Task<bool> ExistsByPlateAsync(VehiclePlate plate, CancellationToken cancellationToken) => context.Vehicles.AnyAsync(x => x.DeletedAt == null && x.Plate == plate, cancellationToken);
+    public Task<bool> ExistsByFrameNumberAsync(FrameNumber frameNumber, CancellationToken cancellationToken) => context.Vehicles.AnyAsync(x => x.DeletedAt == null && x.FrameNumber == frameNumber, cancellationToken);
     public async Task AddAsync(Vehicle vehicle, CancellationToken cancellationToken) => await context.Vehicles.AddAsync(vehicle, cancellationToken);
 }

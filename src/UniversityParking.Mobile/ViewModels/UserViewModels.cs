@@ -26,6 +26,7 @@ public abstract partial class UserFeatureViewModel : BusyViewModel
 }
 public abstract partial class PagedUserViewModel<T> : UserFeatureViewModel
 {
+    [ObservableProperty] private bool dateFilterApplied=true;
     [ObservableProperty] private int page = 1;
     [ObservableProperty] private long totalPages;
     public ObservableCollection<T> Items { get; } = [];
@@ -143,6 +144,12 @@ public partial class VehicleDetailViewModel(UserApiService api, IUserNavigation 
         if (general is not null) { var file = await api.FileAsync(general.ContentUrl); if (Accepted(file)) Photo = file.Value; }
     });
     [RelayCommand] private Task EditAsync() => navigation.GoAsync("vehicle-edit", new Dictionary<string, object> { ["vehicleId"] = VehicleId });
+    [RelayCommand] private Task ArchiveAsync()=>WorkAsync(async()=>
+    {
+        if(!IsOwner||!await navigation.ConfirmAsync("Eliminar vehículo","El vehículo saldrá de tu cuenta. Se conservará su historial."))return;
+        if(!Accepted(await api.ArchiveVehicleAsync(VehicleId)))return;
+        await navigation.MessageAsync("Vehículo","Vehículo eliminado de tu cuenta.");await navigation.BackAsync();
+    });
     [RelayCommand] private Task RenewAsync() => navigation.GoAsync("vehicle-renew", new Dictionary<string, object> { ["vehicleId"] = VehicleId });
     [RelayCommand] private Task ChangeStatusAsync() => WorkAsync(async () =>
     {
@@ -192,14 +199,14 @@ public partial class RegisterVehicleViewModel : UserFeatureViewModel
     [ObservableProperty] private string model = "";
     [ObservableProperty] private string color = "";
     [ObservableProperty, NotifyPropertyChangedFor(nameof(VerificationImageName))] private PickedAttachment? verificationImage;
-    public string IdentifierLabel => SelectedType?.Code == "BICYCLE" ? "Número de marco" : "Placa";
+    public string IdentifierLabel => SelectedType?.Code is "BICYCLE" or "SCOOTER" ? "Número de marco" : "Placa";
     public string VerificationImageName => VerificationImage?.FileName ?? "Selecciona una imagen JPEG/PNG (máximo 5 MB).";
     public string VerificationLabel => VehiclePresentation.VerificationLabel(SelectedType?.Code);
     public string VerificationHelp => VehiclePresentation.VerificationHelp(SelectedType?.Code);
     public RegisterVehicleViewModel(UserApiService api, IAuthSession session, IAttachmentPicker picker, IUserNavigation navigation)
     { this.api = api; this.session = session; this.picker = picker; this.navigation = navigation; ApplyTypes(); }
     private void ApplyTypes()
-    { Types.Clear(); foreach (var code in VehiclePresentation.AllowedTypes(session.User?.MemberType)) Types.Add(new(code, VehiclePresentation.TypeName(code))); SelectedType = Types[0]; }
+    { Types.Clear(); foreach (var code in VehiclePresentation.AllowedTypes(session.User?.UserType)) Types.Add(new(code, VehiclePresentation.TypeName(code))); SelectedType = Types[0]; }
     partial void OnSelectedTypeChanged(TypeChoice? value)
     { Identifier = ""; VerificationImage = null; OnPropertyChanged(nameof(VerificationLabel)); OnPropertyChanged(nameof(VerificationHelp)); }
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () =>
@@ -208,14 +215,14 @@ public partial class RegisterVehicleViewModel : UserFeatureViewModel
     {
         var type = SelectedType?.Code ?? throw new UserInputException("Selecciona el tipo de vehículo.");
         var actor = session.User?.Id; var token = await session.GetTokenAsync();
-        var value = camera && type != "BICYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
+        var value = camera && type is "CAR" or "MOTORCYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
         if (value is not null && SelectedType?.Code == type && actor == session.User?.Id && token == await session.GetTokenAsync())
             VerificationImage = AttachmentValidation.Validate(value.FileName, value.ContentType, value.Bytes, true);
     });
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
     {
         var type = SelectedType?.Code ?? "";
-        if (!VehiclePresentation.AllowedTypes(session.User?.MemberType).Contains(type)) throw new UserInputException("Selecciona un tipo de vehículo permitido.");
+        if (!VehiclePresentation.AllowedTypes(session.User?.UserType).Contains(type)) throw new UserInputException("Selecciona un tipo de vehículo permitido.");
         Required(Identifier, IdentifierLabel, type == "BICYCLE" ? 150 : 100); Required(Brand, "Marca"); Required(Model, "Modelo"); Required(Color, "Color");
         if (VerificationImage is null) throw new UserInputException("Selecciona la evidencia de verificación.");
         ProcessingMessage = type == "BICYCLE" ? "Guardando vehículo..." : "Guardando evidencia...";
@@ -241,7 +248,7 @@ public partial class EditVehicleViewModel(UserApiService api, IUserNavigation na
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
     {
         Required(Brand, "Marca"); Required(Model, "Modelo"); Required(Color, "Color");
-        if (!Accepted(await api.EditVehicleAsync(VehicleId, Brand.Trim(), Model.Trim(), Color.Trim()))) return;
+        if (!Accepted(await api.EditVehicleAsync(VehicleId, Brand.Trim(), Model.Trim(), Color.Trim(),Identifier.Trim()))) return;
         await navigation.MessageAsync("Vehículo", "Información actualizada correctamente."); await navigation.BackAsync();
     });
 }
@@ -284,7 +291,7 @@ public partial class MyHistoryViewModel(UserApiService api) : PagedUserViewModel
     protected override Task LoadPageAsync() => WorkAsync(async () =>
     {
         if (DateFrom.Date > DateTo.Date) throw new UserInputException("La fecha inicial no puede superar la final.");
-        var result = await api.HistoryAsync(DateOnly.FromDateTime(DateFrom), DateOnly.FromDateTime(DateTo), SelectedVehicle?.Id, Page);
+        var result = await api.HistoryAsync(DateFilterApplied?DateOnly.FromDateTime(DateFrom):null, DateFilterApplied?DateOnly.FromDateTime(DateTo):null, SelectedVehicle?.Id, Page);
         if (!Accepted(result)) return;
         Apply(new(result.Value!.Items.Select(x => new MovementCard(x)).ToArray(), result.Value.Page, result.Value.PageSize, result.Value.TotalCount, result.Value.TotalPages));
         foreach (var item in result.Value.Items.DistinctBy(x => x.VehicleId)) if (!Filters.Any(x => x.Id == item.VehicleId)) Filters.Add(new(item.VehicleId, item.VehicleIdentifier));
@@ -321,11 +328,13 @@ public partial class ProfileViewModel(UserApiService api, IAuthSession session, 
 }
 public partial class EditProfileViewModel(UserApiService api, IUserNavigation navigation) : UserFeatureViewModel
 {
+    [ObservableProperty] private string email="";
+    [ObservableProperty] private string phoneNumber="";
     [ObservableProperty] private string fullName = "";
     [ObservableProperty] private string career = "";
-    [RelayCommand] private Task LoadAsync() => WorkAsync(async () => { var result = await api.ProfileAsync(); if (Accepted(result)) { FullName = result.Value!.FullName; Career = result.Value.Career ?? ""; } });
+    [RelayCommand] private Task LoadAsync() => WorkAsync(async () => { var result = await api.ProfileAsync(); if (Accepted(result)) { FullName = result.Value!.FullName; Career = result.Value.Career ?? "";Email=result.Value.Email??"";PhoneNumber=result.Value.PhoneNumber??""; } });
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
-    { Required(FullName, "Nombre", 200); if (!Accepted(await api.EditProfileAsync(FullName.Trim(), string.IsNullOrWhiteSpace(Career) ? null : Career.Trim()))) return; await navigation.MessageAsync("Perfil", "Perfil actualizado correctamente."); await navigation.BackAsync(); });
+    { Required(FullName, "Nombre", 200);Required(Email,"El correo",254);Required(PhoneNumber,"El teléfono",40); if (!Accepted(await api.EditProfileAsync(FullName.Trim(), string.IsNullOrWhiteSpace(Career) ? null : Career.Trim(),Email.Trim(),PhoneNumber.Trim()))) return; await navigation.MessageAsync("Perfil", "Perfil actualizado correctamente."); await navigation.BackAsync(); });
 }
 public partial class ChangePasswordViewModel(UserApiService api, IUserNavigation navigation) : UserFeatureViewModel
 {

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace UniversityParking.Contracts.Parking;
 
-public enum ParkingVehicleType { CAR, MOTORCYCLE, BICYCLE }
+public enum ParkingVehicleType { CAR, MOTORCYCLE, BICYCLE, SCOOTER }
 public enum ParkingMovementState { OPEN, CLOSED }
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ParkingAccessRequest(string? QrPayload = null, string? IdentificationNumber = null);

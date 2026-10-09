@@ -15,10 +15,12 @@ public sealed class CreateUserCommandHandler(UserOperationContext operation, IUs
     {
         if (await operation.CheckAccessAsync(true, cancellationToken) is { } error) return Result<Guid>.Failure(error);
         var identification = new IdentificationNumber(request.IdentificationNumber);
-        var card = new CardCode(request.CardCode);
+        var card = new CardCode(Guid.NewGuid().ToString("N"));
+        var email = ContactInformation.Email(request.Email!);
         if (await users.ExistsByIdentificationNumberAsync(identification, cancellationToken)) return Result<Guid>.Failure(UserErrors.AlreadyExists);
+        if(await users.GetByEmailAsync(email,cancellationToken) is not null) return Result<Guid>.Failure(new("EMAIL_ALREADY_EXISTS","El correo ya está registrado.",ErrorType.Conflict));
         if (await users.ExistsByCardCodeAsync(card, cancellationToken)) return Result<Guid>.Failure(UserErrors.CardCodeAlreadyExists);
-        var codes = (request.Roles ?? []).Append(RoleCodes.User).Distinct(StringComparer.Ordinal).ToArray();
+        var codes = new[] { InstitutionalUsers.Role(request.UserType) };
         var requestedRoles = new List<Role>();
         foreach (var code in codes)
         {
@@ -26,11 +28,16 @@ public sealed class CreateUserCommandHandler(UserOperationContext operation, IUs
             if (role is null) return Result<Guid>.Failure(new Error("ROLE_NOT_FOUND", "El rol solicitado no existe.", ErrorType.NotFound));
             requestedRoles.Add(role);
         }
-        var university = await universities.GetByIdAsync(request.UniversityId, cancellationToken);
+        var universityId=request.UniversityId;
+        if(universityId==Guid.Empty && request.UserType is InstitutionalUserType.ADMINISTRATIVE or InstitutionalUserType.GUARD)
+            universityId=(await users.GetByIdAsync(operation.ActorId!.Value,cancellationToken))!.UniversityId;
+        var university = await universities.GetByIdAsync(universityId, cancellationToken);
         if (university is null) return Result<Guid>.Failure(UniversityErrors.NotFound);
         if (!university.IsActive) return Result<Guid>.Failure(UniversityErrors.Inactive);
         var user = new User(identification, request.FullName, university.Id, request.Career,
-            request.MemberType, card, operation.UtcNow);
+            request.UserType == InstitutionalUserType.STUDENT ? MemberType.STUDENT : request.UserType == InstitutionalUserType.TEACHER ? MemberType.TEACHER : MemberType.STAFF, card, operation.UtcNow);
+        user.SetInstitutionalType(request.UserType); user.SetContact(email, request.PhoneNumber!); user.RequirePasswordChange();
+        user.SetIdentificationType(request.IdentificationType!);
         await provisioner.AddAsync(user, request.InitialPassword, requestedRoles, cancellationToken);
         await operation.AuditAsync("USER_CREATED", user.Id, null, new { Profile = UserOperationContext.Snapshot(user, university.Name), Roles = codes }, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

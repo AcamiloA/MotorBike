@@ -16,7 +16,7 @@ public sealed class ParkingZoneConfiguration : IEntityTypeConfiguration<ParkingZ
         builder.HasIndex(x => new { x.ParkingLotId, x.VehicleType }).IsUnique().HasDatabaseName("ux_parking_zones_lot_type");
         builder.ToTable(table =>
         {
-            table.HasCheckConstraint("ck_parking_zones_type", "vehicle_type IN ('CAR', 'MOTORCYCLE', 'BICYCLE')");
+            table.HasCheckConstraint("ck_parking_zones_type", "vehicle_type IN ('CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER')");
             table.HasCheckConstraint("ck_parking_zones_status", "status IN ('ACTIVE', 'INACTIVE')");
         });
     }

@@ -11,12 +11,12 @@ public sealed class UniversityPickerTests
 {
     private static readonly UniversityResponse Active = new(Guid.NewGuid(), "CMC", "Colegio Mayor de Cundinamarca");
     private static HttpResponseMessage Ok(object value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
-    private static UserProfileResponse Profile(Guid id, Guid university) => new(id,"123","Nombre",university,"ETITC","Carrera","STUDENT","CARD","ACTIVE",["USER","ADMIN"]);
+    private static UserProfileResponse Profile(Guid id, Guid university) => new(id,"123","Nombre",university,"ETITC","Carrera","STUDENT","CARD","ACTIVE",["USER","ADMIN"],Email:"student@example.com",PhoneNumber:"+573001234567");
     private static async Task<(AdminUserFormViewModel Vm, AuthSession Session, Transport Http)> Setup(Func<HttpRequestMessage,Task<HttpResponseMessage>> send)
     {
         var session=new AuthSession(new Storage());await session.SaveAsync("token",Profile(Guid.NewGuid(),Active.Id));
         var http=new Transport(send);var api=new AdminApiService(new ApiClient(new HttpClient(http){BaseAddress=new("https://test.example/")}));
-        return(new(api,session,new Navigation()){Identification="123",FullName="Nombre",Career="Carrera",CardCode="CARD",InitialPassword="Password1"},session,http);
+        return(new(api,session,new Navigation()){Identification="123",FullName="Nombre",Career="Carrera",CardCode="CARD",InitialPassword="Password1",FirstName="Nombre",LastName="Apellido",Email="student@example.com",PhoneNumber="+573001234567",ConfirmPassword="Password1"},session,http);
     }
 
     [Fact] public async Task CreationRequiresExplicitSelectionEvenWithOnlyOneUniversity()

@@ -9,6 +9,7 @@ namespace UniversityParking.Infrastructure.Persistence.Repositories;
 
 public sealed class UserRepository(AppDbContext context) : IUserRepository
 {
+    public Task<User?> GetByEmailAsync(string normalizedEmail, CancellationToken token) => context.Users.FirstOrDefaultAsync(x=>x.NormalizedEmail==normalizedEmail,token);
     public async Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
     {
         var user = await context.Users.FromSqlInterpolated($"SELECT * FROM users WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(cancellationToken);
@@ -30,9 +31,10 @@ public sealed class UserRepository(AppDbContext context) : IUserRepository
             var escaped = query.Search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
             var pattern = "%" + escaped + "%";
             // Search the converted identifier columns in SQL without exposing IQueryable to Application.
-            selection = context.Users.FromSqlInterpolated($"SELECT * FROM users WHERE full_name ILIKE {pattern} ESCAPE '\\' OR identification_number ILIKE {pattern} ESCAPE '\\' OR card_code ILIKE {pattern} ESCAPE '\\'").AsNoTracking();
+            selection = context.Users.FromSqlInterpolated($"SELECT * FROM users WHERE full_name ILIKE {pattern} ESCAPE '\\' OR identification_number ILIKE {pattern} ESCAPE '\\' OR card_code ILIKE {pattern} ESCAPE '\\' OR normalized_email ILIKE {pattern} ESCAPE '\\'").AsNoTracking();
         }
         if (query.MemberType.HasValue) selection = selection.Where(x => x.MemberType == query.MemberType.Value);
+        if (query.UserType.HasValue) selection=selection.Where(x=>x.UserType==query.UserType.Value);
         if (query.Status.HasValue) selection = selection.Where(x => x.Status == query.Status.Value);
         if (query.Role is not null)
             selection = selection.Where(user => (from assignment in context.UserRoles

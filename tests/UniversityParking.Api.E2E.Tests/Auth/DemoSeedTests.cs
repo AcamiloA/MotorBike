@@ -96,7 +96,7 @@ public sealed class DemoSeedTests(AuthApiFixture fixture) : IAsyncLifetime
         Assert.Equal(3, await db.Roles.CountAsync());
         Assert.Equal(AcademicPeriodStatus.ACTIVE, (await db.AcademicPeriods.SingleAsync()).Status);
         Assert.Single(await db.ParkingLots.ToListAsync());
-        Assert.Equal(3, await db.ParkingZones.CountAsync());
+        Assert.Equal(4, await db.ParkingZones.CountAsync());
         Assert.Empty(await db.Users.ToListAsync());
         Assert.Empty(await db.UserCredentials.ToListAsync());
     }

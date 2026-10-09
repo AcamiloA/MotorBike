@@ -35,7 +35,7 @@ public sealed class CheckInVehicleCommandHandler(AdministrationOperationContext 
         var ownership = await ownerships.GetCurrentByVehicleIdAsync(vehicle.Id, cancellationToken);
         if (ownership is null) return Result<ParkingMovementView>.Failure(VehicleErrors.OwnershipNotFound);
         if (ownership.UserId != user.Id) return Result<ParkingMovementView>.Failure(VehicleErrors.NotOwnedByUser);
-        if (user.MemberType == MemberType.STUDENT && vehicle.Type == VehicleType.CAR) return Result<ParkingMovementView>.Failure(VehicleErrors.StudentCannotRegisterCar);
+        if (user.UserType == InstitutionalUserType.STUDENT && vehicle.Type == VehicleType.CAR) return Result<ParkingMovementView>.Failure(VehicleErrors.StudentCannotRegisterCar);
         var period = await periods.GetActiveForShareAsync(cancellationToken);
         if (period is null) return Result<ParkingMovementView>.Failure(AcademicPeriodErrors.NotActive);
         var registration = await registrations.GetByVehicleUserAndPeriodAsync(vehicle.Id, user.Id, period.Id, cancellationToken);
