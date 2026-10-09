@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.PostgreSql;
 using UniversityParking.Application.Common.Abstractions;
@@ -118,11 +119,15 @@ public sealed class AuthApiFixture : IAsyncLifetime
             while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "UniversityParking.sln"))) directory = directory.Parent;
             if (directory is null) throw new InvalidOperationException("MotorBike solution root was not found.");
             builder.UseContentRoot(Path.Combine(directory.FullName, "src", "UniversityParking.Api"));
-            if (configureServices is not null) builder.ConfigureServices(configureServices);
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDocumentTextExtractor>();
+                services.AddSingleton<IDocumentTextExtractor, TestDocumentTextExtractor>();
+                configureServices?.Invoke(services);
+            });
         }
     }
 }
 
 [CollectionDefinition("Authentication API", DisableParallelization = true)]
 public sealed class AuthApiCollection : ICollectionFixture<AuthApiFixture>;
-

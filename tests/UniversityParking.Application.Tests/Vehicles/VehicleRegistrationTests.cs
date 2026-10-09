@@ -16,7 +16,7 @@ public sealed partial class VehicleRegistrationTests
 {
     private readonly Store store = new();
     private RegisterVehicleCommandHandler Handler => new(Context, store, store, store, store, store, store,
-        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance);
+        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance, TestOcr.Service());
     private VehicleOperationContext Context => new(store, store, store, store, store, store, store, store);
     private static RegisterVehicleCommand Request(VehicleType type = VehicleType.MOTORCYCLE) => new(type,
         type == VehicleType.BICYCLE ? null : " abc-123 ", type == VehicleType.BICYCLE ? " frame 0001 " : null,

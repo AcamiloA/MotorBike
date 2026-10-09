@@ -77,6 +77,7 @@ public sealed class ApiClient(HttpClient client)
                             && !string.IsNullOrWhiteSpace(problem.Detail) => problem.Detail,
                         HttpStatusCode.Forbidden => "No tienes permisos para realizar esta acción.",
                         HttpStatusCode.Unauthorized => path.EndsWith("auth/login", StringComparison.Ordinal) ? "Identificación o contraseña incorrectas." : "Tu sesión ha vencido. Inicia sesión nuevamente.",
+                        HttpStatusCode.ServiceUnavailable when problem?.Code == "DOCUMENT_OCR_UNAVAILABLE" => "No fue posible validar el documento en este momento. Intenta nuevamente.",
                         _ when (int)response.StatusCode >= 500 => "El servidor no está disponible. Intenta nuevamente.",
                         _ => problem?.Errors?.Values.SelectMany(x => x).FirstOrDefault() ?? problem?.Detail ?? "No fue posible completar la solicitud."
                     };

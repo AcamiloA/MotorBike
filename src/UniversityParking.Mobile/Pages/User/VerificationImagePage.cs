@@ -11,7 +11,7 @@ public sealed class VerificationImagePage : UserPage<VerificationImageViewModel>
         var gallery = UserViews.Button("SELECCIONAR IMAGEN", "PickCommand"); gallery.CommandParameter = false;
         Form(UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"),
             UserViews.Bound("VerificationHelp", true), UserViews.Bound("ImageName", true),
-            UserViews.Image("VerificationImage", 220), camera, gallery, UserViews.Button("GUARDAR EVIDENCIA", "SaveCommand"));
+            UserViews.Image("VerificationImage", 220), camera, gallery, UserViews.Bound("ProcessingMessage", true), UserViews.Button("GUARDAR EVIDENCIA", "SaveCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
     protected override void OnDisappearing() { ViewModel.Leave(); base.OnDisappearing(); }

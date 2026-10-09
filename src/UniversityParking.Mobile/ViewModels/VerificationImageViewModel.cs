@@ -12,6 +12,7 @@ public partial class VerificationImageViewModel(UserApiService api, IAttachmentP
     [ObservableProperty] private PickedAttachment? verificationImage;
     [ObservableProperty] private bool canEdit;
     [ObservableProperty] private bool writeUncertain;
+    [ObservableProperty] private string processingMessage = "";
     private Guid? loadedUserId;
     private int lifecycle;
     public void Leave() { lifecycle++; VerificationImage = null; CanEdit = false; }
@@ -48,14 +49,20 @@ public partial class VerificationImageViewModel(UserApiService api, IAttachmentP
         var roles = session.User?.Roles ?? [];
         if (version != lifecycle || loadedUserId is null || loadedUserId != session.User?.Id || roles.Contains("GUARD") && !roles.Contains("ADMIN"))
         { Leave(); throw new UserInputException("La sesión cambió. Vuelve a consultar el vehículo."); }
+        ProcessingMessage = VehicleType == "BICYCLE" ? "Guardando imagen..." : "Validando Licencia de Tránsito...";
+        try
+        {
         var result = await api.UpdateVerificationImageAsync(VehicleId, VerificationImage);
         if (version != lifecycle || loadedUserId != session.User?.Id) return;
         if (!Accepted(result))
         {
-            if (GuardPresentation.Uncertain(result.Error)) { WriteUncertain = true; ErrorMessage = "No se confirmó el cambio. Consulta el detalle antes de repetirlo."; }
+            if (TransitLicensePresentation.DocumentError(result.Error!.Code)) VerificationImage = null;
+            if (result.Error.Code != "DOCUMENT_OCR_UNAVAILABLE" && GuardPresentation.Uncertain(result.Error)) { WriteUncertain = true; ErrorMessage = "No se confirmó el cambio. Consulta el detalle antes de repetirlo."; }
             return;
         }
         VerificationImage = null; CanEdit = false;
         await navigation.MessageAsync("Evidencia", "Evidencia de verificación actualizada."); await navigation.BackAsync();
+        }
+        finally { ProcessingMessage = ""; }
     });
 }

@@ -12,7 +12,7 @@ namespace UniversityParking.Application.Vehicles;
 public sealed class RegisterVehicleCommandHandler(VehicleOperationContext operation, IVehicleRepository vehicles,
     IVehicleOwnershipRepository ownerships, IVehicleRegistrationRepository registrations, IVehicleEvidenceRepository evidence,
     IAcademicPeriodRepository periods, IUnitOfWork unitOfWork, FileUploadValidator fileValidator, IFileStorage storage,
-    ILogger<UploadedFileBatch> logger) : IRequestHandler<RegisterVehicleCommand, Result<Guid>>
+    ILogger<UploadedFileBatch> logger, UniversityParking.Application.Documents.ITransitLicenseValidationService licenseValidation) : IRequestHandler<RegisterVehicleCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(RegisterVehicleCommand request, CancellationToken cancellationToken)
     {
@@ -31,6 +31,11 @@ public sealed class RegisterVehicleCommandHandler(VehicleOperationContext operat
         var validation = await fileValidator.ValidateAsync(request.VerificationImage, true, cancellationToken);
         if (validation.IsFailure) return Result<Guid>.Failure(validation.Error!);
         var file = validation.Value;
+        if (request.Type is VehicleType.CAR or VehicleType.MOTORCYCLE)
+        {
+            var format = await licenseValidation.ValidateAsync(file, cancellationToken);
+            if (format.IsFailure) return Result<Guid>.Failure(format.Error!);
+        }
         var now = operation.UtcNow;
         var vehicle = new Vehicle(request.Type, plate, frame, request.Brand, request.Model, request.Color, now);
         await using var uploaded = new UploadedFileBatch(storage, logger);

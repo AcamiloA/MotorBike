@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 
 namespace UniversityParking.Application.Common.Results;
 
-public enum ErrorType { Validation, NotFound, Conflict, Forbidden, Unauthorized, Unexpected }
+public enum ErrorType { Validation, NotFound, Conflict, Forbidden, Unauthorized, Unexpected, Unavailable }
 
 public sealed record Error
 {
