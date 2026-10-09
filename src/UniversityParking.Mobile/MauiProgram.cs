@@ -29,6 +29,8 @@ public static class MauiProgram
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<ISecretStorage, SecureSessionStorage>();
         builder.Services.AddSingleton<IAuthSession, AuthSession>();
+        builder.Services.AddSingleton<LoginInputCoordinator>();
+        builder.Services.AddSingleton<ILoginInputLifecycle>(p => p.GetRequiredService<LoginInputCoordinator>());
         builder.Services.AddSingleton<AppNavigation>();
         builder.Services.AddSingleton<IAppNavigation>(p => p.GetRequiredService<AppNavigation>());
         builder.Services.AddSingleton(p => new HttpClient(new AuthHttpHandler(p.GetRequiredService<IAuthSession>(),

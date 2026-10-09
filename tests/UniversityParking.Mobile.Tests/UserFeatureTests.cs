@@ -190,7 +190,7 @@ public sealed partial class UserFeatureTests
     private sealed class Storage : ISecretStorage
     { public Task<string?> GetAsync(string key) => Task.FromResult<string?>(null); public Task SetAsync(string key, string value) => Task.CompletedTask; public void Remove(string key) { } }
     private sealed class Picker : IAttachmentPicker
-    { public Task<PickedAttachment?> PhotoAsync(bool camera) => Task.FromResult<PickedAttachment?>(Photo); public Task<PickedAttachment?> DocumentAsync() => Task.FromResult<PickedAttachment?>(Pdf); }
+    { public Task<PickedAttachment?> TransitLicenseAsync() => PhotoAsync(true); public Task<PickedAttachment?> PhotoAsync(bool camera) => Task.FromResult<PickedAttachment?>(Photo); public Task<PickedAttachment?> DocumentAsync() => Task.FromResult<PickedAttachment?>(Pdf); }
     private sealed class Viewer : IFileViewer { public Task OpenAsync(string name, string mime, byte[] bytes) => Task.CompletedTask; public void ClearCache() { } }
     private sealed class Navigation : IUserNavigation
     {

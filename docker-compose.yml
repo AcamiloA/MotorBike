@@ -29,6 +29,7 @@ services:
       HttpsRedirection__Enabled: "false"
       Storage__Provider: Local
       Storage__LocalRootPath: /app/App_Data/private-files
+      DocumentOcr__Enabled: "${DocumentOcr__Enabled:-false}"
       Swagger__Enabled: "${SWAGGER_ENABLED:-false}"
     depends_on:
       postgres:

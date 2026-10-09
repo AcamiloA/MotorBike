@@ -14,5 +14,5 @@ internal sealed class TestOcr : IDocumentTextExtractor
         .Select(x => new DocumentTextItem(x, confidence)).ToArray(), []);
     public Task<Result<DocumentTextExtractionResult>> ExtractAsync(byte[] image, string mime, CancellationToken token)
     { token.ThrowIfCancellationRequested(); Calls++; return Task.FromResult(Unavailable ? Result<DocumentTextExtractionResult>.Failure(TransitLicenseErrors.Unavailable) : Result<DocumentTextExtractionResult>.Success(Text)); }
-    public static ITransitLicenseValidationService Service() => new TransitLicenseValidationService(new TestOcr(), new TransitLicenseFormatValidator());
+    public static ITransitLicenseValidationService Service() => new TransitLicenseValidationService(new TestOcr(), new TransitLicenseFormatValidator(), Microsoft.Extensions.Options.Options.Create(new DocumentOcrOptions { Enabled = true }));
 }

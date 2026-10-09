@@ -24,6 +24,9 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(UniversityParking.Application.Universities.Integration.UniversityIntegrationsOptions.SectionName),
                 options => options.ErrorOnUnknownConfiguration = true).ValidateOnStart();
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddOptions<UniversityParking.Application.Documents.DocumentOcrOptions>()
+            .Bind(configuration.GetSection(UniversityParking.Application.Documents.DocumentOcrOptions.SectionName),
+                options => options.ErrorOnUnknownConfiguration = true).ValidateOnStart();
         UniversityParking.Infrastructure.Documents.TextractRegistration.AddDocumentOcr(services, configuration);
         services.AddScoped<UniversityParking.Infrastructure.Persistence.Seeding.DemoSeed>();
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(UserPersistenceBehavior<,>));

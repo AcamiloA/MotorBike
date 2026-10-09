@@ -88,29 +88,28 @@ public partial class MyVehiclesViewModel : UserFeatureViewModel
 }
 public partial class UserHomeViewModel(UserApiService api, IUserNavigation navigation, IAuthSession session) : UserFeatureViewModel
 {
-    public string Greeting => $"Hola, {session.User?.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()}";
-    [ObservableProperty] private string activeCount = "—";
-    public ObservableCollection<VehicleCardViewModel> Vehicles { get; } = [];
-    public ObservableCollection<MovementCard> RecentMovements { get; } = [];
     public ObservableCollection<NewsCard> RecentNews { get; } = [];
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanRetry)), NotifyPropertyChangedFor(nameof(IsNewsEmpty))] private bool newsFailed;
+    public bool CanRetry => NewsFailed && !IsBusy;
+    public bool IsNewsEmpty => !IsBusy && !NewsFailed && RecentNews.Count == 0;
+    protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName == nameof(IsBusy)) { base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(CanRetry))); base.OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(IsNewsEmpty))); }
+    }
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () =>
     {
-        var vehiclesTask = api.MyVehiclesAsync(); var newsTask = api.NewsAsync(); var today = DateOnly.FromDateTime(MobileDates.Today);
-        var historyTask = api.HistoryAsync(today.AddDays(-30), today, null); await Task.WhenAll(vehiclesTask, newsTask, historyTask);
-        var vehicles = await vehiclesTask; var news = await newsTask; var history = await historyTask;
-        Vehicles.Clear(); RecentNews.Clear(); RecentMovements.Clear(); ActiveCount = "—";
-        if (vehicles.IsSuccess) { ActiveCount = vehicles.Value!.Count(x => x.Status == "ACTIVE").ToString(); foreach (var item in vehicles.Value!.Take(3)) Vehicles.Add(new(item, api)); }
-        if (news.IsSuccess) foreach (var item in news.Value!.Items.Take(3)) RecentNews.Add(new(item));
-        if (history.IsSuccess) foreach (var item in history.Value!.Items.Take(3)) RecentMovements.Add(new(item));
-        ErrorMessage = string.Join(" ", new[] { vehicles.Error?.Message, news.Error?.Message, history.Error?.Message }.Where(x => x is not null).Distinct());
-        OnPropertyChanged(nameof(Greeting));
+        var owner = session.User?.Id; var token = await session.GetTokenAsync();
+        NewsFailed = false;
+        ApiResult<PagedResponse<NewsResponse>> result;
+        try { result = await api.NewsAsync(); }
+        catch { NewsFailed = true; throw; }
+        if (owner != session.User?.Id || token != await session.GetTokenAsync()) return;
+        RecentNews.Clear();
+        if (result.IsSuccess) foreach (var item in result.Value!.Items) RecentNews.Add(new(item));
+        else { NewsFailed = true; ErrorMessage = result.Error!.Message; }
+        OnPropertyChanged(nameof(IsNewsEmpty));
     });
-    [RelayCommand] private Task RegisterAsync() => navigation.GoAsync("vehicle-register");
-    [RelayCommand] private Task VehiclesAsync() => navigation.GoAsync("my-vehicles");
-    [RelayCommand] private Task HistoryAsync() => navigation.GoAsync("my-history");
-    [RelayCommand] private Task NewsAsync() => navigation.GoAsync("user-news");
-    [RelayCommand] private Task ProfileAsync() => navigation.GoAsync("user-profile");
-    [RelayCommand] private Task OpenVehicleAsync(Guid id) => navigation.GoAsync("vehicle-detail", new Dictionary<string, object> { ["vehicleId"] = id });
     [RelayCommand] private Task OpenNewsAsync(NewsCard card) => navigation.GoAsync("news-detail", new Dictionary<string, object> { ["news"] = card.Item });
 }
 public partial class VehicleDetailViewModel(UserApiService api, IUserNavigation navigation, IFileViewer viewer, IAuthSession session) : UserFeatureViewModel
@@ -205,14 +204,21 @@ public partial class RegisterVehicleViewModel : UserFeatureViewModel
     { Identifier = ""; VerificationImage = null; OnPropertyChanged(nameof(VerificationLabel)); OnPropertyChanged(nameof(VerificationHelp)); }
     [RelayCommand] private Task LoadAsync() => WorkAsync(async () =>
     { var result = await api.ProfileAsync(); if (Accepted(result) && await session.GetTokenAsync() is { } token) { await session.TrySetUserAsync(token, result.Value!); ApplyTypes(); } });
-    [RelayCommand] private Task PickPhotoAsync(bool camera) => WorkAsync(async () => { var value = await picker.PhotoAsync(camera); if (value is not null) VerificationImage = AttachmentValidation.Validate(value.FileName, value.ContentType, value.Bytes, true); });
+    [RelayCommand] private Task PickPhotoAsync(bool camera) => WorkAsync(async () =>
+    {
+        var type = SelectedType?.Code ?? throw new UserInputException("Selecciona el tipo de vehículo.");
+        var actor = session.User?.Id; var token = await session.GetTokenAsync();
+        var value = camera && type != "BICYCLE" ? await picker.TransitLicenseAsync() : await picker.PhotoAsync(camera);
+        if (value is not null && SelectedType?.Code == type && actor == session.User?.Id && token == await session.GetTokenAsync())
+            VerificationImage = AttachmentValidation.Validate(value.FileName, value.ContentType, value.Bytes, true);
+    });
     [RelayCommand] private Task SaveAsync() => WorkAsync(async () =>
     {
         var type = SelectedType?.Code ?? "";
         if (!VehiclePresentation.AllowedTypes(session.User?.MemberType).Contains(type)) throw new UserInputException("Selecciona un tipo de vehículo permitido.");
         Required(Identifier, IdentifierLabel, type == "BICYCLE" ? 150 : 100); Required(Brand, "Marca"); Required(Model, "Modelo"); Required(Color, "Color");
         if (VerificationImage is null) throw new UserInputException("Selecciona la evidencia de verificación.");
-        ProcessingMessage = type == "BICYCLE" ? "Guardando vehículo..." : "Validando Licencia de Tránsito...";
+        ProcessingMessage = type == "BICYCLE" ? "Guardando vehículo..." : "Guardando evidencia...";
         try
         {
         var result = await api.RegisterAsync(new(type, Identifier, Brand, Model, Color, VerificationImage)); if (!Accepted(result)) { if (TransitLicensePresentation.DocumentError(result.Error!.Code)) VerificationImage = null; return; }

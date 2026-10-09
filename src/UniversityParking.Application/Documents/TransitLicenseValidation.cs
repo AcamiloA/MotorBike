@@ -25,12 +25,14 @@ public static class TransitLicenseErrors
     public static Error Invalid { get; } = new("TRANSIT_LICENSE_INVALID_FORMAT", "La imagen no corresponde al formato esperado de una Licencia de Tránsito colombiana.", ErrorType.Validation);
     public static Error Unreadable { get; } = new("TRANSIT_LICENSE_UNREADABLE", "No pudimos leer el documento. Evita reflejos, acerca la tarjeta y toma nuevamente la fotografía.", ErrorType.Validation);
 }
-public sealed class TransitLicenseValidationService(IDocumentTextExtractor extractor, ITransitLicenseFormatValidator validator)
+public sealed class TransitLicenseValidationService(IDocumentTextExtractor extractor, ITransitLicenseFormatValidator validator,
+    Microsoft.Extensions.Options.IOptions<DocumentOcrOptions> options)
     : ITransitLicenseValidationService
 {
     public async Task<Result> ValidateAsync(ValidatedUpload upload, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!options.Value.Enabled) return Result.Success();
         Result<DocumentTextExtractionResult> extraction;
         try { extraction = await extractor.ExtractAsync(upload.Bytes, upload.ContentType, cancellationToken); }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }

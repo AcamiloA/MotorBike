@@ -21,7 +21,7 @@ public sealed partial class UserFeatureTests
         var vm = new RegisterVehicleViewModel(service.Api, await Session(), new Picker(), new Navigation())
         { Identifier = "ABC123", Brand = "Marca", Model = "Modelo", Color = "Color", VerificationImage = Photo };
         var save = vm.SaveCommand.ExecuteAsync(null); await sent.Task;
-        Assert.Equal("Validando Licencia de Tránsito...", vm.ProcessingMessage); Assert.True(vm.IsBusy);
+        Assert.Equal("Guardando evidencia...", vm.ProcessingMessage); Assert.True(vm.IsBusy);
         pending.SetResult(new((HttpStatusCode)status) { Content = JsonContent.Create(new ApiProblemDetails { Status = status, Title = "Error", Detail = message, Code = code, TraceId = "trace" }) });
         await save; Assert.Equal(message, vm.ErrorMessage); Assert.Equal("ABC123", vm.Identifier); Assert.Equal("Marca", vm.Brand);
         Assert.Equal("Modelo", vm.Model); Assert.Equal("Color", vm.Color); Assert.Equal("", vm.ProcessingMessage);

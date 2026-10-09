@@ -14,6 +14,16 @@ public sealed class UserNavigation(IAuthSession session) : IUserNavigation
 }
 public sealed class AttachmentPicker : IAttachmentPicker
 {
+    public async Task<PickedAttachment?> TransitLicenseAsync()
+    {
+#if ANDROID
+        if (await Permissions.RequestAsync<Permissions.Camera>() != PermissionStatus.Granted)
+            throw new UserInputException("Permite el acceso a la cámara para fotografiar la Licencia de Tránsito.");
+        return await UniversityParking.Mobile.Platforms.Android.TransitLicenseCapture.CaptureAsync();
+#else
+        throw new UserInputException("La captura guiada de documentos no está disponible en este dispositivo. Selecciona una imagen.");
+#endif
+    }
     public async Task<PickedAttachment?> PhotoAsync(bool camera)
     {
         try

@@ -11,7 +11,7 @@ namespace UniversityParking.Application.Tests.Vehicles;
 public sealed partial class VehicleRegistrationTests
 {
     private RegisterVehicleCommandHandler WithOcr(TestOcr ocr) => new(Context, store, store, store, store, store, store,
-        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance, new TransitLicenseValidationService(ocr, new TransitLicenseFormatValidator()));
+        new FileUploadValidator(), store, NullLogger<UploadedFileBatch>.Instance, new TransitLicenseValidationService(ocr, new TransitLicenseFormatValidator(), Microsoft.Extensions.Options.Options.Create(new DocumentOcrOptions { Enabled = true })));
     [Theory][InlineData(VehicleType.CAR, 1)][InlineData(VehicleType.MOTORCYCLE, 1)][InlineData(VehicleType.BICYCLE, 0)]
     public async Task OcrAppliesOnlyToMotorVehiclesAndDoesNotChangePlate(VehicleType type, int calls)
     {
@@ -31,7 +31,7 @@ public sealed partial class VehicleRegistrationTests
     {
         var id = (await Handler.Handle(Request(), default)).Value; var before = store.VerificationImages.Single(); var key = before.StorageKey; var time = before.UpdatedAt;
         var handler = new UpdateVehicleVerificationImageCommandHandler(Context, store, store, new FileUploadValidator(), store,
-            NullLogger<UploadedFileBatch>.Instance, new TransitLicenseValidationService(Rejected(mode), new TransitLicenseFormatValidator()));
+            NullLogger<UploadedFileBatch>.Instance, new TransitLicenseValidationService(Rejected(mode), new TransitLicenseFormatValidator(), Microsoft.Extensions.Options.Options.Create(new DocumentOcrOptions { Enabled = true })));
         Assert.True((await handler.Handle(new(id, Request().VerificationImage), default)).IsFailure);
         Assert.Equal(key, before.StorageKey); Assert.Equal(time, before.UpdatedAt); Assert.Equal(key, Assert.Single(store.Keys)); Assert.Equal(1, store.Saves);
     }

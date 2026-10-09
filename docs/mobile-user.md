@@ -2,7 +2,7 @@
 
 ## Alcance implementado
 
-Inicio muestra datos reales: vehículos activos, vehículos propios, movimientos recientes y noticias publicadas. Incluye accesos a registro e historial. No muestra cupos, mapas ni asignación de espacios.
+Inicio es un feed de noticias/comunicados publicados con título, fecha y contenido. Los accesos a vehículos, historial, noticias y perfil permanecen en el acordeón; Home no los duplica. REINTENTAR solo aparece si falló la carga de noticias; una consulta exitosa vacía muestra un mensaje comprensible. No se consultan vehículos/historial al cargar Inicio.
 
 Las doce pantallas son Inicio, Mis vehículos, Detalle de vehículo, Registrar vehículo, Editar vehículo, Renovar registro, Mi historial, Noticias, Detalle de noticia, Perfil, Editar perfil y Cambiar contraseña. Las áreas GUARD y ADMIN están implementadas en las fases 18 y 19; sus guías describen las funciones correspondientes.
 
@@ -14,7 +14,7 @@ Historial personal tiene paginación y filtros de fecha y vehículo, muestra ins
 
 Todas las rutas tienen prefijo `/api/v1`: `vehicles/me`, `vehicles/{id}`, `vehicles`, `vehicles/{id}/activate`, `vehicles/{id}/deactivate`, `vehicles/{id}/renew`, `academic-periods/current`, `parking/history/me`, `news`, `users/me` y `auth/change-password`. Los archivos se obtienen mediante las URL privadas recibidas del backend y el cliente autenticado.
 
-Evidencia única: cámara o galería, JPEG/PNG, máximo 5 MB y vista previa. Documentos históricos: PDF/JPEG/PNG, máximo 10 MB; se conservan en lectura, sin exigirse en el registro nuevo. Se comprueban extensión, MIME y firma básica antes del envío. El registro nuevo no requiere matrícula/seguro/soporte de propiedad por separado; los documentos anteriores se preservan como históricos. Cámara solicita permiso al utilizarla y no exige hardware para instalar la app.
+Evidencia única: cámara o galería, JPEG/PNG, máximo 5 MB y vista previa. Para CAR/MOTO la cámara usa captura horizontal con guía y recorte real confirmado; bicicleta conserva la cámara habitual. Ver [captura y bandera OCR](transit-license-ocr.md). Documentos históricos: PDF/JPEG/PNG, máximo 10 MB; se conservan en lectura, sin exigirse en el registro nuevo. Se comprueban extensión, MIME y firma básica antes del envío. El registro nuevo no requiere matrícula/seguro/soporte de propiedad por separado; los documentos anteriores se preservan como históricos. Cámara solicita permiso al utilizarla y no exige hardware para instalar la app.
 
 Renovación sin reemplazos envía un cuerpo multipart de longitud cero con Content-Type y boundary; esto permite al formulario opcional del backend reutilizar los documentos. Con reemplazos utiliza partes indexadas. Las operaciones de escritura no tienen reintentos automáticos y se impide el doble envío durante carga.
 

@@ -41,8 +41,8 @@ public sealed partial class VehicleEndpointTests(AuthApiFixture fixture) : IAsyn
         factory = CreateFactory();
         client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
     }
-    private WebApplicationFactory<Program> CreateFactory(Action<IServiceCollection>? services = null) => fixture.CreateFactory(services,
-        new Dictionary<string, string?> { ["Storage:Provider"] = "Local", ["Storage:LocalRootPath"] = root });
+    private WebApplicationFactory<Program> CreateFactory(Action<IServiceCollection>? services = null, bool? ocrEnabled = null) => fixture.CreateFactory(services,
+        new Dictionary<string, string?> { ["Storage:Provider"] = "Local", ["Storage:LocalRootPath"] = root, ["DocumentOcr:Enabled"] = (ocrEnabled ?? true).ToString() });
     public async Task DisposeAsync()
     {
         client.Dispose();
