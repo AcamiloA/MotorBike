@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:controls="clr-namespace:UniversityParking.Mobile.Controls" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" xmlns:contracts="clr-namespace:UniversityParking.Contracts.Universities;assembly=UniversityParking.Contracts" x:Class="UniversityParking.Mobile.Pages.RegisterStudentPage" x:DataType="vm:RegisterStudentViewModel" Title="Crear cuenta de estudiante">
+ <ContentPage.Resources><controls:UniversityCatalogStatusConverter x:Key="CatalogStatus" /></ContentPage.Resources>
  <ScrollView><VerticalStackLayout Padding="28,32" Spacing="16" MaximumWidthRequest="480" HorizontalOptions="Fill">
   <Label Text="Crear cuenta de estudiante" Style="{StaticResource BrandTitle}" />
   <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding IdentificationNumber}" Placeholder="Número de identificación" IsEnabled="{Binding IsNotBusy}" SemanticProperties.Description="Número de identificación" /></Border>
   <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding FullName}" Placeholder="Nombre completo" IsEnabled="{Binding IsNotBusy}" SemanticProperties.Description="Nombre completo" /></Border>
   <Border Style="{StaticResource InputBorder}"><Picker Title="Seleccionar universidad" ItemsSource="{Binding Universities}" SelectedItem="{Binding SelectedUniversity}" ItemDisplayBinding="{Binding Name, x:DataType=contracts:UniversityResponse}" IsEnabled="{Binding CanSelectUniversity}" SemanticProperties.Description="Universidad" /></Border>
+<Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><Label Style="{StaticResource Caption}" VerticalOptions="Center"><Label.Text><MultiBinding Converter="{StaticResource CatalogStatus}"><Binding Path="IsBusy" /><Binding Path="CatalogLoaded" /><Binding Path="Universities.Count" /><Binding Path="ErrorMessage" /></MultiBinding></Label.Text></Label><Button Grid.Column="1" Text="↻" Style="{StaticResource IconButton}" Command="{Binding LoadCommand}" IsEnabled="{Binding IsNotBusy}" SemanticProperties.Description="Actualizar universidades" /></Grid>
   <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding Career}" Placeholder="Carrera" IsEnabled="{Binding IsNotBusy}" SemanticProperties.Description="Carrera" /></Border>
   <Border Style="{StaticResource InputBorder}"><Entry Text="{Binding Email}" Placeholder="Correo" Keyboard="Email" IsEnabled="{Binding IsNotBusy}" /></Border>
   <Border Style="{StaticResource InputBorder}"><controls:PasswordField  Text="{Binding Password}" Placeholder="Contraseña"  IsEnabled="{Binding IsNotBusy}" SemanticProperties.Description="Contraseña" /></Border>
@@ -13,8 +15,8 @@
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" />
   <Label Text="{Binding RegistrationNotice}" TextColor="{StaticResource Danger}" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-  <Button Text="CREAR CUENTA" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" />
-  <Button Text="REINTENTAR UNIVERSIDADES" Command="{Binding LoadCommand}" IsEnabled="{Binding IsNotBusy}" />
-  <Button Text="VOLVER A LOGIN" Command="{Binding BackCommand}" IsEnabled="{Binding IsNotBusy}" />
+  <Button Style="{StaticResource PrimaryButton}" Text="CREAR CUENTA" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" />
+
+  <Button Text="VOLVER A LOGIN" HorizontalOptions="Start" Command="{Binding BackCommand}" IsEnabled="{Binding IsNotBusy}" />
  </VerticalStackLayout></ScrollView>
 </ContentPage>

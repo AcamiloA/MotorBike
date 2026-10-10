@@ -27,7 +27,7 @@ public sealed class AdminDashboardPage:UserPage<AdminDashboardViewModel>
 {
     public AdminDashboardPage(AdminDashboardViewModel vm):base(vm,"Administración",()=>vm.LoadCommand.ExecuteAsync(null))
     {
-        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Card(UserViews.Bound("Summary"))},"LoadCommand"),UserViews.Button("REINTENTAR","LoadCommand"));
+        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Card(UserViews.Bound("Summary"))},"LoadCommand"),UserViews.RefreshButton("LoadCommand"));
     }
 }
 public abstract class AdminListPage<T>:UserPage<T> where T:AdminListViewModel
@@ -64,7 +64,7 @@ public sealed class AdminUserFormPage:UserPage<AdminUserFormViewModel>
         var names=UserViews.Stack(AdminViews.Field("FirstName","Nombres"),AdminViews.Field("LastName","Apellidos"),GuardViews.Picker("IdentificationTypes","IdentificationType"));names.SetBinding(IsVisibleProperty,"IsNew");var name=AdminViews.Field("FullName","Nombre completo");name.SetBinding(IsVisibleProperty,new Binding("IsNew",converter:new InverseBooleanConverter()));var newOnly=UserViews.Stack(AdminViews.Field("InitialPassword","Contraseña inicial",true),AdminViews.Field("ConfirmPassword","Confirmar contraseña",true),UserViews.Text("8 caracteres, mayúscula, minúscula y número. Se solicitará cambiarla al ingresar."));newOnly.SetBinding(IsVisibleProperty,"IsNew");
         var universities=GuardViews.Picker("Universities","SelectedUniversity","Name","Seleccionar universidad");
         universities.SetBinding(IsEnabledProperty,"CanSelectUniversity");SemanticProperties.SetDescription(universities,"Universidad");
-        Form(GuardViews.Picker("Members","Member"),identification,existing,names,name,UserViews.Text("Universidad",true),UserViews.Input(universities),UserViews.Bound("CurrentUniversityNotice",true),UserViews.Button("REINTENTAR UNIVERSIDADES","LoadCommand"),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("Email","Correo"),AdminViews.Field("PhoneNumber","Teléfono"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
+        Form(GuardViews.Picker("Members","Member"),identification,existing,names,name,UserViews.Text("Universidad",true),UserViews.UniversityCatalog(UserViews.Input(universities),"UniversitiesLoaded"),UserViews.Bound("CurrentUniversityNotice",true),UserViews.Bound("CareerLabel"),AdminViews.Field("Career","Carrera"),AdminViews.Field("Email","Correo"),AdminViews.Field("PhoneNumber","Teléfono"),newOnly,AdminViews.Save("GUARDAR USUARIO","SaveCommand"),UserViews.Button("VOLVER A USUARIOS","ListCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");
     protected override void OnDisappearing(){ViewModel.InitialPassword="";base.OnDisappearing();}

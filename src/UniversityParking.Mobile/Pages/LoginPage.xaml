@@ -10,9 +10,9 @@
   <Border Style="{StaticResource InputBorder}"><controls:PasswordField  x:Name="PasswordEntry" Text="{Binding Password}" Placeholder="Ingresa tu contraseña"  IsEnabled="{Binding IsNotBusy}" ReturnType="Go" Completed="PasswordCompleted" SemanticProperties.Description="Contraseña" /></Border>
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" SemanticProperties.Description="{Binding ErrorMessage}" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-  <Button Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding CanStart}" Margin="0,8,0,24" />
-  <Button Text="¿Olvidaste tu contraseña?" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding CanStart}" />
-  <Button Text="CREAR CUENTA DE ESTUDIANTE" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding CanStart}" />
+  <Button Style="{StaticResource PrimaryButton}" Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding CanStart}" Margin="0,8,0,24" />
+  <Button HorizontalOptions="Start" Text="¿Olvidaste tu contraseña?" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding CanStart}" />
+  <Button Text="CREAR CUENTA DE ESTUDIANTE" HorizontalOptions="Start" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding CanStart}" />
   <Label Text="Control de acceso vehicular universitario" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
  </VerticalStackLayout></ScrollView>
 </ContentPage>

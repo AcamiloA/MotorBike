@@ -6,7 +6,7 @@
   <Label Text="Validando tu sesión" HorizontalTextAlignment="Center" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" />
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" HorizontalTextAlignment="Center" />
-  <Button Text="REINTENTAR" Command="{Binding RestoreCommand}" IsEnabled="{Binding IsNotBusy}" />
+  <Button Text="↻" Style="{StaticResource IconButton}" SemanticProperties.Description="Actualizar sesión" Command="{Binding RestoreCommand}" IsEnabled="{Binding IsNotBusy}" />
   <Button Text="CERRAR SESIÓN" Command="{Binding LogoutCommand}" IsEnabled="{Binding IsNotBusy}" Style="{StaticResource SecondaryButton}" />
  </VerticalStackLayout>
 </ContentPage>

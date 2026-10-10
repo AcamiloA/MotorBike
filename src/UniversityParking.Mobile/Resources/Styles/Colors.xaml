@@ -7,4 +7,5 @@
  <Color x:Key="Success">#21A366</Color><Color x:Key="SuccessBackground">#123923</Color>
  <Color x:Key="Warning">#D6A900</Color><Color x:Key="WarningBackground">#403500</Color>
  <Color x:Key="Danger">#E5484D</Color><Color x:Key="DangerBackground">#401C20</Color>
+<Color x:Key="ButtonOnAccent">#101114</Color><Color x:Key="ButtonSurfaceLight">#F1F5F9</Color><Color x:Key="ButtonTextLight">#172033</Color><Color x:Key="ButtonBorderLight">#64748B</Color><Color x:Key="ButtonBorderDark">#64748B</Color><Color x:Key="ButtonPressedLight">#E2E8F0</Color><Color x:Key="ButtonPressedDark">#30343E</Color><Color x:Key="ButtonDisabledLight">#E2E8F0</Color><Color x:Key="ButtonDisabledTextLight">#475569</Color><Color x:Key="ButtonDisabledTextDark">#AEB4BF</Color><Color x:Key="ButtonDanger">#B91C1C</Color><Color x:Key="ButtonDangerPressed">#991B1B</Color><Color x:Key="ButtonOnDanger">#FFFFFF</Color>
 </ResourceDictionary>

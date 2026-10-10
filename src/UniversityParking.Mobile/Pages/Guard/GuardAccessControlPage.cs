@@ -26,7 +26,7 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
         var root = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) } };
         root.Add(UserViews.Stack(UserViews.Heading(Title), GuardViews.Lot()), 0, 0);
         var scanner = new Grid(); scanner.Add(cameraHolder);
-        var hint = UserViews.Text("Escanea el código QR del carné"); hint.VerticalOptions = LayoutOptions.End; hint.HorizontalTextAlignment = TextAlignment.Center;
+        var hint = UserViews.Text("Escanea el QR o código de barras de identificación"); hint.VerticalOptions = LayoutOptions.End; hint.HorizontalTextAlignment = TextAlignment.Center;
         hint.BackgroundColor = Colors.Black; hint.TextColor = Colors.White; hint.Padding = 12; scanner.Add(hint);
         var body = new Grid(); body.Add(scanner); root.Add(body, 0, 1);
 
@@ -40,7 +40,9 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
         }));
         Overlay(body, UserViews.Stack(UserViews.Heading("Selecciona el vehículo que está ingresando"), selection), "ShowSelection");
 
-        var evidence = new Image { HeightRequest = 260, Aspect = Aspect.AspectFit };
+        inspection.HeightRequest = 260;
+        inspection.InspectionChanged += (_, _) => vm.IsInspectingEvidence = inspection.IsInspecting;
+        var evidence = inspection.Image;
         evidence.SetBinding(Image.SourceProperty, new Binding("Evidence", converter: new BytesImageConverter()));
         byte[]? renderingBytes = null;
         evidence.PropertyChanged += (_, e) =>
@@ -54,32 +56,25 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
                 vm.ReportEvidenceRendered(expected, displayed);
             });
         };
-        var tap = new TapGestureRecognizer(); tap.SetBinding(TapGestureRecognizer.CommandProperty, "OpenZoomCommand"); evidence.GestureRecognizers.Add(tap);
         var enter = UserViews.Button("✓ REGISTRAR INGRESO", "ConfirmCommand"); enter.SetBinding(IsVisibleProperty, "ShowEntry"); enter.SetBinding(IsEnabledProperty, "CanConfirm");
         var exit = UserViews.Button("✓ REGISTRAR SALIDA", "ConfirmCommand"); exit.SetBinding(IsVisibleProperty, "ShowExit"); exit.SetBinding(IsEnabledProperty, "CanConfirm");
         Overlay(body, UserViews.Stack(UserViews.Bound("UserSummary"), UserViews.Bound("VehicleSummary"), UserViews.Bound("MovementSummary", true),
-            UserViews.Bound("EvidenceLabel"), evidence, UserViews.Text("Toca para ampliar", true), UserViews.Bound("VisualInstruction", true),
-            UserViews.Button("REINTENTAR IMAGEN", "ReloadEvidenceCommand"), enter, exit), "ShowConfirmation");
+            UserViews.Bound("EvidenceLabel"), inspection, UserViews.Text("Mantén presionada y arrastra para inspeccionar. Suelta para volver a la imagen completa.", true), UserViews.Bound("VisualInstruction", true),
+            enter, exit), "ShowConfirmation");
         Overlay(body, UserViews.Stack(UserViews.Bound("ResultMessage"), UserViews.Button("CONTINUAR", "ContinueCommand")), "ShowSuccess");
 
         var busy = new ActivityIndicator(); busy.SetBinding(ActivityIndicator.IsRunningProperty, "IsBusy"); busy.SetBinding(IsVisibleProperty, "IsBusy");
         var error = UserViews.Bound("ErrorMessage"); error.SetDynamicResource(Label.TextColorProperty, "Danger");
-        var cancel = UserViews.Button("CANCELAR / VOLVER A ESCANEAR", "CancelCommand"); cancel.SetBinding(IsVisibleProperty, "ShowReset"); cancel.SetBinding(IsEnabledProperty, "CanReset");
+        var cancel = UserViews.Button("ESCANEAR DE NUEVO", "CancelCommand"); cancel.SetBinding(IsVisibleProperty, "ShowReset"); cancel.SetBinding(IsEnabledProperty, "CanReset");
         var verify = UserViews.Button("VERIFICAR ESTADO", "VerifyCommand"); verify.SetBinding(IsVisibleProperty, "NeedsVerification");
         var manualButton = UserViews.Button("REGISTRAR MANUALMENTE", "ManualCommand"); manualButton.SetBinding(IsEnabledProperty, "CanManual");
         root.Add(UserViews.Stack(busy, error, verify, cancel, manualButton), 0, 2);
 
-        var zoom = new Grid { BackgroundColor = Colors.Black, RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star) }, IsClippedToBounds = true };
-        zoom.SetBinding(IsVisibleProperty, "ZoomOpen");
-        inspection.Image.SetBinding(Image.SourceProperty, new Binding("Evidence", converter: new BytesImageConverter()));
-        zoom.Add(UserViews.Stack(UserViews.Button("CERRAR IMAGEN", "CloseZoomCommand"),
-            UserViews.Text("Mantén presionada y arrastra. Suelta para volver a la imagen completa.", true)), 0, 0);
-        zoom.Add(inspection, 0, 1);
-        root.Add(zoom, 0, 0); Grid.SetRowSpan(zoom, 3); Content = root;
+        Content = root;
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(vm.CameraMounted) or nameof(vm.IsDetecting)) MainThread.BeginInvokeOnMainThread(UpdateCamera);
-            if (e.PropertyName == nameof(vm.ZoomOpen)) inspection.Reset();
+            if (e.PropertyName == nameof(vm.State)) inspection.Reset();
         };
     }
     private static void Overlay(Grid body, View content, string visible)
@@ -93,7 +88,7 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
         if (camera is null)
         {
             camera = new CameraBarcodeReaderView { CameraLocation = CameraLocation.Rear,
-                Options = new BarcodeReaderOptions { Formats = BarcodeFormats.TwoDimensional, AutoRotate = true, Multiple = false } };
+                Options = new BarcodeReaderOptions { Formats = BarcodeFormat.QrCode | BarcodeFormats.OneDimensional, AutoRotate = true, Multiple = false } };
             camera.BarcodesDetected += Detected; cameraHolder.Add(camera);
         }
         camera.IsDetecting = vm.IsDetecting;
