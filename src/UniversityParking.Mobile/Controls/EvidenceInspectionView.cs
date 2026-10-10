@@ -6,6 +6,9 @@ public sealed class EvidenceInspectionView : ContentView
 {
     public Image Image { get; } = new() { Aspect = Aspect.AspectFit, AnchorX = .5, AnchorY = .5, InputTransparent = true };
     private readonly EvidenceViewport viewport = new();
+    public bool IsInspecting => viewport.Pressed;
+    public event EventHandler? InspectionChanged;
+    private bool reportedInspection;
 #if ANDROID
     private global::Android.Views.View? touchSurface;
 #endif
@@ -40,7 +43,12 @@ public sealed class EvidenceInspectionView : ContentView
         touchSurface?.Parent?.RequestDisallowInterceptTouchEvent(false);
 #endif
     }
-    private void Apply() { Image.Scale = viewport.Scale; Image.TranslationX = viewport.X; Image.TranslationY = viewport.Y; }
+    private void Apply()
+    {
+        Image.Scale = viewport.Scale; Image.TranslationX = viewport.X; Image.TranslationY = viewport.Y;
+        if (reportedInspection == IsInspecting) return;
+        reportedInspection = IsInspecting; InspectionChanged?.Invoke(this, EventArgs.Empty);
+    }
 #if ANDROID
     private void Touch(object? sender, global::Android.Views.View.TouchEventArgs args)
     {

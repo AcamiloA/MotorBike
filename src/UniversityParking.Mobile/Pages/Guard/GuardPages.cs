@@ -39,7 +39,7 @@ public sealed class GuardHomePage : UserPage<GuardHomeViewModel>
     {
         var lot = GuardViews.Picker("Lots.Lots", "Lots.Selected", "Name", "Parqueadero activo");
         lot.SelectedIndexChanged += async (_, _) => { if (!vm.IsBusy) await vm.UpdateCommand.ExecuteAsync(null); };
-        Form(UserViews.Input(lot),UserViews.Refresh(new ScrollView{Content=UserViews.Bound("Summary")},"UpdateCommand"),UserViews.Button("REINTENTAR PARQUEADEROS","LoadCommand"));
+        Form(UserViews.Input(lot),UserViews.Refresh(new ScrollView{Content=UserViews.Bound("Summary")},"UpdateCommand"),UserViews.RefreshButton("LoadCommand"));
     }
 }
 public sealed class VehiclesInsidePage : UserPage<VehiclesInsideViewModel>

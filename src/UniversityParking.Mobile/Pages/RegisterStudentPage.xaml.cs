@@ -8,5 +8,10 @@ public partial class RegisterStudentPage : ContentPage
     public RegisterStudentPage(RegisterStudentViewModel viewModel){InitializeComponent();BindingContext=ViewModel=viewModel;}
     protected override async void OnAppearing(){base.OnAppearing();await ViewModel.LoadCommand.ExecuteAsync(null);}
     protected override void OnDisappearing(){ViewModel.Leave();base.OnDisappearing();}
-    protected override bool OnBackButtonPressed(){if(!ViewModel.IsBusy)_=ViewModel.BackCommand.ExecuteAsync(null);return true;}
+    protected override bool OnBackButtonPressed()
+    {
+        if(ViewModel.IsBusy)return base.OnBackButtonPressed();
+        _=ViewModel.BackCommand.ExecuteAsync(null);
+        return true;
+    }
 }

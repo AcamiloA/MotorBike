@@ -43,6 +43,21 @@ public sealed partial class ParkingEndpointTests
         var after=(await (await client.PostAsJsonAsync("/api/v1/parking/access/lookup",new ParkingAccessRequest(Qr))).Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
         Assert.Equal(movement.MovementId,after.CurrentMovement!.MovementId);Assert.Empty(after.EligibleVehicles);Assert.Equal(vehicle.Id,after.CurrentVehicle!.Id);
     }
+    [Fact] public async Task PlainBarcodeUsesIdentificationEvenWhenAnotherUserCardMatches()
+    {
+        var other=await UserAsync(MemberType.STAFF);
+        await using(var db=fixture.CreateContext())
+        {
+            var impostor=(await db.Users.FindAsync(other.Id))!;
+            impostor.Update(impostor.FullName,impostor.UniversityId,impostor.Career,impostor.MemberType,new CardCode(target.IdentificationNumber.Value),clock.UtcNow);
+            await db.SaveChangesAsync();
+        }
+        var response=await client.PostAsJsonAsync("/api/v1/parking/access/lookup",new ParkingAccessRequest("  "+target.IdentificationNumber.Value+"  "));
+        Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+        var result=(await response.Content.ReadFromJsonAsync<ParkingAccessResponse>())!;
+        Assert.Equal(target.Id,result.User.Id);Assert.NotEqual(other.Id,result.User.Id);
+        Assert.Equal(vehicle.Id,result.EligibleVehicles.Single().Id);
+    }
     [Theory] [InlineData(VehicleType.CAR)] [InlineData(VehicleType.MOTORCYCLE)] [InlineData(VehicleType.BICYCLE)]
     public async Task LookupProjectsOnlyPrivateAuthoritativeEvidence(VehicleType type)
     {

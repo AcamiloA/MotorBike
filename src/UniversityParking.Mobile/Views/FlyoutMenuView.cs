@@ -61,6 +61,14 @@ public sealed class FlyoutMenuView : ContentView
         // A transparent button preserves command/CanExecute and accessibility behavior.
         var button = new Button { Text = "", Command = command, CommandParameter = parameter, BackgroundColor = Colors.Transparent,
             BorderWidth = 0, Padding = 0, Margin = new Thickness(-12, -8) };
+        var transparentStates = new VisualStateGroup { Name = "CommonStates" };
+        foreach (var name in new[] { "Normal", "Pressed", "Disabled" })
+        {
+            var state = new VisualState { Name = name };
+            state.Setters.Add(new Setter { Property = BackgroundColorProperty, Value = Colors.Transparent });
+            transparentStates.States.Add(state);
+        }
+        VisualStateManager.SetVisualStateGroups(button, new VisualStateGroupList { transparentStates });
         grid.Add(button); Grid.SetColumnSpan(button, 2);
         return (row, text, button);
     }

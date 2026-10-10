@@ -30,8 +30,31 @@ internal static class UserViews
     public static Button Button(string text, string command, object? source = null, string? parameter = null)
     {
         var button = new Button { Text = text }; button.SetBinding(Microsoft.Maui.Controls.Button.CommandProperty, new Binding(command, source: source));
+        var kind = ButtonPresentation.ForCommand(command);
+        button.SetDynamicResource(VisualElement.StyleProperty, ButtonPresentation.Style(kind));
+        if (kind is ButtonKind.Secondary or ButtonKind.Danger) button.HorizontalOptions = LayoutOptions.Start;
+        if (kind == ButtonKind.Icon) { button.Text = "↻"; SemanticProperties.SetDescription(button, "Actualizar contenido"); }
         button.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: source));
         if (parameter is not null) button.SetBinding(Microsoft.Maui.Controls.Button.CommandParameterProperty, parameter); return button;
+    }
+    public static Button RefreshButton(string command, string description = "Actualizar contenido", object? source = null)
+    {
+        var button = Button("↻", command, source);
+        button.SetDynamicResource(VisualElement.StyleProperty, "IconButton");
+        SemanticProperties.SetDescription(button, description);
+        return button;
+    }
+    public static View UniversityCatalog(View picker,string loadedProperty)
+    {
+        var notice=Text("",true);
+        notice.SetBinding(Label.TextProperty,new MultiBinding
+        {
+            Converter=new UniversityParking.Mobile.Controls.UniversityCatalogStatusConverter(),
+            Bindings={new Binding("IsBusy"),new Binding(loadedProperty),new Binding("Universities.Count"),new Binding("ErrorMessage")}
+        });
+        var row=new Grid{ColumnDefinitions={new ColumnDefinition(GridLength.Star),new ColumnDefinition(GridLength.Auto)},ColumnSpacing=8};
+        row.Add(notice);row.Add(RefreshButton("LoadCommand","Actualizar universidades"),1);
+        return Stack(picker,row);
     }
     public static Entry Entry(string path, string placeholder, bool password = false, bool busyBinding = true)
     {
@@ -71,7 +94,7 @@ internal static class UserViews
         var container = new VerticalStackLayout { Spacing = 18 }; BindableLayout.SetItemsSource(container, null); container.SetBinding(BindableLayout.ItemsSourceProperty, "Documents");
         BindableLayout.SetItemTemplate(container, new DataTemplate(() =>
         {
-            var pick = new Button { Text = "SELECCIONAR ARCHIVO" }; pick.SetBinding(Microsoft.Maui.Controls.Button.CommandProperty, "PickCommand"); pick.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: vm));
+            var pick = new Button { Text = "SELECCIONAR ARCHIVO", HorizontalOptions = LayoutOptions.Start }; pick.SetBinding(Microsoft.Maui.Controls.Button.CommandProperty, "PickCommand"); pick.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: vm));
             var issued = new CheckBox(); issued.SetBinding(CheckBox.IsCheckedProperty, "HasIssuedOn");
             var expires = new CheckBox(); expires.SetBinding(CheckBox.IsCheckedProperty, "HasExpiresOn");
             var dateIssued = new DatePicker(); dateIssued.SetBinding(DatePicker.DateProperty, "IssuedOn"); dateIssued.SetBinding(VisualElement.IsVisibleProperty, "HasIssuedOn");
@@ -113,7 +136,7 @@ public sealed class VehicleCardView : Border
         var open = UserViews.Button("VER DETALLE", openCommand, vm, "Id");
         var spinner = new ActivityIndicator(); spinner.SetBinding(ActivityIndicator.IsRunningProperty, "IsBusy"); spinner.SetBinding(IsVisibleProperty, "IsBusy");
         var photoError = UserViews.Bound("ErrorMessage", true); photoError.SetDynamicResource(Label.TextColorProperty, "Danger");
-        var retryPhoto = UserViews.Button("REINTENTAR FOTO", "LoadPhotoCommand"); retryPhoto.SetBinding(IsVisibleProperty, new Binding("ErrorMessage", converter: new NonEmptyConverter()));
+        var retryPhoto = UserViews.RefreshButton("LoadPhotoCommand"); retryPhoto.SetBinding(IsVisibleProperty, new Binding("ErrorMessage", converter: new NonEmptyConverter()));
         Content = UserViews.Stack(new HorizontalStackLayout { Spacing = 10, Children = { icon, UserViews.Bound("TypeName") } }, UserViews.Bound("Identifier"),
             UserViews.Bound("Heading"), UserViews.Image("Photo", 130), spinner, photoError, retryPhoto, UserViews.Bound("Summary", true), UserViews.Bound("Registration", true), UserViews.Bound("Location"), open);
         BindingContextChanged += async (_, _) => { if (BindingContext is VehicleCardViewModel card) await card.LoadPhotoCommand.ExecuteAsync(null); };
@@ -128,7 +151,7 @@ public sealed class UserHomePage : UserPage<UserHomeViewModel>
         BindableLayout.SetItemTemplate(news, new DataTemplate(() => UserViews.Card(UserViews.Stack(
             NewsTitle(vm), UserViews.Bound("Published", true), UserViews.Bound("Item.Content")))));
         var empty = UserViews.Text("No hay noticias o comunicados publicados.", true); empty.SetBinding(IsVisibleProperty, "IsNewsEmpty");
-        var retry = UserViews.Button("REINTENTAR", "LoadCommand"); retry.SetBinding(IsVisibleProperty, "CanRetry");
+        var retry = UserViews.RefreshButton("LoadCommand"); retry.SetBinding(IsVisibleProperty, "CanRetry");
         Form(news, empty, retry);
     }
 }
@@ -136,7 +159,7 @@ public sealed class MyVehiclesPage : UserPage<MyVehiclesViewModel>
 {
     public MyVehiclesPage(MyVehiclesViewModel vm) : base(vm, "Mis vehículos", () => vm.LoadCommand.ExecuteAsync(null)) =>
         Layout(UserViews.EmptyList(UserViews.Refresh(UserViews.List("Vehicles", new DataTemplate(() => new VehicleCardView(vm, "OpenCommand"))), "LoadCommand"), "No tienes vehículos registrados."),
-            UserViews.Stack(UserViews.Button("REGISTRAR VEHÍCULO", "RegisterCommand"), UserViews.Button("REINTENTAR", "LoadCommand")));
+            UserViews.Stack(UserViews.Button("REGISTRAR VEHÍCULO", "RegisterCommand"), UserViews.RefreshButton("LoadCommand")));
 }
 public sealed class VehicleDetailPage : UserPage<VehicleDetailViewModel>
 {
@@ -149,7 +172,7 @@ public sealed class VehicleDetailPage : UserPage<VehicleDetailViewModel>
         var status = UserViews.Button("", "ChangeStatusCommand"); status.SetBinding(Button.TextProperty, "StatusAction"); status.SetBinding(IsVisibleProperty, "IsOwner");
         var archive=UserViews.Button("ELIMINAR VEHÍCULO","ArchiveCommand");archive.SetBinding(IsVisibleProperty,"IsOwner");
         Form(UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationPending", true), UserViews.Image("Photo", 220), UserViews.Bound("Identifier"), UserViews.Bound("Heading"), UserViews.Bound("Summary", true), UserViews.Bound("Period", true),
-            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(),archive, UserViews.Button("REINTENTAR", "LoadCommand"));
+            UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(),archive, UserViews.RefreshButton("LoadCommand"));
     }
     private static Button VerificationButton() { var b = UserViews.Button("ACTUALIZAR EVIDENCIA", "UpdateVerificationCommand"); b.SetBinding(IsVisibleProperty, "CanUpdateVerification"); return b; }
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
@@ -176,7 +199,7 @@ public sealed class EditVehiclePage : UserPage<EditVehicleViewModel>
 public sealed class RenewRegistrationPage : UserPage<RenewRegistrationViewModel>
 {
     public RenewRegistrationPage(RenewRegistrationViewModel vm) : base(vm, "Renovar registro", () => vm.LoadCommand.ExecuteAsync(null), once: true) =>
-        Form(UserViews.Bound("Heading"), UserViews.Bound("Period", true), UserViews.Text("Se reutiliza la evidencia de verificación del vehículo. Si está pendiente, actualízala desde el detalle.", true), UserViews.Button("RENOVAR REGISTRO", "SaveCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
+        Form(UserViews.Bound("Heading"), UserViews.Bound("Period", true), UserViews.Text("Se reutiliza la evidencia de verificación del vehículo. Si está pendiente, actualízala desde el detalle.", true), UserViews.Button("RENOVAR REGISTRO", "SaveCommand"), UserViews.RefreshButton("LoadCommand"));
     public override void ApplyQueryAttributes(IDictionary<string, object> query) => ViewModel.VehicleId = VehicleId(query);
 }
 public sealed class MyHistoryPage : UserPage<MyHistoryViewModel>
@@ -193,7 +216,7 @@ public sealed class MyHistoryPage : UserPage<MyHistoryViewModel>
 public sealed class NewsPage : UserPage<NewsViewModel>
 {
     public NewsPage(NewsViewModel vm) : base(vm, "Noticias", () => vm.RefreshCommand.ExecuteAsync(null)) =>
-        Layout(UserViews.EmptyList(UserViews.Refresh(UserViews.List("Items", UserViews.NewsTemplate(vm)), "RefreshCommand"), "No hay noticias publicadas."), UserViews.Stack(UserViews.Button("REINTENTAR", "RefreshCommand"), UserViews.Pager(vm)));
+        Layout(UserViews.EmptyList(UserViews.Refresh(UserViews.List("Items", UserViews.NewsTemplate(vm)), "RefreshCommand"), "No hay noticias publicadas."), UserViews.Stack(UserViews.RefreshButton("RefreshCommand"), UserViews.Pager(vm)));
 }
 public sealed class NewsDetailPage : UserPage<NewsDetailViewModel>
 {
@@ -206,7 +229,7 @@ public sealed class ProfilePage : UserPage<ProfileViewModel>
     public ProfilePage(ProfileViewModel vm) : base(vm, "Mi perfil", () => vm.LoadCommand.ExecuteAsync(null)) =>
         Form(UserViews.Text("Nombre", true), UserViews.Bound("Profile.FullName"), UserViews.Text("Identificación", true), UserViews.Bound("Profile.IdentificationNumber"),
             UserViews.Text("Universidad", true), UserViews.Bound("Profile.UniversityName"), UserViews.Text("Carrera", true), UserViews.Bound("Profile.Career"), UserViews.Bound("MemberType"), UserViews.Bound("Roles", true),
-            UserViews.Text("Correo",true),UserViews.Bound("Profile.Email"),UserViews.Text("Teléfono",true),UserViews.Bound("Profile.PhoneNumber"), UserViews.Button("EDITAR PERFIL", "EditCommand"), UserViews.Button("CAMBIAR CONTRASEÑA", "PasswordCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"), UserViews.Button("REINTENTAR", "LoadCommand"));
+            UserViews.Text("Correo",true),UserViews.Bound("Profile.Email"),UserViews.Text("Teléfono",true),UserViews.Bound("Profile.PhoneNumber"), UserViews.Button("EDITAR PERFIL", "EditCommand"), UserViews.Button("CAMBIAR CONTRASEÑA", "PasswordCommand"), UserViews.Button("CERRAR SESIÓN", "LogoutCommand"), UserViews.RefreshButton("LoadCommand"));
 }
 public sealed class EditProfilePage : UserPage<EditProfileViewModel>
 {

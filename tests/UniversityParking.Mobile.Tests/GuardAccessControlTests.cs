@@ -29,7 +29,7 @@ public sealed partial class GuardFeatureTests
         var pending = new TaskCompletionSource<HttpResponseMessage>(); var lookups=0; string? body=null;
         var setup=await AccessSetup(async r=>{lookups++;body=await r.Content!.ReadAsStringAsync();return await pending.Task;});
         Assert.True(setup.Vm.IsDetecting); var first=setup.Vm.ScanAsync("MTAxNDI4NTU1Mw==");
-        await setup.Vm.ScanAsync("duplicate"); Assert.Equal(1,lookups); Assert.False(setup.Vm.IsDetecting); Assert.True(setup.Vm.CameraMounted);
+        await setup.Vm.ScanAsync("1014285553"); Assert.Equal(1,lookups); Assert.False(setup.Vm.IsDetecting); Assert.True(setup.Vm.CameraMounted);
         pending.SetResult(Ok(Ready())); await first;
         Assert.Contains("qrPayload",body); Assert.DoesNotContain("cardCode",body);
         Assert.Equal(GuardAccessState.CONFIRMING_ENTRY,setup.Vm.State); Assert.True(setup.Vm.CanConfirm); Assert.True(setup.Vm.CameraMounted); Assert.False(setup.Vm.ShowExit);
@@ -97,11 +97,16 @@ public sealed partial class GuardFeatureTests
         await setup.Vm.ScanAsync("QR");Assert.True(setup.Vm.ShowExit);Assert.False(setup.Vm.ShowEntry);Assert.Empty(setup.Vm.Vehicles);Assert.Equal(open.VehicleId,setup.Vm.SelectedVehicle!.Id);
     }
     [Theory] [InlineData(false)] [InlineData(true)]
-    public async Task ZoomClosePreservesConfirmationAndPausedScanner(bool exiting)
+    public async Task InlineInspectionPreservesConfirmationAndPausedScanner(bool exiting)
     {
         var setup=await AccessSetup(_=>Task.FromResult(Ok(Ready(exiting?Movement():null))));await setup.Vm.ScanAsync("QR");var state=setup.Vm.State;
-        setup.Vm.OpenZoomCommand.Execute(null);Assert.True(setup.Vm.ZoomOpen);Assert.True(setup.Vm.CameraMounted);Assert.False(setup.Vm.IsDetecting);Assert.False(setup.Vm.CanConfirm);
-        setup.Vm.CloseZoomCommand.Execute(null);Assert.Equal(state,setup.Vm.State);Assert.False(setup.Vm.IsDetecting);Assert.True(setup.Vm.CanConfirm);
+        var user=setup.Vm.Access;var vehicle=setup.Vm.SelectedVehicle;var movement=setup.Vm.Movement;var bytes=setup.Vm.Evidence;
+        var viewport=new EvidenceViewport();viewport.TouchDown(150,130,300,260,300,260);
+        setup.Vm.IsInspectingEvidence=viewport.Pressed;Assert.True(setup.Vm.CameraMounted);Assert.False(setup.Vm.IsDetecting);Assert.False(setup.Vm.CanConfirm);
+        await setup.Vm.ScanAsync("1014285553");viewport.TouchMove(200,150);
+        Assert.Same(user,setup.Vm.Access);Assert.Same(vehicle,setup.Vm.SelectedVehicle);Assert.Same(movement,setup.Vm.Movement);Assert.Same(bytes,setup.Vm.Evidence);
+        viewport.TouchUp();setup.Vm.IsInspectingEvidence=viewport.Pressed;
+        Assert.Equal(state,setup.Vm.State);Assert.False(setup.Vm.IsDetecting);Assert.True(setup.Vm.CanConfirm);Assert.Equal(1,viewport.Scale);
         setup.Vm.CancelCommand.Execute(null);Assert.True(setup.Vm.IsDetecting);
     }
     [Theory] [InlineData(false)] [InlineData(true)]

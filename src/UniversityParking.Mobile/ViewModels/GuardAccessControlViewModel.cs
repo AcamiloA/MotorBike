@@ -44,7 +44,7 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
     [ObservableProperty] private ParkingMovementResponse? movement;
     [ObservableProperty] private byte[]? evidence;
     [ObservableProperty] private bool evidenceRendered;
-    [ObservableProperty] private bool zoomOpen;
+    [ObservableProperty] private bool isInspectingEvidence;
     [ObservableProperty] private bool needsVerification;
     [ObservableProperty] private string resultMessage = "";
     public bool CameraMounted => active && cameraGranted;
@@ -56,9 +56,9 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
     public bool ShowExit => State == GuardAccessState.CONFIRMING_EXIT;
     public bool ShowSuccess => State is GuardAccessState.SUCCESS_ENTRY or GuardAccessState.SUCCESS_EXIT;
     public bool ShowReset => State is GuardAccessState.MANUAL_LOOKUP or GuardAccessState.SELECTING_VEHICLE or GuardAccessState.CONFIRMING_ENTRY or GuardAccessState.CONFIRMING_EXIT or GuardAccessState.ERROR;
-    public bool CanConfirm => active && lots.IsGuard && !IsBusy && !NeedsVerification && !ZoomOpen &&
+    public bool CanConfirm => active && lots.IsGuard && !IsBusy && !NeedsVerification && !IsInspectingEvidence &&
         operationLot == lots.Selected?.Id && (ShowExit && Movement?.Status == "OPEN" || ShowEntry && EvidenceRendered && Evidence is { Length: > 0 } && SelectedVehicle is not null);
-    public bool CanManual => active && lots.IsGuard && !IsBusy && !ZoomOpen && !NeedsVerification;
+    public bool CanManual => active && lots.IsGuard && !IsBusy && !IsInspectingEvidence && !NeedsVerification;
     public bool CanReset => active && !IsBusy && !NeedsVerification;
     public string UserSummary => Access is null ? Movement?.UserFullName ?? "" : $"{Access.User.FullName}\n{Access.User.MemberType} · {AdminPresentation.Status(Access.User.Status)}";
     public string VehicleSummary => SelectedVehicle is { } vehicle ? $"{VehiclePresentation.TypeName(vehicle.Type)}\n{(vehicle.Type is "BICYCLE" or "SCOOTER" ? "MARCO REGISTRADO" : "PLACA REGISTRADA")}: {vehicle.Identifier}\n{vehicle.Brand} {vehicle.Model}" : "";
@@ -73,7 +73,7 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
         lots.PropertyChanged += LotChanged;
         PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(State) or nameof(IsBusy) or nameof(ZoomOpen) or nameof(NeedsVerification) or nameof(Evidence) or nameof(EvidenceRendered)) NotifyFlow();
+            if (e.PropertyName is nameof(State) or nameof(IsBusy) or nameof(IsInspectingEvidence) or nameof(NeedsVerification) or nameof(Evidence) or nameof(EvidenceRendered)) NotifyFlow();
             if (e.PropertyName is nameof(Access) or nameof(SelectedVehicle) or nameof(Movement))
                 foreach (var name in new[] { nameof(UserSummary), nameof(VehicleSummary), nameof(MovementSummary), nameof(EvidenceLabel), nameof(VisualInstruction), nameof(CanConfirm) }) OnPropertyChanged(name);
         };
@@ -129,7 +129,7 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
     }
     private void ClearContext()
     {
-        Access = null; SelectedVehicle = null; Movement = null; Evidence = null; Vehicles.Clear(); ZoomOpen = false;
+        Access = null; SelectedVehicle = null; Movement = null; Evidence = null; Vehicles.Clear(); IsInspectingEvidence = false;
         identity = null; operationLot = null; attemptedMovement = null; NeedsVerification = false; ResultMessage = ErrorMessage = IdentificationNumber = "";
     }
     private void Reset()
@@ -203,7 +203,7 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
         var bytes = SelectedVehicle is { } vehicle ? await ReadImageAsync(vehicle) : null;
         if (!await CurrentAsync(epoch)) return;
         Evidence = bytes;
-        if (bytes is null) ErrorMessage = ShowEntry ? "No fue posible cargar la evidencia del vehículo. Intenta nuevamente." : "Evidencia no disponible. Puedes registrar la salida.";
+        if (bytes is null) ErrorMessage = ShowEntry ? "No fue posible cargar la evidencia del vehículo. No puedes registrar el ingreso." : "Evidencia no disponible. Puedes registrar la salida.";
     }
     [RelayCommand] private Task SelectAsync(GuardVehicleChoice? choice) => WorkAsync(async () =>
     {
@@ -211,9 +211,6 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
         SelectedVehicle = choice.Vehicle; State = GuardAccessState.CONFIRMING_ENTRY; Evidence = choice.Image;
         if (Evidence is null) await LoadEvidenceAsync(generation);
     });
-    [RelayCommand] private Task ReloadEvidenceAsync() => WorkAsync(async () => { if (ShowConfirmation && await CurrentAsync(generation)) await LoadEvidenceAsync(generation); });
-    [RelayCommand] private void OpenZoom() { if (ShowConfirmation && Evidence is { Length: > 0 } && !IsBusy) ZoomOpen = true; }
-    [RelayCommand] private void CloseZoom() => ZoomOpen = false;
     [RelayCommand] private Task ConfirmAsync()
     {
         if (!CanConfirm) return Task.CompletedTask;
@@ -234,7 +231,7 @@ public partial class GuardAccessControlViewModel : UserFeatureViewModel
     }
     private void Success(ParkingMovementResponse result, bool isExit)
     {
-        Movement = result; NeedsVerification = false; ErrorMessage = ""; ZoomOpen = false;
+        Movement = result; NeedsVerification = false; ErrorMessage = ""; IsInspectingEvidence = false;
         ResultMessage = $"{(isExit ? "SALIDA REGISTRADA" : "INGRESO REGISTRADO")}\n{result.VehicleIdentifier} · {result.ParkingLotName}\n{MobileDates.Display(isExit ? result.CheckOutAtUtc!.Value : result.CheckInAtUtc)}" + (isExit ? $"\nDuración: {result.Duration}" : "");
         State = isExit ? GuardAccessState.SUCCESS_EXIT : GuardAccessState.SUCCESS_ENTRY;
     }

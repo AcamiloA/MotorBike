@@ -11,11 +11,16 @@ public sealed class GuardAccessTests
     [InlineData("MTAxNDI4NTU1Mw==", "1014285553")]
     [InlineData("  MTAxNDI4NTU1Mw==\r\n", "1014285553")]
     [InlineData("IDAwMSA=", "001")]
+    [InlineData(" 1014285553 ", "1014285553")]
+    [InlineData("12345678", "12345678")]
+    [InlineData("ID-001", "ID-001")]
+    [InlineData("AAAA", "AAAA")]
     public void ParserNormalizesInstitutionalIdentity(string raw, string identity)
         => Assert.Equal(identity, new QrIdentityParser().Parse(raw).Value.Value);
 
     [Theory]
-    [InlineData(null)] [InlineData("")] [InlineData(" ")] [InlineData("not-base64")]
+    [InlineData(null)] [InlineData("")] [InlineData(" ")] [InlineData("not/base64!")]
+    [InlineData("role=ADMIN")] [InlineData("{\"UserId\":\"123\"}")]
     [InlineData("/w==")] [InlineData("wK8=")] [InlineData("IA==")]
     [InlineData("eyJyb2xlIjoiR1VBUkQifQ==")] [InlineData("VkVISUNMRUlEPTEx")]
     public void ParserRejectsInvalidOrStructuredInput(string? raw)
@@ -27,6 +32,7 @@ public sealed class GuardAccessTests
     {
         var parser = new QrIdentityParser();
         Assert.True(parser.Parse(new('A', 257)).IsFailure);
+        Assert.True(parser.Parse(new('1', 51)).IsFailure);
         Assert.True(parser.Parse(Convert.ToBase64String(Encoding.UTF8.GetBytes(new string('1', 51)))).IsFailure);
         Assert.True(parser.Parse(Convert.ToBase64String(Encoding.UTF8.GetBytes("roles:ADMIN"))).IsFailure);
     }

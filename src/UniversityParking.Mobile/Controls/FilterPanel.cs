@@ -16,7 +16,8 @@ public static class FilterPanel
         void Write(IReadOnlyDictionary<string,object?> values){foreach(var p in fields.OrderBy(p=>p.Name is "TargetUserId" or "TargetVehicleId"?1:0))p.SetValue(vm,values[p.Name]);}
         var initial=Read();var defaults=new Dictionary<string,object?>(initial);if(hasDates)defaults["DateFilterApplied"]=false;
         var state=new FilterState(defaults);foreach(var item in initial)state.DraftFilters[item.Key]=item.Value;state.Apply();
-        var button=new ImageButton{Source="filter_funnel.png",WidthRequest=48,HeightRequest=48,Padding=10,BackgroundColor=Color.FromArgb("#334155"),CornerRadius=12};
+        var button=new ImageButton{Source="filter_funnel.png"};
+        button.SetDynamicResource(VisualElement.StyleProperty,"IconImageButton");
         button.SetBinding(VisualElement.IsEnabledProperty,new Binding("IsNotBusy",source:vm));
         SemanticProperties.SetDescription(button,"Abrir filtros");
         var badge=new Label{FontSize=12,BackgroundColor=Color.FromArgb("#2563EB"),TextColor=Colors.White,Padding=4,HorizontalOptions=LayoutOptions.End,VerticalOptions=LayoutOptions.Start,InputTransparent=true,IsVisible=false};
@@ -53,8 +54,11 @@ public static class FilterPanel
             state.Open();Write(state.DraftFilters);
             var page=new ContentPage{Title="Filtros",BindingContext=vm};var accepted=false;
             var apply=new Button{Text="APLICAR FILTROS"};var clear=new Button{Text="BORRAR FILTROS",IsEnabled=state.CanClear};
+            apply.SetDynamicResource(VisualElement.StyleProperty,"PrimaryButton");
+            clear.SetDynamicResource(VisualElement.StyleProperty,"SecondaryButton");
             apply.SetBinding(VisualElement.IsEnabledProperty,"IsNotBusy");
-            var panel=new VerticalStackLayout{Spacing=12,Padding=20};panel.Add(filters);panel.Add(new HorizontalStackLayout{Spacing=8,Children={apply,clear}});
+            clear.HorizontalOptions=LayoutOptions.Start;
+            var panel=new VerticalStackLayout{Spacing=12,Padding=20};panel.Add(filters);panel.Add(new VerticalStackLayout{Spacing=8,Children={apply,clear}});
             page.Content=new ScrollView{Content=panel};
             apply.Clicked+=async(_,_)=>{if(accepted)return;accepted=true;state.DraftFilters.Clear();foreach(var x in Read())state.DraftFilters[x.Key]=x.Value;state.Apply();Write(state.AppliedFilters);badge.Text=state.ActiveCount.ToString();badge.IsVisible=state.CanClear;await owner.Navigation.PopModalAsync();await Refresh();};
             clear.Clicked+=async(_,_)=>{if(accepted)return;accepted=true;state.Clear();Write(state.AppliedFilters);badge.IsVisible=false;await owner.Navigation.PopModalAsync();await Refresh();};
