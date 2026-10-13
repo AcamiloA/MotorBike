@@ -27,7 +27,7 @@ public sealed class AdminDashboardPage:UserPage<AdminDashboardViewModel>
 {
     public AdminDashboardPage(AdminDashboardViewModel vm):base(vm,"Administración",()=>vm.LoadCommand.ExecuteAsync(null))
     {
-        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Card(UserViews.Bound("Summary"))},"LoadCommand"),UserViews.RefreshButton("LoadCommand"));
+        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Card(UserViews.Bound("Summary"))},"LoadCommand"));
     }
 }
 public abstract class AdminListPage<T>:UserPage<T> where T:AdminListViewModel
@@ -79,7 +79,7 @@ public sealed class AdminUserDetailPage:UserPage<AdminUserDetailViewModel>
         var approve=UserViews.Button("APROBAR REGISTRO","ApproveRegistrationCommand");approve.SetBinding(IsVisibleProperty,"IsPendingRegistration");approve.SetBinding(IsEnabledProperty,"CanReviewRegistration");
         var reject=UserViews.Button("RECHAZAR REGISTRO","RejectRegistrationCommand");reject.SetBinding(IsVisibleProperty,"IsPendingRegistration");reject.SetBinding(IsEnabledProperty,"CanReviewRegistration");
         var reset=UserViews.Stack(AdminViews.Field("TemporaryPassword","Contraseña temporal",true),AdminViews.Field("ConfirmTemporaryPassword","Confirmar contraseña temporal",true),UserViews.Button("CONFIRMAR RESTABLECIMIENTO","ResetPasswordCommand"));reset.SetBinding(IsVisibleProperty,"ShowPasswordReset");
-        var header=new ScrollView{HeightRequest=280,Content=UserViews.Stack(UserViews.Bound("Summary"),UserViews.Button("EDITAR","EditCommand"),status,approve,reject,GuardViews.Picker("Roles","SelectedRole"),UserViews.Button("ASIGNAR ROL","AssignRoleCommand"),UserViews.Button("RETIRAR ROL","RemoveRoleCommand"),UserViews.Text("USER es obligatorio y no se puede retirar."),UserViews.Button("HISTORIAL DEL USUARIO","HistoryCommand"),UserViews.Button("ACTUALIZAR","RefreshCommand"),UserViews.Heading("Vehículos actuales"))};
+        var header=new ScrollView{HeightRequest=280,Content=UserViews.Stack(UserViews.Bound("Summary"),UserViews.Button("EDITAR","EditCommand"),status,approve,reject,GuardViews.Picker("Roles","SelectedRole"),UserViews.Button("ASIGNAR ROL","AssignRoleCommand"),UserViews.Button("RETIRAR ROL","RemoveRoleCommand"),UserViews.Text("USER es obligatorio y no se puede retirar."),UserViews.Button("HISTORIAL DEL USUARIO","HistoryCommand"),UserViews.Heading("Vehículos actuales"))};
         Layout(GuardViews.ListLayout(header,AdminViews.Rows(vm,"OpenVehicleCommand"),vm),UserViews.Stack(UserViews.Button("RESTABLECER CONTRASEÑA","OpenPasswordResetCommand"),reset));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.UserId=AdminViews.Id(query,"userId");
@@ -90,7 +90,7 @@ public sealed class AdminVehicleDetailPage:UserPage<AdminVehicleDetailViewModel>
     {
         var documents=new VerticalStackLayout();documents.SetBinding(BindableLayout.ItemsSourceProperty,"Detail.Documents");BindableLayout.SetItemTemplate(documents,new DataTemplate(()=>{var button=UserViews.Button("ABRIR DOCUMENTO","DocumentCommand",vm,".");button.SetBinding(Button.TextProperty,"OriginalFileName");return button;}));
         var status=AdminViews.Save("CAMBIAR ESTADO","StatusCommand");status.SetBinding(Button.TextProperty,"StatusAction");
-        Form(UserViews.Bound("Summary"),UserViews.Bound("VerificationLabel"),UserViews.Bound("VerificationPending",true),UserViews.Image("Photo",180),UserViews.Button("ACTUALIZAR EVIDENCIA","UpdateVerificationCommand"),documents,UserViews.Button("EDITAR MARCA / MODELO / COLOR","EditCommand"),status,AdminViews.Save("CORREGIR IDENTIFICADOR","CorrectCommand"),AdminViews.Save("TRANSFERIR VEHÍCULO","TransferCommand"),UserViews.Button("PROPIEDADES, REGISTROS E HISTORIAL","HistoryCommand"),UserViews.Button("ACTUALIZAR","LoadCommand"));
+        ReadOnlyForm("LoadCommand",UserViews.Bound("Summary"),UserViews.Bound("VerificationLabel"),UserViews.Bound("VerificationPending",true),UserViews.Image("Photo",180),UserViews.Button("ACTUALIZAR EVIDENCIA","UpdateVerificationCommand"),documents,UserViews.Button("EDITAR MARCA / MODELO / COLOR","EditCommand"),status,AdminViews.Save("CORREGIR IDENTIFICADOR","CorrectCommand"),AdminViews.Save("TRANSFERIR VEHÍCULO","TransferCommand"),UserViews.Button("PROPIEDADES, REGISTROS E HISTORIAL","HistoryCommand"));
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.VehicleId=AdminViews.Id(query,"vehicleId");
 }
@@ -141,13 +141,13 @@ public sealed class AdminIncidentDetailPage:UserPage<AdminIncidentDetailViewMode
     {
         var files=new VerticalStackLayout();files.SetBinding(BindableLayout.ItemsSourceProperty,"Detail.Attachments");BindableLayout.SetItemTemplate(files,new DataTemplate(()=>{var button=UserViews.Button("ABRIR ADJUNTO","OpenCommand",vm,".");button.SetBinding(Button.TextProperty,"OriginalFileName");return button;}));
         var resolve=UserViews.Button("RESOLVER INCIDENTE","ResolveFormCommand");var cancel=UserViews.Stack(AdminViews.Field("CancelReason","Motivo de cancelación (opcional)"),AdminViews.Save("CANCELAR INCIDENTE","CancelCommand"));resolve.SetBinding(IsVisibleProperty,"IsOpen");cancel.SetBinding(IsVisibleProperty,"IsOpen");
-        Form(UserViews.Bound("Summary"),files,resolve,cancel,UserViews.Button("ACTUALIZAR","LoadCommand"));
+        Form(UserViews.Bound("Summary"),files,resolve,cancel);
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.IncidentId=AdminViews.Id(query,"incidentId");
 }
 public sealed class AdminResolveIncidentPage:UserPage<AdminIncidentDetailViewModel>
 {
-    public AdminResolveIncidentPage(AdminIncidentDetailViewModel vm):base(vm,"Resolver incidente",()=>vm.LoadCommand.ExecuteAsync(null))=>Form(UserViews.Bound("Summary"),UserViews.Input(AdminViews.Editor("Resolution","Descripción obligatoria de la resolución")),AdminViews.Save("CONFIRMAR RESOLUCIÓN","ResolveCommand"),UserViews.Button("ACTUALIZAR ESTADO","LoadCommand"));
+    public AdminResolveIncidentPage(AdminIncidentDetailViewModel vm):base(vm,"Resolver incidente",()=>vm.LoadCommand.ExecuteAsync(null))=>Form(UserViews.Bound("Summary"),UserViews.Input(AdminViews.Editor("Resolution","Descripción obligatoria de la resolución")),AdminViews.Save("CONFIRMAR RESOLUCIÓN","ResolveCommand"));
     public override void ApplyQueryAttributes(IDictionary<string,object> query)=>ViewModel.IncidentId=AdminViews.Id(query,"incidentId");
 }
 public sealed class AdminIncidentCreatePage:UserPage<AdminIncidentCreateViewModel>
