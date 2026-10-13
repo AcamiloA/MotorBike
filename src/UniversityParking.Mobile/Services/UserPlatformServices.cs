@@ -10,7 +10,14 @@ public sealed class UserNavigation(IAuthSession session) : IUserNavigation
             arguments is null ? new Dictionary<string, object>() : new Dictionary<string, object>(arguments)));
     public Task BackAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(".."));
     public Task MessageAsync(string title, string message) => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.CurrentPage.DisplayAlertAsync(title, message, "ACEPTAR"));
-    public Task<bool> ConfirmAsync(string title, string message) => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.CurrentPage.DisplayAlertAsync(title, message, "CONFIRMAR", "CANCELAR"));
+    public Task<bool> ConfirmAsync(string title, string message) => MainThread.InvokeOnMainThreadAsync(async () =>
+    {
+        if (title != "Eliminar vehículo")
+            return await Shell.Current.CurrentPage.DisplayAlertAsync(title, message, "CONFIRMAR", "CANCELAR");
+        var confirmation = new Controls.VehicleDeleteConfirmation(message);
+        await Shell.Current.CurrentPage.Navigation.PushModalAsync(confirmation);
+        return await confirmation.Result;
+    });
 }
 public sealed class AttachmentPicker : IAttachmentPicker
 {

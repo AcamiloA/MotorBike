@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:controls="clr-namespace:UniversityParking.Mobile.Controls" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" xmlns:contracts="clr-namespace:UniversityParking.Contracts.Universities;assembly=UniversityParking.Contracts" x:Class="UniversityParking.Mobile.Pages.RegisterStudentPage" x:DataType="vm:RegisterStudentViewModel" Title="Crear cuenta de estudiante">
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:controls="clr-namespace:UniversityParking.Mobile.Controls" xmlns:vm="clr-namespace:UniversityParking.Mobile.ViewModels" xmlns:contracts="clr-namespace:UniversityParking.Contracts.Universities;assembly=UniversityParking.Contracts" x:Class="UniversityParking.Mobile.Pages.RegisterStudentPage" x:DataType="vm:RegisterStudentViewModel" Title="Crear cuenta de estudiante" SafeAreaEdges="All">
  <ContentPage.Resources><controls:UniversityCatalogStatusConverter x:Key="CatalogStatus" /></ContentPage.Resources>
  <ScrollView><VerticalStackLayout Padding="28,32" Spacing="16" MaximumWidthRequest="480" HorizontalOptions="Fill">
   <Label Text="Crear cuenta de estudiante" Style="{StaticResource BrandTitle}" />
