@@ -19,22 +19,23 @@ public sealed class QrIdentityParser : IQrIdentityParser
 
     public Result<IdentificationNumber> Parse(string? payload)
     {
-        if (payload is null || payload.Length > MaximumPayloadLength) return Invalid();
+        if (payload is null) return Invalid();
         var raw = payload.AsSpan().Trim();
+        if (payload.Length > MaximumPayloadLength || raw.IsEmpty) return Invalid();
+        var plain = raw.ToString();
+        if (ValidToken(plain)) return Result<IdentificationNumber>.Success(new(plain));
         Span<byte> buffer = stackalloc byte[192];
-        if (raw.IsEmpty) return Invalid();
-        if (Convert.TryFromBase64Chars(raw, buffer, out var count)) try
+        if (!Convert.TryFromBase64Chars(raw, buffer, out var count) ||
+            !raw.SequenceEqual(Convert.ToBase64String(buffer[..count]).AsSpan())) return Invalid();
+        try
         {
             var value = StrictUtf8.GetString(buffer[..count]).Trim();
             // Institutional identifiers are text tokens, never structured payloads or claims.
             if (ValidToken(value)) return Result<IdentificationNumber>.Success(new(value));
-            // Encoded JSON/claims are never interpreted as a plain identity or permissions.
-            if (value.IndexOfAny(['{','}','[',']',':','=',',','"']) >= 0) return Invalid();
+            return Invalid();
         }
-        catch (DecoderFallbackException) { /* A plain identifier may also resemble Base64. */ }
+        catch (DecoderFallbackException) { return Invalid(); }
         catch (DomainException) { return Invalid(); }
-        var plain = raw.ToString();
-        return ValidToken(plain) ? Result<IdentificationNumber>.Success(new(plain)) : Invalid();
     }
     private static bool ValidToken(string value) => value.Length is > 0 and <= 50 &&
         value.All(c => char.IsLetterOrDigit(c) || c == '-');

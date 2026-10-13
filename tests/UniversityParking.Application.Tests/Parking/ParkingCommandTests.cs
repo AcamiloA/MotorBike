@@ -148,7 +148,7 @@ public sealed class ParkingCommandTests
     {
         var context = new ParkingTestContext();
         var lookup = new GetParkingAccessUserQueryHandler(context.Operation, context.Store, context.Store, context, context.Store, context.Store, context.Clock, new QrIdentityParser());
-        var before = await lookup.Handle(new(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("target-id")), null), default);
+        var before = await lookup.Handle(new(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(" target-id")), null), default);
         Assert.Single(before.Value.EligibleVehicles);
         await context.CheckIn.Handle(context.Request, default);
         var after = await lookup.Handle(new(null, "target-id"), default);

@@ -22,7 +22,7 @@ public sealed class GuardAccessTests
     [InlineData(null)] [InlineData("")] [InlineData(" ")] [InlineData("not/base64!")]
     [InlineData("role=ADMIN")] [InlineData("{\"UserId\":\"123\"}")]
     [InlineData("/w==")] [InlineData("wK8=")] [InlineData("IA==")]
-    [InlineData("eyJyb2xlIjoiR1VBUkQifQ==")] [InlineData("VkVISUNMRUlEPTEx")]
+    [InlineData("eyJyb2xlIjoiR1VBUkQifQ==")] [InlineData("VkVISUNMRUlEPTE=")]
     public void ParserRejectsInvalidOrStructuredInput(string? raw)
     {
         var result = new QrIdentityParser().Parse(raw);
@@ -40,7 +40,7 @@ public sealed class GuardAccessTests
     [Fact] public async Task RawPayloadMatchingAnotherCardCannotChangeResolvedIdentity()
     {
         var c = new ParkingTestContext();
-        var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(c.Target.IdentificationNumber.Value));
+        var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(" " + c.Target.IdentificationNumber.Value));
         c.Store.User.Update(c.Store.User.FullName,c.Store.User.UniversityId,c.Store.User.Career,c.Store.User.MemberType,new CardCode(payload),c.Store.UtcNow);
         var qr = (await Lookup(c).Handle(new(payload,null),default)).Value;
         var manual = (await Lookup(c).Handle(new(null,c.Target.IdentificationNumber.Value),default)).Value;

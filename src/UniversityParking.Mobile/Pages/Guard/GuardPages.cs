@@ -39,7 +39,7 @@ public sealed class GuardHomePage : UserPage<GuardHomeViewModel>
     {
         var lot = GuardViews.Picker("Lots.Lots", "Lots.Selected", "Name", "Parqueadero activo");
         lot.SelectedIndexChanged += async (_, _) => { if (!vm.IsBusy) await vm.UpdateCommand.ExecuteAsync(null); };
-        Form(UserViews.Input(lot),UserViews.Refresh(new ScrollView{Content=UserViews.Bound("Summary")},"UpdateCommand"),UserViews.RefreshButton("LoadCommand"));
+        Layout(UserViews.Refresh(new ScrollView{Content=UserViews.Stack(UserViews.Input(lot),UserViews.Bound("Summary"))},"LoadCommand"));
     }
 }
 public sealed class VehiclesInsidePage : UserPage<VehiclesInsideViewModel>
@@ -84,7 +84,7 @@ public sealed class IncidentDetailPage : UserPage<IncidentDetailViewModel>
     public IncidentDetailPage(IncidentDetailViewModel vm) : base(vm,"Detalle de incidente",()=>vm.LoadCommand.ExecuteAsync(null))
     {
         var files = new VerticalStackLayout(); files.SetBinding(BindableLayout.ItemsSourceProperty,"Detail.Attachments"); BindableLayout.SetItemTemplate(files,new DataTemplate(() => { var button=UserViews.Button("ABRIR ADJUNTO","OpenCommand",vm,"."); button.SetBinding(Button.TextProperty,"OriginalFileName"); return button; }));
-        Form(UserViews.Bound("Summary"),files,UserViews.Button("ACTUALIZAR","LoadCommand"));
+        ReadOnlyForm("LoadCommand",UserViews.Bound("Summary"),files);
     }
     public override void ApplyQueryAttributes(IDictionary<string,object> query) { if (query.TryGetValue("incidentId",out var value) && Guid.TryParse(value.ToString(),out var id)) ViewModel.IncidentId=id; }
 }
