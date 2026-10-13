@@ -33,8 +33,23 @@ internal static class UserViews
         var kind = ButtonPresentation.ForCommand(command);
         button.SetDynamicResource(VisualElement.StyleProperty, ButtonPresentation.Style(kind));
         if (kind is ButtonKind.Secondary or ButtonKind.Danger) button.HorizontalOptions = LayoutOptions.Start;
+        if (text == "ADJUNTAR ARCHIVO")
+        {
+            button.Text = "";
+            button.ImageSource = "action_upload.png";
+            button.SetDynamicResource(VisualElement.StyleProperty, "IconButton");
+            SemanticProperties.SetDescription(button, "Seleccionar archivo");
+        }
         button.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: source));
         if (parameter is not null) button.SetBinding(Microsoft.Maui.Controls.Button.CommandParameterProperty, parameter); return button;
+    }
+    public static Button IconAction(string description, string image, string command, bool danger = false)
+    {
+        var button = Button("", command);
+        button.ImageSource = image;
+        button.SetDynamicResource(VisualElement.StyleProperty, danger ? "DangerIconButton" : "IconButton");
+        SemanticProperties.SetDescription(button, description);
+        return button;
     }
     public static View UniversityCatalog(View picker,string loadedProperty)
     {
@@ -105,7 +120,7 @@ internal static class UserViews
         var container = new VerticalStackLayout { Spacing = 18 }; BindableLayout.SetItemsSource(container, null); container.SetBinding(BindableLayout.ItemsSourceProperty, "Documents");
         BindableLayout.SetItemTemplate(container, new DataTemplate(() =>
         {
-            var pick = new Button { Text = "SELECCIONAR ARCHIVO", HorizontalOptions = LayoutOptions.Start }; pick.SetBinding(Microsoft.Maui.Controls.Button.CommandProperty, "PickCommand"); pick.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: vm));
+            var pick = IconAction("Seleccionar archivo", "action_upload.png", "PickCommand"); pick.SetBinding(VisualElement.IsEnabledProperty, new Binding("IsNotBusy", source: vm));
             var issued = new CheckBox(); issued.SetBinding(CheckBox.IsCheckedProperty, "HasIssuedOn");
             var expires = new CheckBox(); expires.SetBinding(CheckBox.IsCheckedProperty, "HasExpiresOn");
             var dateIssued = new DatePicker(); dateIssued.SetBinding(DatePicker.DateProperty, "IssuedOn"); dateIssued.SetBinding(VisualElement.IsVisibleProperty, "HasIssuedOn");
@@ -125,7 +140,7 @@ public abstract class UserPage<T> : ContentPage, IQueryAttributable where T : cl
     { ViewModel = vm; BindingContext = vm; Title = title; this.load = load; this.once = once; SetDynamicResource(BackgroundColorProperty, "Background"); }
     protected void Layout(View body, View? footer = null)
     {
-        var grid = new Grid { Padding = 20, RowSpacing = 14, RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star }, new() { Height = GridLength.Auto } } };
+        UniversityParking.Mobile.Controls.InputViewport.Configure(this, body, footer); var grid = new Grid { Padding = 20, RowSpacing = 14, RowDefinitions = new RowDefinitionCollection { new() { Height = GridLength.Auto }, new() { Height = GridLength.Star }, new() { Height = GridLength.Auto } } };
         var error = UserViews.Bound("ErrorMessage"); error.SetDynamicResource(Label.TextColorProperty, "Danger");
         var busy = new ActivityIndicator(); busy.SetBinding(ActivityIndicator.IsRunningProperty, "IsBusy"); busy.SetBinding(IsVisibleProperty, "IsBusy");
         var title=new Grid{ColumnDefinitions={new ColumnDefinition(GridLength.Star),new ColumnDefinition(GridLength.Auto)},ColumnSpacing=10};title.Add(UserViews.Heading(Title));
@@ -187,7 +202,7 @@ public sealed class VehicleDetailPage : UserPage<VehicleDetailViewModel>
         var edit = UserViews.Button("EDITAR INFORMACIÓN", "EditCommand"); edit.SetBinding(IsVisibleProperty, "IsOwner");
         var renew = UserViews.Button("RENOVAR REGISTRO", "RenewCommand"); renew.SetBinding(IsVisibleProperty, "CanRenew");
         var status = UserViews.Button("", "ChangeStatusCommand"); status.SetBinding(Button.TextProperty, "StatusAction"); status.SetBinding(IsVisibleProperty, "IsOwner");
-        var archive=UserViews.Button("ELIMINAR VEHÍCULO","ArchiveCommand");archive.SetBinding(IsVisibleProperty,"IsOwner");
+        var archive=UserViews.IconAction("Eliminar vehículo","action_trash.png","ArchiveCommand",danger:true);archive.SetBinding(IsVisibleProperty,"IsOwner");
         ReadOnlyForm("LoadCommand",UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationPending", true), UserViews.Image("Photo", 220), UserViews.Bound("Identifier"), UserViews.Bound("Heading"), UserViews.Bound("Summary", true), UserViews.Bound("Period", true),
             UserViews.Bound("Registration"), UserViews.Bound("Location"), UserViews.Heading("Documentos privados"), documents, edit, status, renew, VerificationButton(),archive);
     }
@@ -199,11 +214,11 @@ public sealed class RegisterVehiclePage : UserPage<RegisterVehicleViewModel>
     public RegisterVehiclePage(RegisterVehicleViewModel vm) : base(vm, "Registrar vehículo", () => vm.LoadCommand.ExecuteAsync(null), once: true)
     {
         var types = new Picker { Title = "Tipo de vehículo", ItemDisplayBinding = new Binding("Label") }; types.SetBinding(Picker.ItemsSourceProperty, "Types"); types.SetBinding(Picker.SelectedItemProperty, "SelectedType"); types.SetBinding(IsEnabledProperty, "IsNotBusy");
-        var gallery = UserViews.Button("SELECCIONAR IMAGEN", "PickPhotoCommand"); gallery.CommandParameter = false;
-        var camera = UserViews.Button("TOMAR FOTO", "PickPhotoCommand"); camera.CommandParameter = true;
+        var gallery = UserViews.IconAction("Seleccionar imagen", "action_upload.png", "PickPhotoCommand"); gallery.CommandParameter = false;
+        var camera = UserViews.IconAction("Tomar foto", "action_camera.png", "PickPhotoCommand"); camera.CommandParameter = true;
         Form(UserViews.Input(types), UserViews.Bound("IdentifierLabel"), UserViews.Input(UserViews.VehicleEntry("Identifier", "Identificador del vehículo")),
             UserViews.Input(UserViews.VehicleEntry("Brand", "Marca")), UserViews.Input(UserViews.VehicleEntry("Model", "Modelo")), UserViews.Input(UserViews.VehicleEntry("Color", "Color")),
-            UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationHelp", true), UserViews.Bound("VerificationImageName", true), UserViews.Image("VerificationImage", 180), camera, gallery,
+            UserViews.Heading("EVIDENCIA DE VERIFICACIÓN"), UserViews.Bound("VerificationLabel"), UserViews.Bound("VerificationHelp", true), UserViews.Bound("VerificationImageName", true), UserViews.Image("VerificationImage", 180), new HorizontalStackLayout { Spacing = 12, Children = { camera, gallery } },
             UserViews.Bound("ProcessingMessage", true), UserViews.Button("REGISTRAR VEHÍCULO", "SaveCommand"));
     }
 }

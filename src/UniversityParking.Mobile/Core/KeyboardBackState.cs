@@ -9,5 +9,6 @@ public sealed class KeyboardBackState
         KeyboardVisible = visible;
         return releaseFocus;
     }
-    public bool ShouldDismiss(bool overlayPresented) => KeyboardVisible && !overlayPresented;
+    // IME takes priority even inside a modal. Once closed, navigation owns Back.
+    public bool ShouldDismiss() => KeyboardVisible;
 }

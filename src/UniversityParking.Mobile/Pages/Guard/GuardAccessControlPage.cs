@@ -21,7 +21,7 @@ public sealed class GuardAccessControlPage : ContentPage, IQueryAttributable
 
     public GuardAccessControlPage(GuardAccessControlViewModel vm)
     {
-        this.vm = vm; BindingContext = vm; Title = "Registro de acceso";
+        this.vm = vm; BindingContext = vm; Title = "Registro de acceso"; SetBinding(SafeAreaEdgesProperty, new Binding("ShowManual", converter: new ManualInputSafeAreaConverter()));
         SetDynamicResource(BackgroundColorProperty, "Background");
         var root = new Grid { RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Star), new(GridLength.Auto) } };
         root.Add(UserViews.Stack(UserViews.Heading(Title), GuardViews.Lot()), 0, 0);

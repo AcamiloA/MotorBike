@@ -52,7 +52,7 @@ public static class FilterPanel
             var lotOwner=vm.GetType().GetProperty("Lots")?.GetValue(vm);
             var lotProperty=lotOwner?.GetType().GetProperty("Selected");var previousLot=lotProperty?.GetValue(lotOwner);
             state.Open();Write(state.DraftFilters);
-            var page=new ContentPage{Title="Filtros",BindingContext=vm};var accepted=false;
+            var page=new ContentPage{Title="Filtros",BindingContext=vm,SafeAreaEdges=SafeAreaEdges.All};var accepted=false;
             var apply=new Button{Text="APLICAR FILTROS"};var clear=new Button{Text="BORRAR FILTROS",IsEnabled=state.CanClear};
             apply.SetDynamicResource(VisualElement.StyleProperty,"PrimaryButton");
             clear.SetDynamicResource(VisualElement.StyleProperty,"SecondaryButton");
@@ -62,7 +62,7 @@ public static class FilterPanel
             page.Content=new ScrollView{Content=panel};
             apply.Clicked+=async(_,_)=>{if(accepted)return;accepted=true;state.DraftFilters.Clear();foreach(var x in Read())state.DraftFilters[x.Key]=x.Value;state.Apply();Write(state.AppliedFilters);badge.Text=state.ActiveCount.ToString();badge.IsVisible=state.CanClear;await owner.Navigation.PopModalAsync();await Refresh();};
             clear.Clicked+=async(_,_)=>{if(accepted)return;accepted=true;state.Clear();Write(state.AppliedFilters);badge.IsVisible=false;await owner.Navigation.PopModalAsync();await Refresh();};
-            page.Disappearing+=(_,_)=>{if(!accepted){Write(state.AppliedFilters);if(lotProperty is not null)lotProperty.SetValue(lotOwner,previousLot);}panelOpen=false;panel.Children.Remove(filters);};
+            page.Disappearing+=(_,_)=>{InputViewport.ClearFocus(panel);if(!accepted){Write(state.AppliedFilters);if(lotProperty is not null)lotProperty.SetValue(lotOwner,previousLot);}panelOpen=false;panel.Children.Remove(filters);};
             await owner.Navigation.PushModalAsync(page);
         };
         return root;

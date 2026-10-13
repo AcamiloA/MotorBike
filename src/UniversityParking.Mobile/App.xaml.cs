@@ -8,7 +8,11 @@ public partial class App : Application
     private readonly IServiceProvider services;
     private readonly AppNavigation navigation;
     public App(IServiceProvider services, AppNavigation navigation)
-    { InitializeComponent(); this.services = services; this.navigation = navigation; UserAppTheme = AppTheme.Dark; }
+    {
+        InitializeComponent(); this.services = services; this.navigation = navigation; UserAppTheme = AppTheme.Dark;
+        Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.Application.SetWindowSoftInputModeAdjust(
+            this, Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.WindowSoftInputModeAdjust.Resize);
+    }
     protected override Window CreateWindow(IActivationState? activationState)
     { services.GetRequiredService<IFileViewer>().ClearCache(); var window = new Window(services.GetRequiredService<StartupPage>()); navigation.Attach(window); return window; }
 }

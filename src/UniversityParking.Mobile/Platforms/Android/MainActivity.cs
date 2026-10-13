@@ -9,7 +9,7 @@ using UniversityParking.Mobile.Core;
 
 namespace UniversityParking.Mobile;
 
-[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+[Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, WindowSoftInputMode = SoftInput.AdjustResize, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
     private readonly KeyboardBackState keyboard = new();
@@ -23,15 +23,13 @@ public class MainActivity : MauiAppCompatActivity
         keyboardLayout = new KeyboardLayoutListener(this);
         Window?.DecorView.ViewTreeObserver?.AddOnGlobalLayoutListener(keyboardLayout);
     }
-    private bool OverlayPresented => Microsoft.Maui.Controls.Shell.Current?.FlyoutIsPresented == true ||
-        Microsoft.Maui.Controls.Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation.ModalStack.Count > 0;
     private void UpdateKeyboard()
     {
         var insets = Window?.DecorView is { } root ? ViewCompat.GetRootWindowInsets(root) : null;
         var visible = insets?.IsVisible(WindowInsetsCompat.Type.Ime()) == true;
         // Android may consume Back itself to dismiss IME. Release focus after that transition too.
         if (keyboard.Update(visible)) ReleaseEditorFocus();
-        if (keyboardBack is not null) keyboardBack.Enabled = keyboard.ShouldDismiss(OverlayPresented);
+        if (keyboardBack is not null) keyboardBack.Enabled = keyboard.ShouldDismiss();
     }
     private void DismissKeyboard()
     {
@@ -67,7 +65,7 @@ public class MainActivity : MauiAppCompatActivity
         public override void HandleOnBackPressed()
         {
             activity.UpdateKeyboard();
-            if (activity.keyboard.ShouldDismiss(activity.OverlayPresented)) activity.DismissKeyboard();
+            if (activity.keyboard.ShouldDismiss()) activity.DismissKeyboard();
             else { Enabled = false; activity.OnBackPressedDispatcher.OnBackPressed(); }
         }
     }
