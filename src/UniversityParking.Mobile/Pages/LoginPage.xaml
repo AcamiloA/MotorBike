@@ -4,15 +4,17 @@
   <Image Source="brandmark.png" HeightRequest="84" WidthRequest="84" SemanticProperties.Description="MOTOBIKE PARK" />
   <Label Text="MOTOBIKE PARK" Style="{StaticResource BrandTitle}" HorizontalTextAlignment="Center" />
   <Label Text="SMART PARKING SYSTEM" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" Margin="0,-12,0,24" />
+  <VerticalStackLayout Spacing="8">
   <Label Text="NÚMERO DE IDENTIFICACIÓN" Style="{StaticResource Caption}" />
   <Border Style="{StaticResource InputBorder}"><Entry x:Name="IdentificationEntry" Text="{Binding IdentificationNumber}" Placeholder="Ingresa tu identificación" IsEnabled="{Binding IsNotBusy}" ReturnType="Next" Completed="IdentificationCompleted" SemanticProperties.Description="Número de identificación" /></Border>
   <Label Text="CONTRASEÑA" Style="{StaticResource Caption}" />
   <Border Style="{StaticResource InputBorder}"><controls:PasswordField  x:Name="PasswordEntry" Text="{Binding Password}" Placeholder="Ingresa tu contraseña"  IsEnabled="{Binding IsNotBusy}" ReturnType="Go" Completed="PasswordCompleted" SemanticProperties.Description="Contraseña" /></Border>
+  <Button Style="{StaticResource TertiaryButton}" HorizontalOptions="End" Text="¿Olvidaste tu contraseña?" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding CanStart}" />
   <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" SemanticProperties.Description="{Binding ErrorMessage}" />
   <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-  <Button Style="{StaticResource PrimaryButton}" Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding CanStart}" Margin="0,8,0,24" />
-  <Button Style="{StaticResource TertiaryButton}" HorizontalOptions="Start" Text="¿Olvidaste tu contraseña?" Command="{Binding ForgotPasswordCommand}" IsEnabled="{Binding CanStart}" />
-  <Button Text="CREAR CUENTA DE ESTUDIANTE" HorizontalOptions="Start" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding CanStart}" />
+  <Button Style="{StaticResource PrimaryButton}" HorizontalOptions="Fill" Text="INICIAR SESIÓN" Command="{Binding SignInCommand}" IsEnabled="{Binding CanStart}" />
+  <Button Text="CREAR CUENTA DE ESTUDIANTE" HorizontalOptions="Center" Style="{StaticResource SecondaryButton}" Command="{Binding CreateStudentAccountCommand}" IsEnabled="{Binding CanStart}" />
+  </VerticalStackLayout>
   <Label Text="Control de acceso vehicular universitario" Style="{StaticResource Caption}" HorizontalTextAlignment="Center" />
  </VerticalStackLayout></ScrollView>
 </ContentPage>
